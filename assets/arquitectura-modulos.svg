@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1070" height="1008" viewBox="0 0 1070 1008">
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="26" fill="#1e1e1e" text-anchor="middle"><tspan x="540.0" y="48.7">Sextante · módulos, camadas e portas</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="13" fill="#868e96" text-anchor="middle"><tspan x="540.0" y="76.3">Um processo, módulos com fronteira explícita. A dependência aponta sempre para dentro.</tspan></text>
+<rect x="40" y="100" width="1000" height="330" rx="8" fill="#f8f9fa" stroke="#495057" stroke-width="3"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="19" fill="#1e1e1e" text-anchor="middle"><tspan x="540.0" y="130.1">sextante · processo único FastAPI</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="540.0" y="151.4">a comunicação entre módulos passa por contracts, nunca pelo modelo interno do vizinho</tspan></text>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="149.0" y="171.2">ingestion</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="149.0" y="185.4">carregar, extrair</tspan></text>
+<rect x="58" y="192" width="182" height="48" rx="8" fill="#e7f5ff" stroke="#1971c2" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="149.0" y="219.3">api</tspan></text>
+<rect x="58" y="249" width="182" height="48" rx="8" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="149.0" y="276.3">application</tspan></text>
+<rect x="58" y="306" width="182" height="48" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="149.0" y="333.3">domain</tspan></text>
+<rect x="58" y="363" width="182" height="48" rx="8" fill="#f8f9fa" stroke="#495057" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="149.0" y="390.3">infrastructure</tspan></text>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="346.0" y="171.2">catalog</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="346.0" y="185.4">abas e comparação</tspan></text>
+<rect x="255" y="192" width="182" height="48" rx="8" fill="#e7f5ff" stroke="#1971c2" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="346.0" y="219.3">api</tspan></text>
+<rect x="255" y="249" width="182" height="48" rx="8" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="346.0" y="276.3">application</tspan></text>
+<rect x="255" y="306" width="182" height="48" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="346.0" y="333.3">domain</tspan></text>
+<rect x="255" y="363" width="182" height="48" rx="8" fill="#f8f9fa" stroke="#495057" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="346.0" y="390.3">infrastructure</tspan></text>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="543.0" y="171.2">matching</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="543.0" y="185.4">entidade e item</tspan></text>
+<rect x="452" y="192" width="182" height="48" rx="8" fill="#e7f5ff" stroke="#1971c2" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="543.0" y="219.3">api</tspan></text>
+<rect x="452" y="249" width="182" height="48" rx="8" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="543.0" y="276.3">application</tspan></text>
+<rect x="452" y="306" width="182" height="48" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="543.0" y="333.3">domain</tspan></text>
+<rect x="452" y="363" width="182" height="48" rx="8" fill="#f8f9fa" stroke="#495057" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="543.0" y="390.3">infrastructure</tspan></text>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="740.0" y="171.2">review</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="740.0" y="185.4">revisão e resultados</tspan></text>
+<rect x="649" y="192" width="182" height="48" rx="8" fill="#e7f5ff" stroke="#1971c2" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="740.0" y="219.3">api</tspan></text>
+<rect x="649" y="249" width="182" height="48" rx="8" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="740.0" y="276.3">application</tspan></text>
+<rect x="649" y="306" width="182" height="48" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="740.0" y="333.3">domain</tspan></text>
+<rect x="649" y="363" width="182" height="48" rx="8" fill="#f8f9fa" stroke="#495057" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="740.0" y="390.3">infrastructure</tspan></text>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="937.0" y="171.2">export</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="937.0" y="185.4">CSV e XLSX</tspan></text>
+<rect x="846" y="192" width="182" height="48" rx="8" fill="#e7f5ff" stroke="#1971c2" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="937.0" y="219.3">api</tspan></text>
+<rect x="846" y="249" width="182" height="48" rx="8" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="937.0" y="276.3">application</tspan></text>
+<rect x="846" y="306" width="182" height="48" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="937.0" y="333.3">domain</tspan></text>
+<rect x="846" y="363" width="182" height="48" rx="8" fill="#f8f9fa" stroke="#495057" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="14" fill="#1e1e1e" text-anchor="middle"><tspan x="937.0" y="390.3">infrastructure</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="14" fill="#1e1e1e" text-anchor="start"><tspan x="40" y="455.3">camadas, de fora para dentro</tspan></text>
+<rect x="44" y="468" width="16" height="16" rx="0" fill="#e7f5ff" stroke="#1971c2" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="start"><tspan x="70" y="478.4">api — HTTP, validação, serialização</tspan></text>
+<rect x="44" y="494" width="16" height="16" rx="0" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="start"><tspan x="70" y="504.4">application — orquestra, abre transacção</tspan></text>
+<rect x="44" y="520" width="16" height="16" rx="0" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="start"><tspan x="70" y="530.4">domain — regras, sem I/O</tspan></text>
+<rect x="44" y="546" width="16" height="16" rx="0" fill="#f8f9fa" stroke="#495057" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="start"><tspan x="70" y="556.4">infrastructure — SQLite, ficheiros, Claude</tspan></text>
+<rect x="520" y="468" width="520" height="120" rx="8" fill="#f3d9fa" stroke="#862e9c" stroke-width="3"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="780.0" y="495.2">platform · transversal a todos os módulos</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="780.0" y="519.4">Clock · IdentifierGenerator · Settings · logging estruturado</tspan><tspan x="780.0" y="534.4">limites de validação · idempotência · tratador global de erros</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="19" fill="#1e1e1e" text-anchor="middle"><tspan x="540.0" y="636.0">portas do projecto e o que as implementa</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="540.0" y="657.4">cada porta tem uma implementação real e um duplo nomeado em tests/fakes, para que nenhum teste chame a rede</tspan></text>
+<rect x="40" y="676" width="237" height="66" rx="8" fill="#e7f5ff" stroke="#1971c2" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="13" fill="#1e1e1e" text-anchor="middle"><tspan x="158.5" y="698.4">InvoiceExtractor</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="158.5" y="720.5">pdfplumber · PDF nativo</tspan></text>
+<rect x="294" y="676" width="237" height="66" rx="8" fill="#e7f5ff" stroke="#1971c2" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="13" fill="#1e1e1e" text-anchor="middle"><tspan x="412.5" y="698.4">OpticalCharacterRecognizer</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="412.5" y="720.5">não implementada · L-01</tspan></text>
+<rect x="548" y="676" width="237" height="66" rx="8" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="13" fill="#1e1e1e" text-anchor="middle"><tspan x="666.5" y="698.4">LexicalScorer</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="666.5" y="720.5">rapidfuzz · aba inteira</tspan></text>
+<rect x="802" y="676" width="237" height="66" rx="8" fill="#f3d9fa" stroke="#862e9c" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="13" fill="#1e1e1e" text-anchor="middle"><tspan x="920.5" y="698.4">ItemClassifier</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="920.5" y="720.5">Claude · devolve índice</tspan></text>
+<rect x="40" y="759" width="237" height="66" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="13" fill="#1e1e1e" text-anchor="middle"><tspan x="158.5" y="781.4">EncodedResultRepository</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="158.5" y="803.5">SQLite · SQLAlchemy</tspan></text>
+<rect x="294" y="759" width="237" height="66" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="13" fill="#1e1e1e" text-anchor="middle"><tspan x="412.5" y="781.4">AuditEventRepository</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="412.5" y="803.5">só inserção · gatilhos</tspan></text>
+<rect x="548" y="759" width="237" height="66" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="13" fill="#1e1e1e" text-anchor="middle"><tspan x="666.5" y="781.4">InvoiceFileStore</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="666.5" y="803.5">disco local, nome do servidor</tspan></text>
+<rect x="802" y="759" width="237" height="66" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text font-family="&#x27;Cascadia Code&#x27;, Consolas, monospace" font-size="13" fill="#1e1e1e" text-anchor="middle"><tspan x="920.5" y="781.4">ResultExporter</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="920.5" y="803.5">CSV com BOM · XLSX</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="19" fill="#1e1e1e" text-anchor="middle"><tspan x="540.0" y="894.0">fora do processo</tspan></text>
+<rect x="40" y="912" width="237" height="66" rx="8" fill="#e7f5ff" stroke="#1971c2" stroke-width="2" stroke-dasharray="8 6"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="13" fill="#1e1e1e" text-anchor="middle"><tspan x="158.5" y="934.4">API da Anthropic</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="158.5" y="956.5">único destino de rede saído</tspan></text>
+<rect x="294" y="912" width="237" height="66" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2" stroke-dasharray="8 6"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="13" fill="#1e1e1e" text-anchor="middle"><tspan x="412.5" y="934.4">sextante.db</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="412.5" y="956.5">SQLite com WAL</tspan></text>
+<rect x="548" y="912" width="237" height="66" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2" stroke-dasharray="8 6"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="13" fill="#1e1e1e" text-anchor="middle"><tspan x="666.5" y="934.4">catálogo .xlsx</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="666.5" y="956.5">lido uma vez, versionado por digest</tspan></text>
+<rect x="802" y="912" width="237" height="66" rx="8" fill="#f8f9fa" stroke="#495057" stroke-width="2" stroke-dasharray="8 6"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="13" fill="#1e1e1e" text-anchor="middle"><tspan x="920.5" y="934.4">uploads/</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="920.5" y="956.5">fora da árvore servida</tspan></text>
+</svg>

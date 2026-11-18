@@ -1,10 +1,27 @@
-"""Generate the two Excalidraw diagrams for the Sextante documentation."""
+"""Generate the two Sextante diagrams: editable Excalidraw sources and SVG renderings.
+
+The .excalidraw files go to docs/diagramas/ and the .svg renderings to assets/. Both come
+from the same element list, so a design change edits this script and regenerates both;
+nothing is exported or edited by hand (CLAUDE.md, section «Diagramas»).
+
+Usage, from the repository root:
+    python3 scripts/gen_diagrams.py
+"""
 
 import json
+from html import escape
 from pathlib import Path
 
 OUT = Path("./docs/diagramas")
 OUT.mkdir(parents=True, exist_ok=True)
+SVG_OUT = Path("./assets")
+SVG_OUT.mkdir(parents=True, exist_ok=True)
+SVG_MARGIN = 30
+FONT_FAMILIES = {
+    1: "Virgil, 'Segoe Print', 'Comic Sans MS', cursive",
+    2: "Helvetica, Arial, sans-serif",
+    3: "'Cascadia Code', Consolas, monospace",
+}
 
 BLUE = ("#1971c2", "#e7f5ff")
 YELLOW = ("#f59f00", "#fff9db")
@@ -129,7 +146,7 @@ def labelled_box(x, y, w, h, colors, title, note, *, stroke_width=2):
 def flow_diagram() -> dict:
     els: list[dict] = []
     col_x, col_w = 60, 380
-    side_x, side_w = 490, 290
+    side_x, side_w = 520, 260
     pitch, box_h = 96, 60
     top = 128
 
@@ -147,7 +164,7 @@ def flow_diagram() -> dict:
     )
     els.append(
         text(
-            "O Claude entra em dois pontos e em nenhum deles devolve um código de item.",
+            "O Claude entra num só ponto, a escolha do item, e não devolve um código de item.",
             60,
             88,
             720,
@@ -156,19 +173,21 @@ def flow_diagram() -> dict:
         )
     )
 
+    # Revised on 2026-11-18 (00-decisoes-e-lacunas.md §3.15 to §3.18): the entity check
+    # no longer uses the model, and the model receives the whole target sheet.
     steps = [
         (BLUE, "1 · Carregamento", "PDF ou XLSX, pela API", 2),
-        (YELLOW, "2 · Tipo real e digest", "magic bytes, SHA-256, idempotência", 2),
-        (YELLOW, "3 · Extracção", "pdfplumber ou openpyxl", 2),
-        (YELLOW, "4 · Normalização e tipo de linha", "NFC, service / tax / subtotal", 2),
-        (YELLOW, "5 · Entidade facturada", "lista de exclusão, depois rapidfuzz", 2),
-        (YELLOW, "6 · Encaminhamento", "OUTLAYS se corresponde, OUTLAYSP se não", 2),
-        (YELLOW, "7 · Recuperação de candidatos", "top 8 da aba de destino, com score", 2),
-        (PURPLE, "8 · Escolha do candidato", "Claude devolve o índice, não o código", 2),
-        (YELLOW, "9 · Validação da escolha", "índice na lista e código no catálogo", 4),
+        (YELLOW, "2 · Tipo real e digest", "primeiros bytes, SHA-256, idempotência", 2),
+        (YELLOW, "3 · Extracção", "PDF nativo no modelo das amostras", 2),
+        (YELLOW, "4 · Normalização e tipo de linha", "NFC · service / tax / discount", 2),
+        (YELLOW, "5 · Verificação de entidade", "exclusão, veto pelo NIF, igualdade", 2),
+        (YELLOW, "6 · Encaminhamento", "MATCH: OUTLAYS · NO_MATCH: OUTLAYSP", 2),
+        (YELLOW, "7 · Pontuação lexical", "todos os itens da aba, PT e EN", 2),
+        (PURPLE, "8 · Escolha do item", "Claude devolve o índice na aba inteira", 2),
+        (YELLOW, "9 · Validação da escolha", "esquema, índice na lista, item na aba", 4),
         (YELLOW, "10 · Recurso ou vazio", "O00999 só em OUTLAYSP, senão vazio", 2),
-        (YELLOW, "11 · Confiança", "regra sobre score, intervalo e concordância", 2),
-        (GREEN, "12 · Persistência e auditoria", "SQLite, candidatos, prompt, digest", 2),
+        (YELLOW, "11 · Confiança", "topo lexical, score e distância", 2),
+        (GREEN, "12 · Persistência e auditoria", "scores, modelo, prompt, digest", 2),
         (GREEN, "13 · Revisão e exportação", "CSV e XLSX com as nove colunas", 2),
     ]
 
@@ -186,9 +205,9 @@ def flow_diagram() -> dict:
         )
         els.extend(labelled_box(side_x, y, side_w, box_h, colors, title, note))
 
-    side(2, RED, "Recusado", "PDF sem camada de texto, L-01", "sem texto")
-    side(4, PURPLE, "Desempate pelo Claude", "MATCH / NO_MATCH / AMBIGUOUS", "zona cinzenta")
-    side(8, RED, "LOW e revisão obrigatória", "resposta fora do esquema", "inválida")
+    side(2, RED, "Recusado, sem codificar", "PDF sem texto ou outro documento", "recusa")
+    side(4, RED, "Resolução de entidade", "ambígua: decide um revisor, L-13", "ambígua")
+    side(8, RED, "Sem código, LOW, revisão", "resposta fora do esquema ou da aba", "inválida")
     side(9, RED, "Vazio, LOW, revisão", "sem correspondência em OUTLAYS, L-08", "OUTLAYS")
 
     note_y = top + len(steps) * pitch + 20
@@ -233,9 +252,9 @@ def modules_diagram() -> dict:
 
     modules = [
         ("ingestion", "carregar, extrair"),
-        ("catalog", "abas e índice"),
+        ("catalog", "abas e comparação"),
         ("matching", "entidade e item"),
-        ("review", "revisão humana"),
+        ("review", "revisão e resultados"),
         ("export", "CSV e XLSX"),
     ]
     layers = [
@@ -307,13 +326,15 @@ def modules_diagram() -> dict:
         )
     )
 
+    # EntityTiebreaker was removed and CandidateRetriever became LexicalScorer
+    # (04-padroes-de-codigo.md §4, revised on 2026-11-18).
     ports = [
-        (BLUE, "InvoiceExtractor", "pdfplumber · openpyxl"),
+        (BLUE, "InvoiceExtractor", "pdfplumber · PDF nativo"),
         (BLUE, "OpticalCharacterRecognizer", "não implementada · L-01"),
-        (YELLOW, "CandidateRetriever", "rapidfuzz sobre a aba"),
-        (PURPLE, "EntityTiebreaker", "Claude · conjunto fechado"),
+        (YELLOW, "LexicalScorer", "rapidfuzz · aba inteira"),
         (PURPLE, "ItemClassifier", "Claude · devolve índice"),
         (GREEN, "EncodedResultRepository", "SQLite · SQLAlchemy"),
+        (GREEN, "AuditEventRepository", "só inserção · gatilhos"),
         (GREEN, "InvoiceFileStore", "disco local, nome do servidor"),
         (GREEN, "ResultExporter", "CSV com BOM · XLSX"),
     ]
@@ -344,11 +365,79 @@ def modules_diagram() -> dict:
     return wrap(els)
 
 
-for filename, builder in (
-    ("fluxo-codificacao.excalidraw", flow_diagram),
-    ("arquitectura-modulos.excalidraw", modules_diagram),
+def to_svg(payload: dict) -> str:
+    """Render the rectangles, texts and arrows of an Excalidraw payload as SVG.
+
+    Example:
+        Path("assets/fluxo-codificacao.svg").write_text(to_svg(flow_diagram()))
+    """
+    elements = payload["elements"]
+    width = max(e["x"] + e["width"] for e in elements) + SVG_MARGIN
+    height = max(e["y"] + e["height"] for e in elements) + SVG_MARGIN
+    body = "\n".join(_svg_element(e) for e in elements)
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width:.0f}" height="{height:.0f}" '
+        f'viewBox="0 0 {width:.0f} {height:.0f}">\n'
+        '<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" '
+        'markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" '
+        'fill="context-stroke"/></marker></defs>\n'
+        f'<rect width="100%" height="100%" fill="#ffffff"/>\n{body}\n</svg>\n'
+    )
+
+
+def _svg_element(element: dict) -> str:
+    renderers = {"rectangle": _svg_rect, "text": _svg_text, "arrow": _svg_arrow}
+    return renderers[element["type"]](element)
+
+
+def _svg_dash(element: dict) -> str:
+    return ' stroke-dasharray="8 6"' if element["strokeStyle"] == "dashed" else ""
+
+
+def _svg_rect(element: dict) -> str:
+    radius = 8 if element["roundness"] else 0
+    return (
+        f'<rect x="{element["x"]}" y="{element["y"]}" width="{element["width"]}" '
+        f'height="{element["height"]}" rx="{radius}" fill="{element["backgroundColor"]}" '
+        f'stroke="{element["strokeColor"]}" stroke-width="{element["strokeWidth"]}"'
+        f"{_svg_dash(element)}/>"
+    )
+
+
+def _svg_text(element: dict) -> str:
+    size = element["fontSize"]
+    centered = element["textAlign"] == "center"
+    x = element["x"] + element["width"] / 2 if centered else element["x"]
+    lines = element["text"].split("\n")
+    spans = "".join(
+        f'<tspan x="{x}" y="{element["y"] + size * 0.95 + index * size * 1.25:.1f}">'
+        f"{escape(line)}</tspan>"
+        for index, line in enumerate(lines)
+    )
+    return (
+        f'<text font-family="{escape(FONT_FAMILIES[element["fontFamily"]])}" '
+        f'font-size="{size}" fill="{element["strokeColor"]}" '
+        f'text-anchor="{"middle" if centered else "start"}">{spans}</text>'
+    )
+
+
+def _svg_arrow(element: dict) -> str:
+    (start_x, start_y), (dx, dy) = element["points"]
+    x1, y1 = element["x"] + start_x, element["y"] + start_y
+    return (
+        f'<line x1="{x1}" y1="{y1}" x2="{x1 + dx}" y2="{y1 + dy}" '
+        f'stroke="{element["strokeColor"]}" stroke-width="{element["strokeWidth"]}"'
+        f'{_svg_dash(element)} marker-end="url(#head)"/>'
+    )
+
+
+for stem, builder in (
+    ("fluxo-codificacao", flow_diagram),
+    ("arquitectura-modulos", modules_diagram),
 ):
     payload = builder()
-    path = OUT / filename
+    path = OUT / f"{stem}.excalidraw"
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"{path}  {len(payload['elements'])} elementos  {path.stat().st_size} bytes")
+    svg_path = SVG_OUT / f"{stem}.svg"
+    svg_path.write_text(to_svg(payload), encoding="utf-8")
+    print(f"{path}  {len(payload['elements'])} elementos  ·  {svg_path}")

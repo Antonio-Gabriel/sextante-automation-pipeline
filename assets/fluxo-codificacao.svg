@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="810" height="1518" viewBox="0 0 810 1518">
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="26" fill="#1e1e1e" text-anchor="middle"><tspan x="420.0" y="48.7">Sextante · fluxo de codificação de uma factura</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="13" fill="#868e96" text-anchor="middle"><tspan x="420.0" y="78.3">Amarelo: decidido em código   ·   Violeta: decidido pelo Claude   ·   Vermelho: devolvido ao humano</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="13" fill="#868e96" text-anchor="middle"><tspan x="420.0" y="100.3">O Claude entra num só ponto, a escolha do item, e não devolve um código de item.</tspan></text>
+<rect x="60" y="128" width="380" height="60" rx="8" fill="#e7f5ff" stroke="#1971c2" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="250.0" y="152.2">1 · Carregamento</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="250.0" y="171.4">PDF ou XLSX, pela API</tspan></text>
+<line x1="250.0" y1="188" x2="250.0" y2="218" stroke="#1e1e1e" stroke-width="2" marker-end="url(#head)"/>
+<rect x="60" y="224" width="380" height="60" rx="8" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="250.0" y="248.2">2 · Tipo real e digest</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="250.0" y="267.4">primeiros bytes, SHA-256, idempotência</tspan></text>
+<line x1="250.0" y1="284" x2="250.0" y2="314" stroke="#1e1e1e" stroke-width="2" marker-end="url(#head)"/>
+<rect x="60" y="320" width="380" height="60" rx="8" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="250.0" y="344.2">3 · Extracção</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="250.0" y="363.4">PDF nativo no modelo das amostras</tspan></text>
+<line x1="250.0" y1="380" x2="250.0" y2="410" stroke="#1e1e1e" stroke-width="2" marker-end="url(#head)"/>
+<rect x="60" y="416" width="380" height="60" rx="8" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="250.0" y="440.2">4 · Normalização e tipo de linha</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="250.0" y="459.4">NFC · service / tax / discount</tspan></text>
+<line x1="250.0" y1="476" x2="250.0" y2="506" stroke="#1e1e1e" stroke-width="2" marker-end="url(#head)"/>
+<rect x="60" y="512" width="380" height="60" rx="8" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="250.0" y="536.2">5 · Verificação de entidade</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="250.0" y="555.4">exclusão, veto pelo NIF, igualdade</tspan></text>
+<line x1="250.0" y1="572" x2="250.0" y2="602" stroke="#1e1e1e" stroke-width="2" marker-end="url(#head)"/>
+<rect x="60" y="608" width="380" height="60" rx="8" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="250.0" y="632.2">6 · Encaminhamento</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="250.0" y="651.4">MATCH: OUTLAYS · NO_MATCH: OUTLAYSP</tspan></text>
+<line x1="250.0" y1="668" x2="250.0" y2="698" stroke="#1e1e1e" stroke-width="2" marker-end="url(#head)"/>
+<rect x="60" y="704" width="380" height="60" rx="8" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="250.0" y="728.2">7 · Pontuação lexical</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="250.0" y="747.4">todos os itens da aba, PT e EN</tspan></text>
+<line x1="250.0" y1="764" x2="250.0" y2="794" stroke="#1e1e1e" stroke-width="2" marker-end="url(#head)"/>
+<rect x="60" y="800" width="380" height="60" rx="8" fill="#f3d9fa" stroke="#862e9c" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="250.0" y="824.2">8 · Escolha do item</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="250.0" y="843.4">Claude devolve o índice na aba inteira</tspan></text>
+<line x1="250.0" y1="860" x2="250.0" y2="890" stroke="#1e1e1e" stroke-width="2" marker-end="url(#head)"/>
+<rect x="60" y="896" width="380" height="60" rx="8" fill="#fff9db" stroke="#f59f00" stroke-width="4"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="250.0" y="920.2">9 · Validação da escolha</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="250.0" y="939.4">esquema, índice na lista, item na aba</tspan></text>
+<line x1="250.0" y1="956" x2="250.0" y2="986" stroke="#1e1e1e" stroke-width="2" marker-end="url(#head)"/>
+<rect x="60" y="992" width="380" height="60" rx="8" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="250.0" y="1016.2">10 · Recurso ou vazio</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="250.0" y="1035.4">O00999 só em OUTLAYSP, senão vazio</tspan></text>
+<line x1="250.0" y1="1052" x2="250.0" y2="1082" stroke="#1e1e1e" stroke-width="2" marker-end="url(#head)"/>
+<rect x="60" y="1088" width="380" height="60" rx="8" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="250.0" y="1112.2">11 · Confiança</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="250.0" y="1131.4">topo lexical, score e distância</tspan></text>
+<line x1="250.0" y1="1148" x2="250.0" y2="1178" stroke="#1e1e1e" stroke-width="2" marker-end="url(#head)"/>
+<rect x="60" y="1184" width="380" height="60" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="250.0" y="1208.2">12 · Persistência e auditoria</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="250.0" y="1227.4">scores, modelo, prompt, digest</tspan></text>
+<line x1="250.0" y1="1244" x2="250.0" y2="1274" stroke="#1e1e1e" stroke-width="2" marker-end="url(#head)"/>
+<rect x="60" y="1280" width="380" height="60" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="250.0" y="1304.2">13 · Revisão e exportação</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="250.0" y="1323.4">CSV e XLSX com as nove colunas</tspan></text>
+<line x1="440" y1="350.0" x2="520" y2="350.0" stroke="#c92a2a" stroke-width="2" marker-end="url(#head)"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="480.0" y="340.4">recusa</tspan></text>
+<rect x="520" y="320" width="260" height="60" rx="8" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="650.0" y="344.2">Recusado, sem codificar</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="650.0" y="363.4">PDF sem texto ou outro documento</tspan></text>
+<line x1="440" y1="542.0" x2="520" y2="542.0" stroke="#c92a2a" stroke-width="2" marker-end="url(#head)"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="480.0" y="532.5">ambígua</tspan></text>
+<rect x="520" y="512" width="260" height="60" rx="8" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="650.0" y="536.2">Resolução de entidade</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="650.0" y="555.4">ambígua: decide um revisor, L-13</tspan></text>
+<line x1="440" y1="926.0" x2="520" y2="926.0" stroke="#c92a2a" stroke-width="2" marker-end="url(#head)"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="480.0" y="916.5">inválida</tspan></text>
+<rect x="520" y="896" width="260" height="60" rx="8" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="650.0" y="920.2">Sem código, LOW, revisão</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="650.0" y="939.4">resposta fora do esquema ou da aba</tspan></text>
+<line x1="440" y1="1022.0" x2="520" y2="1022.0" stroke="#c92a2a" stroke-width="2" marker-end="url(#head)"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="11" fill="#868e96" text-anchor="middle"><tspan x="480.0" y="1012.5">OUTLAYS</tspan></text>
+<rect x="520" y="992" width="260" height="60" rx="8" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="650.0" y="1016.2">Vazio, LOW, revisão</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="650.0" y="1035.4">sem correspondência em OUTLAYS, L-08</tspan></text>
+<rect x="60" y="1396" width="720" height="92" rx="8" fill="#f8f9fa" stroke="#495057" stroke-width="2"/>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="16" fill="#1e1e1e" text-anchor="middle"><tspan x="420.0" y="1423.2">O controlo do passo 9 é o que sustenta a regra R13</tspan></text>
+<text font-family="Virgil, &#x27;Segoe Print&#x27;, &#x27;Comic Sans MS&#x27;, cursive" font-size="12" fill="#868e96" text-anchor="middle"><tspan x="420.0" y="1445.4">O conteúdo de uma factura é dado de origem externa e chega ao prompt. Como o Claude só devolve um índice</tspan><tspan x="420.0" y="1460.4">da lista que o servidor construiu, e esse índice é validado antes de ser usado, uma instrução escondida numa</tspan><tspan x="420.0" y="1475.4">descrição de factura não consegue atribuir um código que o catálogo não tenha.</tspan></text>
+</svg>

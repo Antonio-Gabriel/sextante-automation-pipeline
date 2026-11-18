@@ -106,17 +106,24 @@ Dois diagramas editáveis, em `docs/diagramas/`. Abrir em excalidraw.com, pelo m
 
 ### 3.1 `fluxo-codificacao.excalidraw`
 
-Os treze passos do processamento de uma factura, de cima para baixo. Amarelo é decidido em código, violeta é decidido pelo Claude, vermelho é devolvido ao humano. Os ramos laterais mostram as quatro saídas que não produzem código: PDF sem camada de texto, desempate de entidade, resposta do modelo fora do esquema, e ausência de correspondência em `OUTLAYS`.
+Os treze passos do processamento de uma factura, de cima para baixo. Amarelo é decidido em código, violeta é decidido pelo Claude, vermelho é devolvido ao humano. Os ramos laterais mostram as quatro saídas que não produzem código:
 
-O diagrama existe sobretudo para tornar visível uma coisa: **o Claude aparece em dois passos de treze, e em nenhum deles devolve um código de item.**
+- documento recusado (PDF sem texto, ou documento fora do modelo);
+- entidade ambígua, resolvida por um revisor;
+- resposta do modelo inválida;
+- ausência de correspondência em `OUTLAYS`.
 
-**Desactualizado desde 18-11-2026.** O desempate de entidade pelo Claude foi retirado: o Claude aparece agora num só passo, a escolha do item sobre a aba inteira, e a entidade ambígua vai ao humano por resolução de entidade. Faltam também as recusas de documento não suportado e de PDF digitalizado. O diagrama é regenerado por `scripts/gen_diagrams.py` quando o script existir, e não é editado à mão.
+O diagrama existe sobretudo para tornar visível uma coisa: **o Claude aparece num só passo de treze, a escolha do item, e não devolve um código de item.**
+
+*Regenerado em 18-11-2026 com as decisões §3.15 a §3.18 de `00-decisoes-e-lacunas.md`.* A versão para leitura está em `assets/fluxo-codificacao.svg`.
 
 ### 3.2 `arquitectura-modulos.excalidraw`
 
-Os cinco módulos com as suas quatro camadas, a camada `platform` transversal, as portas do projecto (**desactualizado**: `EntityTiebreaker` foi retirada e `CandidateRetriever` passou a `LexicalScorer`) com o que as implementa, e o que vive fora do processo. As caixas tracejadas são o que não é código do projecto: a API da Anthropic, o ficheiro SQLite, o catálogo e a pasta de carregamentos.
+Os cinco módulos com as suas quatro camadas, a camada `platform` transversal, as oito portas do projecto com o que as implementa, e o que vive fora do processo. As caixas tracejadas são o que não é código do projecto: a API da Anthropic, o ficheiro SQLite, o catálogo e a pasta de carregamentos.
 
-**Manutenção dos diagramas.** São gerados por `scripts/gen_diagrams.py`, que fica no repositório. Uma alteração de desenho altera o script e regenera, para que as coordenadas não se degradem com edições manuais sucessivas. Editar à mão em excalidraw.com é legítimo para explorar; o que vai para o repositório sai do script.
+*Regenerado em 18-11-2026:* a porta `EntityTiebreaker` foi retirada, `CandidateRetriever` passou a `LexicalScorer`, e `AuditEventRepository` entrou. A versão para leitura está em `assets/arquitectura-modulos.svg`.
+
+**Manutenção dos diagramas.** São gerados por `scripts/gen_diagrams.py`, que fica no repositório e escreve, a partir dos mesmos elementos, o `.excalidraw` editável em `docs/diagramas/` e o `.svg` de leitura em `assets/`. Uma alteração de desenho altera o script e regenera, para que as coordenadas não se degradem com edições manuais sucessivas. Editar à mão em excalidraw.com é legítimo para explorar; o que vai para o repositório sai do script.
 
 ---
 

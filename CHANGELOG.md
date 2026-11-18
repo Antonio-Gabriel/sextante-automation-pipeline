@@ -22,6 +22,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                         ├── CHG-0013  docs      Registo de alterações e a sua regra
                                         └── CHG-0014  infra     Graphify como memória do projecto
                                             └── CHG-0015  infra     Skill do graphify no projecto e correcção da CHG-0014
+                                                └── CHG-0016  docs      Diagramas regenerados com o desenho actual
 ```
 
 ## Regras
@@ -86,6 +87,37 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0016 · Diagramas regenerados com o desenho actual
+
+- **Data:** 2026-11-18
+- **Tipo:** docs
+- **Pai:** CHG-0015
+- **Estado:** activa
+- **Requisitos:** D-3.15, D-3.16, D-3.17, D-3.18
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `scripts/gen_diagrams.py`
+  - `docs/diagramas/*.excalidraw`
+  - `assets/fluxo-codificacao.svg` e `assets/arquitectura-modulos.svg`, novos
+  - `assets/architecture.png` e `assets/invoice-encoding-flow.png`, removidos
+  - `docs/02-arquitectura.md` (§3)
+  - `docs/agents/triage-labels.md`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit. Os PNG removidos voltam com ele.
+- **Verificação:**
+  - Feito:
+    - script corrido;
+    - os dois SVG abertos no Chrome sem interface e inspeccionados;
+    - `graphify update` sem arestas de um nó para si próprio.
+  - Não verificado: abrir os `.excalidraw` regenerados em excalidraw.com.
+
+Os dois diagramas mostravam o desenho anterior: o desempate de entidade pelo Claude e as portas `EntityTiebreaker` e `CandidateRetriever`. Foram corrigidos no script e regenerados. Agora o Claude aparece num só passo, a entidade ambígua vai a um revisor, e as portas são as actuais.
+
+Os PNG tinham sido exportados à mão, o que o `CLAUDE.md` não permite. Foram substituídos por SVG escritos pelo mesmo script, a partir dos mesmos elementos.
+
+O título de `triage-labels.md` passou a «Triage label vocabulary». O título anterior gerava no grafo o mesmo identificador que o nome do ficheiro, e daí a aresta que ligava um nó a si próprio.
 
 ### CHG-0015 · Skill do graphify no projecto e correcção da CHG-0014
 
