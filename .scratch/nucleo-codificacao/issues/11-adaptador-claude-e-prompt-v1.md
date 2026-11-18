@@ -24,3 +24,5 @@ Resolved on 2026-11-18 (CHG-0035). **Approval:** the project owner approved the 
 A first real call, made by hand with the owner's key, was refused by the API for lack of credit, so the request has not yet been confirmed against the live API. `make golden-model` repeats it once there is credit.
 
 Confirmed on 2026-11-18 (CHG-0037): with credit on the account, `make golden-model` ran against the live API with `claude-opus-5-5`; the request was accepted and every answer read. Review fixes: 408 and 409 count as transient; error messages name the status; deciding the lines moved to `LineCoder`, which the application and the manual measurement share.
+
+Prompt v2 on 2026-11-18 (CHG-0042), approved by the project owner: the candidate list moves to a cached system block, `<catalog_candidates>`, and only the second paragraph of the text changes. Measured on the samples with Sonnet: the same 12 of 12 codes, and the input cost about 63% lower.

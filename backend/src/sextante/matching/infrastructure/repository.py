@@ -39,6 +39,8 @@ class MatchingRepository:
                 prompt_version=record.response.prompt_version,
                 input_tokens=record.response.input_tokens,
                 output_tokens=record.response.output_tokens,
+                cache_creation_input_tokens=record.response.cache_creation_input_tokens,
+                cache_read_input_tokens=record.response.cache_read_input_tokens,
                 called_at=record.called_at.isoformat(),
             )
         )

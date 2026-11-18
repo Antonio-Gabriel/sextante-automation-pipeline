@@ -15,7 +15,7 @@ import logging
 from typing import Any, Final
 
 from anthropic import APIConnectionError, APIStatusError, AsyncAnthropic
-from anthropic.types.beta import BetaMessage
+from anthropic.types.beta import BetaMessage, BetaTextBlockParam
 from pydantic import ValidationError
 
 from sextante.matching.application.ports import ItemClassifierUnavailableError
@@ -110,13 +110,27 @@ class ClaudeItemClassifier:
             prompt_version=ITEM_CHOICE_PROMPT_VERSION,
             input_tokens=message.usage.input_tokens,
             output_tokens=message.usage.output_tokens,
+            cache_creation_input_tokens=message.usage.cache_creation_input_tokens or 0,
+            cache_read_input_tokens=message.usage.cache_read_input_tokens or 0,
         )
+
+    def _system_blocks(self, request: ItemChoiceRequest) -> list[BetaTextBlockParam]:
+        # The candidate list is the same for every invoice of a sheet: cached, the calls
+        # that follow read it at a tenth of the price (CHG-0042).
+        return [
+            {"type": "text", "text": self._system},
+            {
+                "type": "text",
+                "text": catalog_candidates(request),
+                "cache_control": {"type": "ephemeral"},
+            },
+        ]
 
     async def _create(self, request: ItemChoiceRequest) -> BetaMessage:
         return await self._client.beta.messages.create(
             model=self._model_id,
             max_tokens=BASE_MAX_TOKENS + MAX_TOKENS_PER_LINE * len(request.lines),
-            system=self._system,
+            system=self._system_blocks(request),
             messages=[{"role": "user", "content": invoice_data(request)}],
             output_config={
                 "effort": EFFORT,
@@ -143,9 +157,7 @@ def _unavailable_or_final(error: APIConnectionError | APIStatusError) -> Excepti
 
 
 def invoice_data(request: ItemChoiceRequest) -> str:
-    """The user message: the invoice as JSON, delimited, never mixed with instructions.
-
-    ``<`` is written as ``\\u003c``, so no description can close the delimiter (SEC-14).
+    """The user message: the invoice and its lines as JSON, delimited, never instructions.
 
     Example:
         invoice_data(request)  # "<invoice_data>\\n{...}\\n</invoice_data>"
@@ -158,18 +170,32 @@ def invoice_data(request: ItemChoiceRequest) -> str:
         "lines": [
             {"position": line.position, "description": line.description} for line in request.lines
         ],
-        "candidates": [
-            {
-                "index": c.index,
-                "item_number": c.item_number,
-                "description_pt": c.description_pt,
-                "description_en": c.description_en,
-            }
-            for c in request.candidates
-        ],
     }
+    return _delimited("invoice_data", payload)
+
+
+def catalog_candidates(request: ItemChoiceRequest) -> str:
+    """The cached system block: the sheet's items as a JSON list, built by the server.
+
+    Example:
+        catalog_candidates(request)  # "<catalog_candidates>\\n[...]\\n</catalog_candidates>"
+    """
+    candidates = [
+        {
+            "index": c.index,
+            "item_number": c.item_number,
+            "description_pt": c.description_pt,
+            "description_en": c.description_en,
+        }
+        for c in request.candidates
+    ]
+    return _delimited("catalog_candidates", candidates)
+
+
+def _delimited(tag: str, payload: object) -> str:
+    # "<" is written as <, so no text inside can close the delimiter (SEC-14).
     text = json.dumps(payload, ensure_ascii=False).replace("<", "\\u003c")
-    return f"<invoice_data>\n{text}\n</invoice_data>"
+    return f"<{tag}>\n{text}\n</{tag}>"
 
 
 def _choices(message: BetaMessage) -> tuple[ItemChoiceFromModel, ...]:

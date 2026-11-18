@@ -68,3 +68,6 @@ class ItemChoiceResponse:
     prompt_version: str
     input_tokens: int
     output_tokens: int
+    # Input written to and read from the prompt cache; input_tokens excludes both.
+    cache_creation_input_tokens: int = 0
+    cache_read_input_tokens: int = 0

@@ -13,6 +13,9 @@ MODEL_CALL_TABLE = Table(
     Column("prompt_version", String(64), nullable=False),
     Column("input_tokens", Integer, nullable=False),
     Column("output_tokens", Integer, nullable=False),
+    # Input written to and read from the prompt cache, priced apart (migration 0008).
+    Column("cache_creation_input_tokens", Integer, nullable=False, server_default="0"),
+    Column("cache_read_input_tokens", Integer, nullable=False, server_default="0"),
     Column("called_at", String(40), nullable=False),
 )
 

@@ -14,7 +14,7 @@ import asyncio
 import os
 import sys
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
 
 from anthropic import APIStatusError, AsyncAnthropic
@@ -33,6 +33,7 @@ from sextante.matching.contracts import (
     check_billed_entity,
     target_sheet_for,
 )
+from sextante.matching.domain.item_choice import ItemChoiceResponse
 from sextante.matching.infrastructure.claude_classifier import (
     ClaudeItemClassifier,
     create_model_client,
@@ -58,14 +59,32 @@ class ModelRunSettings(GoldenSettings, ModelCallSettings):
 
 @dataclass(frozen=True, slots=True)
 class TokenUsage:
-    """Tokens spent on model calls, input and output."""
+    """Tokens spent on model calls: uncached input, output, and cache writes and reads."""
 
     input_tokens: int = 0
     output_tokens: int = 0
+    cache_written: int = 0
+    cache_read: int = 0
 
     def __add__(self, other: "TokenUsage") -> "TokenUsage":
         return TokenUsage(
-            self.input_tokens + other.input_tokens, self.output_tokens + other.output_tokens
+            *(getattr(self, f.name) + getattr(other, f.name) for f in fields(TokenUsage))
+        )
+
+    @classmethod
+    def of(cls, response: ItemChoiceResponse | None) -> "TokenUsage":
+        """The tokens of one model call, or none when no call was made.
+
+        Example:
+            TokenUsage.of(coded.response).cache_read
+        """
+        if response is None:
+            return cls()
+        return cls(
+            response.input_tokens,
+            response.output_tokens,
+            response.cache_creation_input_tokens,
+            response.cache_read_input_tokens,
         )
 
 
@@ -110,7 +129,7 @@ async def measure_sample(
     by_position = {outcome.line.position: outcome for outcome in coded.outcomes}
     results = [_line_result(expectation.id, line, by_position) for line in expectation.lines]
     response = coded.response
-    usage = TokenUsage(response.input_tokens, response.output_tokens) if response else TokenUsage()
+    usage = TokenUsage.of(response)
     return results, usage
 
 
@@ -164,7 +183,7 @@ def report(results: list[LineResult], usage: TokenUsage) -> list[str]:
     """One line per expected line, then the totals: codes and confidence only.
 
     Example:
-        report(results, TokenUsage(12000, 400))[-2]  # "Tokens: 12000 in, 400 out"
+        report(results, TokenUsage(500, 400, 1900, 17100))[-2]  # "Tokens: 500 in, ..."
     """
     lines = [
         f"{r.sample_id} line {r.position}: expected {r.expected}, assigned {r.assigned or '-'}, "
@@ -176,7 +195,8 @@ def report(results: list[LineResult], usage: TokenUsage) -> list[str]:
     return [
         *lines,
         f"{len(results)} lines, {hits} as expected, {flagged} flagged for review",
-        f"Tokens: {usage.input_tokens} in, {usage.output_tokens} out",
+        f"Tokens: {usage.input_tokens} in, {usage.output_tokens} out, "
+        f"{usage.cache_written} written to cache, {usage.cache_read} read from cache",
         "Expected results are a proposal to be confirmed by AMT (L-02): not for publication.",
     ]
 

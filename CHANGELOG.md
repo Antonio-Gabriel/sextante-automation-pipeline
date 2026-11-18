@@ -48,6 +48,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                             └── CHG-0039  security  Repositório e histórico sem dados das amostras
                                                                                                                                                 └── CHG-0040  infra     Catálogo no repositório, sem metadados pessoais
                                                                                                                                                     └── CHG-0041  improve   Modelo por omissão passa a Sonnet
+                                                                                                                                                        └── CHG-0042  improve   Prompt v2 com cache de prompt
 ```
 
 ## Regras
@@ -112,6 +113,31 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0042 · Prompt v2 com cache de prompt
+
+- **Data:** 2026-11-18
+- **Tipo:** improve
+- **Pai:** CHG-0041
+- **Estado:** activa
+- **Requisitos:** REQ-MAP-004, REQ-MAP-005, REQ-AUD-003, REQ-AUD-004, SEC-14
+- **Commit:** pendente
+- **Migração:** `0008_model_call_cache_tokens` (colunas `cache_creation_input_tokens` e `cache_read_input_tokens` em `model_call`, a zero nas chamadas anteriores)
+- **Ficheiros:**
+  - `backend/src/sextante/prompts/item_choice_v2.txt` (novo, texto aprovado), `prompts/__init__.py` (versões)
+  - `backend/src/sextante/matching/infrastructure/claude_classifier.py`, `tables.py`, `repository.py`, `matching/domain/item_choice.py`
+  - `backend/migrations/versions/0008_model_call_cache_tokens.py`
+  - testes: `tests/adapters/test_claude_classifier.py`, `tests/api/test_startup_database.py`, `tests/golden/`
+  - `docs/00-decisoes-e-lacunas.md` (§3.22), `README.md`, ticket 11
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit e descer a migração para `0007`. O prompt v1 continua no repositório.
+- **Verificação:** 307 testes; `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos. `make golden-model` com `claude-sonnet-5-5` e o prompt v2: 12 linhas, 12 com o código esperado, 3 sinalizadas; 1 204 tokens de entrada sem cache, 4 436 escritos na cache e 17 744 lidos dela, contra 23 094 sem cache. O custo da entrada desce cerca de 63%.
+
+**Aprovação.** O responsável aprovou o texto `item-choice-v2` e a passagem da lista de candidatos para a parte de sistema em cache, em 18-11-2026. Só o segundo parágrafo muda.
+
+**Cache.** A lista de candidatos de uma aba é igual em todas as facturas que vão para essa aba. Passa a ser um segundo bloco de sistema, `<catalog_candidates>`, marcado com `cache_control`. A primeira chamada de cada aba escreve-a na cache, a 1,25 vezes o preço; as seguintes, nos cinco minutos, lêem-na a um décimo. O conteúdo da factura fica em `<invoice_data>`, na mensagem do utilizador, fora da parte em cache, e continua delimitado com `<` escapado. A lista de candidatos também.
+
+**Registo.** Cada chamada guarda os tokens escritos e lidos da cache, que custam de forma diferente da entrada normal. O comando manual mostra-os.
 
 ### CHG-0041 · Modelo por omissão passa a Sonnet
 

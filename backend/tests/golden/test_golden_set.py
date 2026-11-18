@@ -150,12 +150,12 @@ def test_the_model_run_report_holds_codes_and_confidence_only() -> None:
         LineResult("INV-008", 1, "O00999", None, None, True, "model unavailable"),
     ]
 
-    lines = report(results, TokenUsage(1200, 80))
+    lines = report(results, TokenUsage(1200, 80, 1900, 3800))
 
     assert lines == [
         "INV-001 line 1: expected O00004, assigned O00004, MEDIUM",
         "INV-008 line 1: expected O00999, assigned -, -, flagged (model unavailable)",
         "2 lines, 1 as expected, 1 flagged for review",
-        "Tokens: 1200 in, 80 out",
+        "Tokens: 1200 in, 80 out, 1900 written to cache, 3800 read from cache",
         "Expected results are a proposal to be confirmed by AMT (L-02): not for publication.",
     ]
