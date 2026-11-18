@@ -129,7 +129,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0049
 - **Estado:** activa
 - **Requisitos:** SEC-12, SEC-19, SEC-15
-- **Commit:** pendente
+- **Commit:** `98a2968`
 - **Migração:** nenhuma (o esquema continua na revisão `0009`)
 - **Ficheiros:** `backend/src/sextante/platform/rate_limit.py`, `platform/errors.py` (`response_headers`), `platform/http_errors.py`, `main.py`, `tests/api/test_rate_limits.py`, `docs/03-seguranca.md` (SEC-12), `README.md`, ticket de operação 01
 - **Reversibilidade:** total
@@ -149,7 +149,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0048
 - **Estado:** activa
 - **Requisitos:** SEC-12, SEC-19, SEC-15
-- **Commit:** pendente
+- **Commit:** `1d7e54e`
 - **Migração:** nenhuma (o esquema continua na revisão `0009`)
 - **Ficheiros:**
   - `backend/src/sextante/platform/rate_limit.py` (novo), `platform/http_errors.py` (`Retry-After`), `platform/settings.py`, `platform/user_messages.py`, `main.py`
