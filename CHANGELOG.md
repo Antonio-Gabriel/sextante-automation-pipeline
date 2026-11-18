@@ -98,7 +98,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0018
 - **Estado:** activa
 - **Requisitos:** REQ-ENT-003, REQ-ENT-007, REQ-CNF-002, REQ-PLT-002, NFR-REL-001, D-3.8, D-3.15, SEC-18
-- **Commit:** pendente
+- **Commit:** c69639c
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/matching/domain/entity_check.py`, `line_decision.py`
@@ -134,7 +134,7 @@ Resolve os achados da revisão dos tickets 03 e 04.
 - **Pai:** CHG-0017
 - **Estado:** activa
 - **Requisitos:** REQ-CNF-001 a REQ-CNF-005, REQ-MAP-007 a REQ-MAP-009, REQ-MAP-013, REQ-REV-005, D-3.8, D-3.16, L-08, L-13
-- **Commit:** pendente
+- **Commit:** c097da6
 - **Migração:** `0004`, a partir de `0003`
 - **Ficheiros:**
   - `backend/src/sextante/matching/domain/line_decision.py`, `scoring.py`
@@ -171,7 +171,7 @@ O `O00999` é atribuído em código, só em OUTLAYSP. Em OUTLAYS a linha fica va
 - **Pai:** CHG-0016
 - **Estado:** activa
 - **Requisitos:** REQ-ENT-001 a REQ-ENT-008, REQ-MAP-001, D-3.15, L-04, L-13
-- **Commit:** pendente
+- **Commit:** a8f883e
 - **Migração:** `0003`, a partir de `0002`
 - **Ficheiros:**
   - `backend/src/sextante/matching/domain/entity_check.py`, `routing.py`
