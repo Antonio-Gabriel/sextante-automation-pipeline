@@ -124,7 +124,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0044
 - **Estado:** activa
 - **Requisitos:** D-3.23, SEC-19
-- **Commit:** pendente
+- **Commit:** `badb8f3`
 - **Migração:** nenhuma (o esquema continua na revisão `0009`)
 - **Ficheiros:** `.gitignore`, `docs/00-decisoes-e-lacunas.md` (§3.23), ticket 14
 - **Reversibilidade:** total
