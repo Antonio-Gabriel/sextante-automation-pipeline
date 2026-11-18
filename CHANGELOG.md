@@ -126,7 +126,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0046
 - **Estado:** activa
 - **Requisitos:** SEC-06, SEC-02, SEC-15, REQ-PLT-007, L-07
-- **Commit:** pendente
+- **Commit:** `bbdbb1a`
 - **Migração:** nenhuma (o esquema continua na revisão `0009`)
 - **Ficheiros:**
   - `backend/src/sextante/platform/api_key.py` (novo), `platform/settings.py` (`api_key`), `platform/user_messages.py`, `main.py`
