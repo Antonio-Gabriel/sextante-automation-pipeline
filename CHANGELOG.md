@@ -115,7 +115,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0035
 - **Estado:** activa
 - **Requisitos:** NFR-TST-001, D-3.18, L-02, SEC-15
-- **Commit:** pendente
+- **Commit:** `988aa6b`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/tests/golden/model_run.py` (novo), `backend/tests/golden/runner.py`, `backend/Makefile` (`golden-model`)
@@ -135,7 +135,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0034
 - **Estado:** activa
 - **Requisitos:** REQ-MAP-005, REQ-MAP-007, REQ-AUD-003, REQ-AUD-004, REQ-PLT-003, SEC-14, SEC-15
-- **Commit:** pendente
+- **Commit:** `5ba0053`
 - **Migração:** nenhuma
 - **Dependência nova:** `anthropic` 1.17 (MIT), sobre `httpx2`, que já estava no projecto. `make licenses` passa.
 - **Ficheiros:**
