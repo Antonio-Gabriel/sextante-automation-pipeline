@@ -51,6 +51,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                         └── CHG-0042  improve   Prompt v2 com cache de prompt
                                                                                                                                                             └── CHG-0043  feat      Recodificação com histórico
                                                                                                                                                                 └── CHG-0044  fix       Correcções da revisão do ticket 14
+                                                                                                                                                                    └── CHG-0045  docs      Pasta sources fora do .gitignore e regra dos pedidos repetidos confirmada
 ```
 
 ## Regras
@@ -115,6 +116,24 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0045 · Pasta sources fora do .gitignore e regra dos pedidos repetidos confirmada
+
+- **Data:** 2026-11-18
+- **Tipo:** docs
+- **Pai:** CHG-0044
+- **Estado:** activa
+- **Requisitos:** D-3.23, SEC-19
+- **Commit:** pendente
+- **Migração:** nenhuma (o esquema continua na revisão `0009`)
+- **Ficheiros:** `.gitignore`, `docs/00-decisoes-e-lacunas.md` (§3.23), ticket 14
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** `sources/catalog.xlsx` continua versionado e igual à cópia sem metadados de CHG-0040; nenhum outro ficheiro em `sources/`.
+
+**Pedido do responsável.** A pasta `sources/` deixa de constar do `.gitignore`. O catálogo já estava versionado, por excepção a essa regra; a regra sai. Fica a cautela: um ficheiro novo posto em `sources/` passa a poder entrar num commit, por isso o catálogo original, com metadados, não deve voltar para lá.
+
+**Confirmação.** O responsável confirmou a regra dos pedidos repetidos de §3.23: a mesma chave repete a resposta; outra chave, com a factura em fila, não faz nada; um pedido depois de a recodificação terminar é uma recodificação nova.
 
 ### CHG-0044 · Correcções da revisão do ticket 14
 

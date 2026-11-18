@@ -24,3 +24,5 @@ Unblocked on 2026-11-18: ticket 11 is resolved. Still needs-triage for the open 
 Resolved on 2026-11-18 (CHG-0043), with the owner's decision on reviews (00-decisoes-e-lacunas.md §3.23): a line a reviewer had accepted or corrected goes back to review with the flag `review_superseded`; the earlier review stays with the earlier coding and in the audit trail. Lexical scores are now keyed by coding (migration 0009), so both codings of a line keep their own. The audit event `invoice_recoded` records earlier and new prompt versions and catalog digests. A refused or ambiguous invoice is still refused with 409.
 
 Review fixes on 2026-11-18 (CHG-0044): the earlier codings are consultable through `GET /api/invoices/{id}/lines/{line_id}/history`, each with prompt version, model, catalog digest and its review; whether a line was reviewed is read in the transaction that supersedes its coding, which closes the window while the model answers and also covers a recoding that turns ambiguous. The rule for repeated requests with different keys is recorded in §3.23, to be confirmed.
+
+Confirmed on 2026-11-18 (CHG-0045): the owner confirmed the rule for repeated requests in §3.23.

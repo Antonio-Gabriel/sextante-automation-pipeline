@@ -10,11 +10,6 @@
 *.db-shm
 uploads/
 exports/
-# Source files stay local, except the catalog, which ships without its personal
-# metadata (author and Windows path stripped; OPEN-ITEMS item 17)
-sources/*
-!sources/catalog.xlsx
-
 # Python tooling
 .venv/
 __pycache__/
