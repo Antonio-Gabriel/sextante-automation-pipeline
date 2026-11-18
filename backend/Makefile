@@ -39,7 +39,9 @@ boundaries:
 licenses:
 	$(BIN)/pip-licenses --partial-match --allow-only="MIT;BSD;Apache;ISC;PSF;Python Software Foundation;Mozilla Public License 2.0;MPL-2.0;Unlicense;CC0" --ignore-packages sextante
 
+# Reads config/.env when present; SEXTANTE_GOLDEN_SAMPLES_DIR points at the local samples.
 golden:
+	if [ -f $(ENV_FILE) ]; then set -a && . $(ENV_FILE) && set +a; fi && \
 	$(BIN)/python scripts/golden.py
 
 traceability-matrix:

@@ -37,6 +37,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                 └── CHG-0028  fix       Correcções da revisão dos tickets 09 e 10
                                                                                                     └── CHG-0029  improve   Saída da resolução humana e do duplicado provável
                                                                                                         └── CHG-0030  feat      Extracção de PDF nativo no modelo das amostras
+                                                                                                            └── CHG-0031  feat      Conjunto dourado sem o modelo
 ```
 
 ## Regras
@@ -101,6 +102,30 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0031 · Conjunto dourado sem o modelo
+
+- **Data:** 2026-11-18
+- **Tipo:** feat
+- **Pai:** CHG-0030
+- **Estado:** activa
+- **Requisitos:** NFR-TST-001, D-3.18, L-02, SEC-15
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `backend/src/sextante/golden_set.py` (novo), `backend/scripts/golden.py`, `backend/Makefile`
+  - `config/golden_expected.yaml` (novo), `config/.env.example`
+  - testes: `tests/golden/test_golden_set.py` (novo)
+  - `README.md`, ticket 13
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit. `make golden` volta a dizer que não está implementado.
+- **Verificação:** 285 testes, incluindo o conjunto dourado sobre amostras sintéticas, uma divergência que falha com o nome do campo, a mensagem sem a pasta das amostras, e um relatório sem texto de amostra. Corrido localmente sobre as 12 amostras: 12 sem divergências. `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+**Medição.** `make golden` lê as amostras de `SEXTANTE_GOLDEN_SAMPLES_DIR` e mede, sem chamar o modelo, extracção, entidade, aba de destino, número e tipos de linha, e recusas. Falha quando alguma diverge. Sem a variável, termina com uma mensagem clara.
+
+**Resultados esperados.** `config/golden_expected.yaml` tem a proposta do ticket, por confirmar pela AMT. As linhas são identificadas pela posição, e não pela descrição, para que nenhum excerto de amostra entre no repositório. O relatório tem só identificadores, nomes de campo e valores de conjuntos fechados.
+
+**Por fazer.** O comando manual que mede os códigos de item com o modelo real depende do adaptador do ticket 11.
 
 ### CHG-0030 · Extracção de PDF nativo no modelo das amostras
 

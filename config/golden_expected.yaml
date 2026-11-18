@@ -1,0 +1,67 @@
+# Expected results of the golden set (ticket 13, D-3.18, NFR-TST-001).
+#
+# A PROPOSAL, still to be confirmed by AMT (L-02). No accuracy figure is published
+# before that confirmation. Item numbers use the current catalog and may change with it.
+#
+# Samples are read from SEXTANTE_GOLDEN_SAMPLES_DIR and never enter the repository.
+# Lines are named by position only: no description, nor any other excerpt of a sample,
+# is written here.
+version: 1
+proposal: true
+samples:
+  - id: INV-001
+    entity: MATCH
+    target_sheet: OUTLAYS
+    lines:
+      - {position: 1, line_type: service, item_number: O00004}
+  - id: INV-002
+    entity: NO_MATCH
+    target_sheet: OUTLAYSP
+    lines:
+      - {position: 1, line_type: service, item_number: O00031}
+  - id: INV-003
+    entity: MATCH
+    target_sheet: OUTLAYS
+    lines:
+      - {position: 1, line_type: service, item_number: O00028}
+      - {position: 2, line_type: service, item_number: O00043}
+  - id: INV-004
+    entity: NO_MATCH
+    target_sheet: OUTLAYSP
+    lines:
+      - {position: 1, line_type: service, item_number: O00017}
+  - id: INV-005
+    entity: MATCH
+    target_sheet: OUTLAYS
+    lines:
+      - {position: 1, line_type: service, item_number: O00051}
+  - id: INV-006
+    entity: NO_MATCH
+    target_sheet: OUTLAYSP
+    lines:
+      - {position: 1, line_type: service, item_number: O00019}
+  - id: INV-007
+    entity: MATCH
+    target_sheet: OUTLAYS
+    lines:
+      - {position: 1, line_type: service, item_number: O00036}
+  - id: INV-008
+    entity: NO_MATCH
+    target_sheet: OUTLAYSP
+    lines:
+      - {position: 1, line_type: service, item_number: O00999}
+  - id: INV-009
+    entity: MATCH
+    target_sheet: OUTLAYS
+    lines:
+      - {position: 1, line_type: service, item_number: O00020}
+      - {position: 2, line_type: service, item_number: O00021}
+  - id: INV-010
+    entity: NO_MATCH
+    target_sheet: OUTLAYSP
+    lines:
+      - {position: 1, line_type: service, item_number: O00063}
+  - id: INV-011
+    rejected: pdf_without_text_layer
+  - id: INV-012
+    rejected: unsupported_document_type

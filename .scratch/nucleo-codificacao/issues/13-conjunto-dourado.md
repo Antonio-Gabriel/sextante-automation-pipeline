@@ -29,12 +29,18 @@ Nenhuma métrica de precisão é publicada até a AMT confirmar os resultados es
 
 **Blocked by:** 03, 04, 05, 11, 12
 
-**Status:** ready-for-agent
+**Status:** ready-for-agent (partial: blocked by 11 for the manual model command)
 
-- [ ] Os resultados esperados ficam num ficheiro de configuração editável, inicialmente com a tabela acima
-- [ ] O caminho das amostras vem de uma variável de ambiente; sem ela, `make golden` termina com uma mensagem clara
-- [ ] `make golden` mede, sem chamar o modelo, a extracção, a entidade, a aba de destino, os tipos de linha e as recusas, e falha quando divergem do esperado
+- [x] Os resultados esperados ficam num ficheiro de configuração editável, inicialmente com a tabela acima
+- [x] O caminho das amostras vem de uma variável de ambiente; sem ela, `make golden` termina com uma mensagem clara
+- [x] `make golden` mede, sem chamar o modelo, a extracção, a entidade, a aba de destino, os tipos de linha e as recusas, e falha quando divergem do esperado
 - [ ] Um comando manual separado mede os códigos de item com o modelo real e reporta acertos, linhas sinalizadas e custo em tokens
 - [ ] O comando manual não faz parte de `make test` nem da integração contínua
-- [ ] O `README.md` diz que os resultados esperados são uma proposta por confirmar e que os limiares são provisórios
-- [ ] Nenhuma amostra, nem nenhum excerto de amostra, entra no repositório ou nos logs
+- [x] O `README.md` diz que os resultados esperados são uma proposta por confirmar e que os limiares são provisórios
+- [x] Nenhuma amostra, nem nenhum excerto de amostra, entra no repositório ou nos logs
+
+## Comments
+
+Partly delivered on 2026-11-18 (CHG-0031). `make golden` measures extraction, entity, target sheet, line types and refusals without the model, and all 12 samples match the proposal, checked locally. Lines are named by position in `config/golden_expected.yaml`, so no excerpt of a sample enters the repository, unlike the table above, which predates that rule and stays only in this ticket.
+
+Not delivered, because ticket 11 is not done: the manual command that measures item codes with the real model. The two criteria about it stay unticked; "not part of make test nor CI" holds trivially until the command exists, and must be checked when it does.

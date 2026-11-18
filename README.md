@@ -56,6 +56,14 @@ The application refuses to start, with a message naming the problem, in either o
 - a variable in `config/.env` is missing;
 - the catalog is invalid. A missing sheet, a duplicate or empty item number, a missing `O00999`, or a sheet with more than 100 items all count.
 
+## Golden set
+
+The sample invoices never enter the repository. Point `SEXTANTE_GOLDEN_SAMPLES_DIR`, in `config/.env`, at the local folder that holds them, then run `make golden` from `backend/`. Each sample is reported as `ok` or with the fields that diverge; the report holds no text from any sample.
+
+The expected results in `config/golden_expected.yaml` are a **proposal still to be confirmed by AMT** (gap L-02). Lines are named by position, never by description. Until AMT confirms them, the thresholds below stay provisional and no accuracy figure is published.
+
+Item codes are not measured by `make golden`, which never calls the model. Measuring them with the real model is a separate manual command, outside `make test` and continuous integration, that arrives with the Claude adapter (ticket 11).
+
 ## Provisional thresholds
 
 There is no confirmed golden set yet (gap L-02), so every threshold below is provisional and no accuracy figure is published (REQ-CNF-005).
@@ -80,7 +88,7 @@ Run from `backend/`.
 | `make boundaries` | Layer boundaries, with `import-linter` |
 | `make licenses` | Dependency licences against the allow-list of NFR-LIC-001 |
 | `make traceability-matrix` | Tests cited by requirement. Fails on an unknown identifier |
-| `make golden` | Golden set. Not implemented yet (ticket 13) |
+| `make golden` | Golden set on the local samples, without the model: extraction, entity, target sheet, line types and refusals. Needs `SEXTANTE_GOLDEN_SAMPLES_DIR` |
 
 ## Documentation
 
