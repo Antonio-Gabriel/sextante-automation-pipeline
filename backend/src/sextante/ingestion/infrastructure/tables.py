@@ -61,5 +61,6 @@ INVOICE_LINE_TABLE = Table(
     Column("unit_price", String(32), nullable=True),
     Column("vat_rate", String(16), nullable=True),
     Column("amount", String(32), nullable=True),
+    Column("line_type", String(16), nullable=False),
     UniqueConstraint("invoice_id", "position", name="uq_invoice_line_position"),
 )

@@ -17,6 +17,7 @@ from sextante.ingestion.application.records import (
     NewInvoice,
     QueuedInvoice,
 )
+from sextante.ingestion.domain.line_type import classify_line_type
 from sextante.ingestion.domain.model import (
     ExtractedInvoice,
     ExtractedLine,
@@ -155,15 +156,7 @@ class IngestionRepository:
         if paired:
             rows = [_line_row(invoice_id, line_id, line) for line_id, line in paired]
             await connection.execute(INVOICE_LINE_TABLE.insert(), rows)
-        return StoredInvoice(
-            invoice_id=invoice_id,
-            supplier_name=normalized.supplier.name,
-            currency=normalized.currency,
-            billed_entities=normalized.billed_entities,
-            lines=tuple(
-                StoredLine(line_id, line.position, line.description) for line_id, line in paired
-            ),
-        )
+        return _stored_invoice(invoice_id, normalized, line_ids)
 
     async def record_entity_check(
         self, connection: AsyncConnection, invoice_id: str, check: EntityCheckRecord
@@ -233,6 +226,23 @@ def _job_lines_query(job_id: str, limit: int, offset: int) -> Select[tuple[objec
     )
 
 
+def _stored_invoice(
+    invoice_id: str, normalized: ExtractedInvoice, line_ids: list[str]
+) -> StoredInvoice:
+    return StoredInvoice(
+        invoice_id=invoice_id,
+        supplier_name=normalized.supplier.name,
+        currency=normalized.currency,
+        billed_entities=normalized.billed_entities,
+        lines=tuple(
+            StoredLine(
+                line_id, line.position, line.description, classify_line_type(line.description).value
+            )
+            for line_id, line in zip(line_ids, normalized.lines, strict=True)
+        ),
+    )
+
+
 def _detected_entity(billed_entities_json: str) -> str | None:
     # The billed entity as extracted, never normalized for comparison (REQ-ENT-006).
     # Several blocks are shown together, so a reviewer sees why the entity is ambiguous.
@@ -265,6 +275,7 @@ def _line_row(invoice_id: str, line_id: str, line: ExtractedLine) -> dict[str, o
         "position": line.position,
         "description": line.description,
         "normalized_description": normalize_for_comparison(line.description),
+        "line_type": classify_line_type(line.description).value,
         # Decimals are stored as text: SQLite has no exact decimal type (D-3.5).
         "quantity": _decimal_text(line.quantity),
         "unit_price": _decimal_text(line.unit_price),

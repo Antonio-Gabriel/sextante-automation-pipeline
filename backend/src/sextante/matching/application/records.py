@@ -49,3 +49,4 @@ class LineCoding:
     confidence: str
     review_status: str
     flags: tuple[str, ...]
+    note: str | None

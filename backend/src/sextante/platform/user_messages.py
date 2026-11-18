@@ -25,5 +25,7 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
         "flags.conflicting_candidates": "Dois itens do catálogo estão muito próximos.",
         "flags.model_response_invalid": "A resposta do modelo foi inválida: código por atribuir.",
         "flags.possible_duplicate": "Possível duplicado de uma factura já carregada.",
+        "notes.line_type_tax": "Linha de IVA: sem código de item.",
+        "notes.line_type_discount": "Linha de desconto: sem código de item.",
     }
 )

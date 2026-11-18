@@ -132,7 +132,14 @@ def test_the_audit_event_names_the_confidence_and_the_rule(
     """Confidence, its rule and the flags are recorded with the decision."""
     _coded_line(valid_environment, billed_to(*CHEVRON), FakeItemClassifier({1: None}))
 
-    payload = json.loads(str(_query(valid_environment, "SELECT payload FROM audit_event")[0][0]))
+    payload = json.loads(
+        str(
+            _query(
+                valid_environment,
+                "SELECT payload FROM audit_event WHERE event_type = 'line_encoded'",
+            )[0][0]
+        )
+    )
     assert (payload["confidence"], payload["confidence_rule"], payload["flags"]) == (
         "LOW",
         "fallback_outlaysp",

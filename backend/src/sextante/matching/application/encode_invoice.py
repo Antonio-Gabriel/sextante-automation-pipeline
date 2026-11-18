@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from sextante.catalog.contracts import Catalog, CatalogItem, ItemNumber, TargetSheet
-from sextante.ingestion.contracts import StoredInvoice, StoredLine
+from sextante.ingestion.contracts import LineType, StoredInvoice, StoredLine
 from sextante.matching.application.ports import (
     ItemClassifier,
     LexicalScorer,
@@ -26,7 +26,9 @@ from sextante.matching.domain.item_choice import (
 from sextante.matching.domain.line_decision import (
     FlagReason,
     LineDecision,
+    LineNote,
     decide_line,
+    non_service_line_decision,
     uncoded_line_decision,
 )
 from sextante.matching.domain.scoring import LexicalScore
@@ -80,30 +82,54 @@ class EncodeInvoice:
     async def execute(
         self, invoice: StoredInvoice, target_sheet: TargetSheet, also_write: SameTransactionWrite
     ) -> None:
-        """Score, ask the model once, resolve answers against the sheet, decide and persist.
+        """Code the service lines with one model call; record VAT and discount lines as such.
 
         Example:
             await encoder.execute(stored_invoice, TargetSheet.OUTLAYS, record_header)
         """
+        services = [line for line in invoice.lines if line.line_type == LineType.SERVICE]
+        others = [_non_service_outcome(line) for line in invoice.lines if line not in services]
+        call, coded = await self._code_services(invoice, services, target_sheet)
+        outcomes = sorted(coded + others, key=lambda outcome: outcome.line.position)
+        await self._persist(outcomes, target_sheet, call, also_write)
+
+    async def _code_services(
+        self, invoice: StoredInvoice, services: list[StoredLine], target_sheet: TargetSheet
+    ) -> tuple[ModelCallRecord | None, list[_LineOutcome]]:
+        # No service line, no model call: there is nothing to choose (REQ-ING-006).
+        if not services:
+            return None, []
         deps = self._collaborators
         sheet_items = deps.catalog.items_of(target_sheet)
         scores = {
-            line.line_id: deps.scorer.score(line.description, sheet_items) for line in invoice.lines
+            line.line_id: deps.scorer.score(line.description, sheet_items) for line in services
         }
+        call, choices = await self._ask_model(invoice, services, sheet_items, target_sheet)
+        decide = self._decide
+        outcomes = [
+            decide(line, choices[line.position], scores[line.line_id], target_sheet)
+            for line in services
+        ]
+        return call, outcomes
+
+    async def _ask_model(
+        self,
+        invoice: StoredInvoice,
+        services: list[StoredLine],
+        sheet_items: tuple[CatalogItem, ...],
+        target_sheet: TargetSheet,
+    ) -> tuple[ModelCallRecord, dict[int, LineChoice]]:
+        deps = self._collaborators
         # The model call is made outside any transaction: it takes seconds (D-3.3).
-        response = await deps.classifier.choose(_request_for(invoice, sheet_items))
-        positions = [line.position for line in invoice.lines]
+        response = await deps.classifier.choose(_request_for(invoice, services, sheet_items))
+        positions = [line.position for line in services]
         choices = resolve_line_choices(
             positions, sheet_items, target_sheet, _validated(response.choices)
         )
         call = ModelCallRecord(
             deps.identifiers.new_id(), invoice.invoice_id, response, deps.clock.now()
         )
-        outcomes = [
-            self._decide(line, choices[line.position], scores[line.line_id], target_sheet)
-            for line in invoice.lines
-        ]
-        await self._persist(outcomes, target_sheet, call, also_write)
+        return call, choices
 
     async def record_uncoded(
         self, invoice: StoredInvoice, reason: FlagReason, also_write: SameTransactionWrite
@@ -186,10 +212,17 @@ def _validated(choices: Sequence[ItemChoiceFromModel]) -> list[ItemChoiceFromMod
     return valid
 
 
-def _request_for(invoice: StoredInvoice, sheet_items: tuple[CatalogItem, ...]) -> ItemChoiceRequest:
+def _non_service_outcome(line: StoredLine) -> _LineOutcome:
+    note = LineNote.LINE_TYPE_TAX if line.line_type == LineType.TAX else LineNote.LINE_TYPE_DISCOUNT
+    return _LineOutcome(line, None, non_service_line_decision(note), ())
+
+
+def _request_for(
+    invoice: StoredInvoice, services: list[StoredLine], sheet_items: tuple[CatalogItem, ...]
+) -> ItemChoiceRequest:
     return ItemChoiceRequest(
         context=InvoiceContext(supplier_name=invoice.supplier_name, currency=invoice.currency),
-        lines=tuple(LineToCode(line.position, line.description) for line in invoice.lines),
+        lines=tuple(LineToCode(line.position, line.description) for line in services),
         candidates=tuple(
             CandidateItem(
                 index,

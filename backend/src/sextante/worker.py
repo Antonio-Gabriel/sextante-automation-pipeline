@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
@@ -10,6 +10,7 @@ from sextante.catalog.contracts import TargetSheet
 from sextante.ingestion.application.ports import IngestionRepositoryPort
 from sextante.ingestion.application.records import ClaimedJob, EntityCheckRecord, QueuedInvoice
 from sextante.ingestion.contracts import (
+    ExtractedInvoice,
     ExtractionRejection,
     FileFormat,
     InvoiceExtractor,
@@ -25,6 +26,7 @@ from sextante.matching.contracts import (
     check_billed_entity,
     target_sheet_for,
 )
+from sextante.platform.audit import AuditEventRepository
 from sextante.platform.clock import Clock, IdentifierGenerator
 from sextante.platform.structured_logging import correlation_id_var
 
@@ -40,6 +42,7 @@ class WorkerCollaborators:
     store: InvoiceFileStore
     extractor: InvoiceExtractor
     encoder: EncodeInvoice
+    audit: AuditEventRepository
     clock: Clock
     identifiers: IdentifierGenerator
     target_entity: TargetEntity
@@ -110,12 +113,26 @@ class EncodingWorker:
         extraction = self._collaborators.extractor.extract(content, FileFormat(invoice.file_format))
         if isinstance(extraction, ExtractionRejection):
             return InvoiceStatus.REJECTED, extraction.reason.value
-        async with self._collaborators.engine.begin() as connection:
-            line_ids = [self._collaborators.identifiers.new_id() for _ in extraction.lines]
-            stored = await self._collaborators.repository.store_extraction(
-                connection, invoice.invoice_id, extraction, line_ids
+        return await self._encode(await self._store(invoice.invoice_id, extraction))
+
+    async def _store(self, invoice_id: str, extraction: ExtractedInvoice) -> StoredInvoice:
+        deps = self._collaborators
+        async with deps.engine.begin() as connection:
+            line_ids = [deps.identifiers.new_id() for _ in extraction.lines]
+            stored = await deps.repository.store_extraction(
+                connection, invoice_id, extraction, line_ids
             )
-        return await self._encode(stored)
+            # Subtotal, VAT and total are not invoice lines: they are kept once, for the
+            # invoice, in the audit trail (D-3.17, REQ-ING-006).
+            await deps.audit.append(
+                connection,
+                deps.identifiers.new_id(),
+                "summary_rows_extracted",
+                ("invoice", invoice_id),
+                {"summary_rows": [asdict(row) for row in extraction.summary_rows]},
+                deps.clock.now(),
+            )
+        return stored
 
     async def _encode(self, stored: StoredInvoice) -> tuple[InvoiceStatus, str | None]:
         deps = self._collaborators

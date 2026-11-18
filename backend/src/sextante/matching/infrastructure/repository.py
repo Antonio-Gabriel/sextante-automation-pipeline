@@ -78,6 +78,7 @@ class MatchingRepository:
                 confidence=str(r.confidence),
                 review_status=str(r.review_status),
                 flags=tuple(flags[str(r.id)]),
+                note=r.note,
             )
             for r in rows
         }
@@ -112,5 +113,6 @@ def _encoded_line_row(record: EncodedLineRecord) -> dict[str, object]:
         "confidence": record.decision.confidence.value,
         "confidence_rule": record.decision.rule,
         "review_status": record.decision.review_status,
+        "note": record.decision.note,
         "encoded_at": record.encoded_at.isoformat(),
     }

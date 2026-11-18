@@ -26,6 +26,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                     └── CHG-0017  feat      Verificação de entidade e encaminhamento para OUTLAYSP
                                                         └── CHG-0018  feat      Confiança, recurso e sinalização
                                                             └── CHG-0019  fix       Correcções da revisão dos tickets 03 e 04
+                                                                └── CHG-0020  feat      Tipos de linha
 ```
 
 ## Regras
@@ -90,6 +91,33 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0020 · Tipos de linha
+
+- **Data:** 2026-11-18
+- **Tipo:** feat
+- **Pai:** CHG-0019
+- **Estado:** activa
+- **Requisitos:** REQ-ING-004, REQ-ING-006, D-3.17, L-06, L-16
+- **Commit:** pendente
+- **Migração:** `0005`, a partir de `0004`
+- **Ficheiros:**
+  - `backend/src/sextante/ingestion/domain/line_type.py`
+  - `backend/src/sextante/ingestion/infrastructure/` (tabela e repositório)
+  - `backend/src/sextante/matching/domain/line_decision.py` (`LineNote`, `non_service_line_decision`)
+  - `backend/src/sextante/matching/application/encode_invoice.py`, `worker.py`, `review/`
+  - `backend/migrations/versions/0005_line_types.py`
+- **Reversibilidade:** total
+- **Reversão:**
+  1. Correr `alembic downgrade 0004`, que apaga `invoice_line.line_type` e `encoded_line.note`.
+  2. Reverter o commit.
+
+  Os eventos de auditoria `summary_rows_extracted` ficam.
+- **Verificação:** 171 testes, incluindo 12 casos de tabela da classificação; `mypy`, `ruff`, 7 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+Cada linha é classificada como serviço, IVA ou desconto. O IVA só é reconhecido quando a descrição começa por "IVA", "VAT" ou "Imposto sobre o Valor Acrescentado". Assim ficam como serviços "Taxa de pilotagem", os direitos aduaneiros e uma descrição que menciona "(isento de IVA)".
+
+Só as linhas de serviço vão ao modelo, e não há chamada se não houver nenhuma. As linhas de IVA e de desconto ficam sem código, com `HIGH`, aceites, sem sinalização e com uma nota do tipo. As linhas de resumo ficam registadas uma vez, na auditoria da factura. A percentagem de IVA de cada linha fica guardada como atributo.
 
 ### CHG-0019 · Correcções da revisão dos tickets 03 e 04
 

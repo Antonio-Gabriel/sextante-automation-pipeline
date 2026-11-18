@@ -139,3 +139,21 @@ def billed_to(
         base.extraction, billed_entities=blocks, invoice_number=f"{label}-SYN"
     )
     return SyntheticInvoice(f"{label}_synthetic.pdf", synthetic_pdf_bytes(label), extraction)
+
+
+def service_with_vat_and_discount_lines() -> SyntheticInvoice:
+    """The INV-001 replica with a VAT line and a discount line inside the table.
+
+    The samples never put VAT in the table (D-3.17); this covers the case the policy
+    exists for.
+
+    Example:
+        invoice = service_with_vat_and_discount_lines()
+    """
+    base = taag_air_ticket_to_amt()
+    extra = (
+        ExtractedLine(2, "IVA 14%", None, None, Decimal("14"), Decimal("44800.00")),
+        ExtractedLine(3, "Desconto comercial", None, None, None, Decimal("-10000.00")),
+    )
+    extraction = dataclasses.replace(base.extraction, lines=base.extraction.lines + extra)
+    return SyntheticInvoice("INV-VAT_synthetic.pdf", synthetic_pdf_bytes("INV-VAT"), extraction)

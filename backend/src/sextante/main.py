@@ -163,6 +163,7 @@ def _build_worker(
             store=store,
             extractor=adapters.extractor,
             encoder=_build_encoder(engine, reference.catalog, settings, adapters),
+            audit=AuditEventRepository(),
             clock=adapters.clock,
             identifiers=adapters.identifiers,
             target_entity=reference.target_entity,

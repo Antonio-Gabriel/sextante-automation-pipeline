@@ -96,7 +96,14 @@ def test_audit_event_keeps_the_score_of_every_item_of_the_sheet(
     ) as app:
         app.wait_for_job(app.upload(invoice)["job_id"])
 
-    payload = json.loads(str(_query(valid_environment, "SELECT payload FROM audit_event")[0][0]))
+    payload = json.loads(
+        str(
+            _query(
+                valid_environment,
+                "SELECT payload FROM audit_event WHERE event_type = 'line_encoded'",
+            )[0][0]
+        )
+    )
     assert len(payload["scores"]) == 7
 
 

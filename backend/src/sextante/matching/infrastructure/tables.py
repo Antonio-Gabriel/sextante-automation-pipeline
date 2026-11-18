@@ -31,6 +31,7 @@ ENCODED_LINE_TABLE = Table(
     Column("confidence", String(8), nullable=False),
     Column("confidence_rule", String(32), nullable=False),
     Column("review_status", String(16), nullable=False),
+    Column("note", String(32), nullable=True),
     Column("encoded_at", String(40), nullable=False),
     UniqueConstraint("invoice_line_id", name="uq_encoded_line_invoice_line"),
 )

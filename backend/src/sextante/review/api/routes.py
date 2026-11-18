@@ -13,7 +13,7 @@ review_router = APIRouter(prefix="/api")
 
 
 class FlagResponse(BaseModel):
-    """One flag: the stable code and the Portuguese text shown to the reviewer (REQ-CNF-004)."""
+    """A flag or a note: the stable code and its Portuguese text (REQ-CNF-004, REQ-PLT-006)."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -37,6 +37,7 @@ class ResultLineResponse(BaseModel):
     confidence: str | None
     review_status: str | None
     flags: list[FlagResponse]
+    notes: list[FlagResponse]
 
 
 class ResultsPageResponse(BaseModel):
@@ -87,4 +88,5 @@ def _line_response(line: ResultLine) -> ResultLineResponse:
         confidence=line.confidence,
         review_status=line.review_status,
         flags=[FlagResponse(code=c, message=USER_MESSAGES_PT[f"flags.{c}"]) for c in line.flags],
+        notes=[FlagResponse(code=c, message=USER_MESSAGES_PT[f"notes.{c}"]) for c in line.notes],
     )

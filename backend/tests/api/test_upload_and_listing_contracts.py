@@ -126,4 +126,5 @@ def test_responses_carry_exactly_their_declared_fields(valid_environment: dict[s
         "confidence",
         "review_status",
         "flags",
+        "notes",
     }

@@ -36,6 +36,7 @@ def test_invoice_billed_to_amt_is_coded_against_outlays_and_read_back(
             "confidence": "MEDIUM",
             "review_status": "accepted",
             "flags": [],
+            "notes": [],
         }
     ]
 

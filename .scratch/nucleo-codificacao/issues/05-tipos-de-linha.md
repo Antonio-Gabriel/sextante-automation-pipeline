@@ -6,12 +6,16 @@ Tudo o que não for reconhecido como IVA ou desconto é tratado como serviço e 
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] A classificação é determinística, por padrão sobre a descrição normalizada e por posição na tabela
-- [ ] O padrão de `tax` reconhece só o IVA ("IVA", "VAT", "Imposto sobre o Valor Acrescentado"), e nunca "taxa" ou "imposto" sozinhos
-- [ ] "Taxa de pilotagem sintética" (INV-003) e um direito aduaneiro são classificados como serviço
-- [ ] As linhas `tax` e `discount` saem sem código, com `HIGH`, nota `line_type_tax` ou `line_type_discount`, estado `accepted` e sem sinalização
-- [ ] As linhas de resumo não são persistidas como linhas, e o evento `summary_rows_extracted` fica na auditoria da factura
-- [ ] A percentagem de IVA de cada linha é guardada como atributo da linha
-- [ ] As linhas `tax` e `discount` não são enviadas ao classificador
+- [x] A classificação é determinística, por padrão sobre a descrição normalizada e por posição na tabela
+- [x] O padrão de `tax` reconhece só o IVA ("IVA", "VAT", "Imposto sobre o Valor Acrescentado"), e nunca "taxa" ou "imposto" sozinhos
+- [x] "Taxa de pilotagem sintética" (INV-003) e um direito aduaneiro são classificados como serviço
+- [x] As linhas `tax` e `discount` saem sem código, com `HIGH`, nota `line_type_tax` ou `line_type_discount`, estado `accepted` e sem sinalização
+- [x] As linhas de resumo não são persistidas como linhas, e o evento `summary_rows_extracted` fica na auditoria da factura
+- [x] A percentagem de IVA de cada linha é guardada como atributo da linha
+- [x] As linhas `tax` e `discount` não são enviadas ao classificador
+
+## Comments
+
+Resolved on 2026-11-18 (CHG-0020). VAT is recognised only when the description starts with it, so a service that mentions "(isento de IVA)" stays a service.

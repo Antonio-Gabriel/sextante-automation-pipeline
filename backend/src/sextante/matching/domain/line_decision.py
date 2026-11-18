@@ -58,6 +58,7 @@ class LineDecision:
     confidence: Confidence
     flags: tuple[FlagReason, ...]
     rule: str
+    note: str | None = None
 
     @property
     def review_status(self) -> ReviewStatus:
@@ -88,6 +89,25 @@ def decide_line(
     if choice.catalog_item.item_number in generic_items:
         return _low(choice.catalog_item, FlagReason.GENERIC_CATALOG_ITEM, "generic_item")
     return _chosen(choice.catalog_item, scores)
+
+
+class LineNote(StrEnum):
+    """Information about a line that is not a reason for review (D-3.17)."""
+
+    LINE_TYPE_TAX = "line_type_tax"
+    LINE_TYPE_DISCOUNT = "line_type_discount"
+
+
+def non_service_line_decision(note: LineNote) -> LineDecision:
+    """A VAT or discount line: no code, HIGH, accepted, not flagged (D-3.17, REQ-ING-006).
+
+    The classification is certain and there is no code to get wrong; flagging these
+    lines would fill the review queue with easy cases.
+
+    Example:
+        non_service_line_decision(LineNote.LINE_TYPE_TAX).confidence  # Confidence.HIGH
+    """
+    return LineDecision(None, Confidence.HIGH, (), note.value, note.value)
 
 
 def uncoded_line_decision(reason: FlagReason) -> LineDecision:

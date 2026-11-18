@@ -169,7 +169,8 @@ def test_each_coded_line_has_an_audit_event_with_what_produced_it(
         app.wait_for_job(app.upload(invoice)["job_id"])
 
     [(event_type, payload_text)] = _query(
-        valid_environment, "SELECT event_type, payload FROM audit_event"
+        valid_environment,
+        "SELECT event_type, payload FROM audit_event WHERE subject_type = 'invoice_line'",
     )
     payload = json.loads(str(payload_text))
     assert event_type == "line_encoded"

@@ -27,6 +27,7 @@ class ResultLine:
     confidence: str | None
     review_status: str | None
     flags: tuple[str, ...]
+    notes: tuple[str, ...]
 
 
 class ListJobResults:
@@ -79,4 +80,5 @@ def _result_line(line: JobLine, coding: LineCoding | None) -> ResultLine:
         confidence=coding.confidence if coding else None,
         review_status=coding.review_status if coding else None,
         flags=coding.flags if coding else (),
+        notes=(coding.note,) if coding and coding.note else (),
     )

@@ -84,11 +84,12 @@ class ExtractionRejection:
 
 @dataclass(frozen=True, slots=True)
 class StoredLine:
-    """A persisted invoice line, as handed to coding."""
+    """A persisted invoice line, as handed to coding. ``line_type`` is a LineType value."""
 
     line_id: str
     position: int
     description: str
+    line_type: str
 
 
 @dataclass(frozen=True, slots=True)
