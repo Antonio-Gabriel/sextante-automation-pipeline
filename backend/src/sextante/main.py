@@ -3,9 +3,9 @@
 import asyncio
 import contextlib
 import os
-from collections.abc import AsyncIterator, Callable, Mapping
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from anthropic import AsyncAnthropic
@@ -43,8 +43,12 @@ from sextante.ingestion.infrastructure.local_file_store import LocalInvoiceFileS
 from sextante.ingestion.infrastructure.pdf_invoice_extractor import PdfInvoiceExtractor
 from sextante.ingestion.infrastructure.repository import IngestionRepository
 from sextante.matching.application.encode_invoice import EncodeInvoice, EncodingCollaborators
+from sextante.matching.application.line_coding import CodingRules, LineCoder
 from sextante.matching.contracts import EntityDenylist, ItemClassifier, TargetEntity
-from sextante.matching.infrastructure.claude_classifier import ClaudeItemClassifier
+from sextante.matching.infrastructure.claude_classifier import (
+    ClaudeItemClassifier,
+    create_model_client,
+)
 from sextante.matching.infrastructure.denylist_file import DenylistFileError, read_entity_denylist
 from sextante.matching.infrastructure.rapidfuzz_scorer import RapidfuzzLexicalScorer
 from sextante.matching.infrastructure.repository import MatchingRepository
@@ -87,8 +91,6 @@ from sextante.worker import EncodingWorker, WorkerCollaborators
 
 # The first retry waits 1 s, the next 2 s, and so on (REQ-PLT-003).
 MODEL_RETRY_BASE_SECONDS = 1.0
-# One invoice is one call; a call that takes longer is treated as unavailable.
-MODEL_TIMEOUT_SECONDS = 120.0
 
 
 @dataclass(frozen=True)
@@ -152,7 +154,7 @@ def create_app(
     catalog = _load_catalog_or_refuse(settings).catalog
     target_entity = TargetEntity(settings.target_entity_name, settings.target_entity_nif)
     denylist = _load_denylist_or_refuse(settings, target_entity)
-    _require_generic_items_in_catalog(settings, catalog)
+    require_generic_items_in_catalog(settings.generic_items, catalog)
     apply_migrations(settings.database_url.get_secret_value())
     adapters = dependencies or AppDependencies()
     app = FastAPI(
@@ -174,9 +176,8 @@ def _lifespan(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = create_database_engine(settings.database_url.get_secret_value())
         app.state.database_engine = engine
-        model_client = _model_client(settings)
-        classifier = adapters.classifier or ClaudeItemClassifier(model_client, settings.model_id)
-        _wire_use_cases(app, engine, settings, reference, replace(adapters, classifier=classifier))
+        classifier, model_client = _classifier(settings, adapters)
+        _wire_use_cases(app, engine, settings, reference, adapters, classifier)
         tasks = [
             asyncio.create_task(app.state.worker.run_forever()),
             asyncio.create_task(purge_periodically(app.state.idempotency, PURGE_INTERVAL_SECONDS)),
@@ -185,7 +186,8 @@ def _lifespan(
             yield
         finally:
             await _stop(tasks)
-            await model_client.close()
+            if model_client is not None:
+                await model_client.close()
             await engine.dispose()
 
     return lifespan
@@ -198,14 +200,14 @@ async def _stop(tasks: list[asyncio.Task[None]]) -> None:
             await task
 
 
-def _model_client(settings: Settings) -> AsyncAnthropic:
-    # The SDK does not retry: the use case retries transient failures with its own
-    # backoff and attempt count, so a call is never retried twice over (REQ-PLT-003).
-    return AsyncAnthropic(
-        api_key=settings.anthropic_api_key.get_secret_value(),
-        max_retries=0,
-        timeout=MODEL_TIMEOUT_SECONDS,
-    )
+def _classifier(
+    settings: Settings, adapters: AppDependencies
+) -> tuple[ItemClassifier, AsyncAnthropic | None]:
+    # An injected classifier (a test double) needs no API client.
+    if adapters.classifier is not None:
+        return adapters.classifier, None
+    client = create_model_client(settings.anthropic_api_key.get_secret_value())
+    return ClaudeItemClassifier(client, settings.model_id), client
 
 
 def _wire_use_cases(
@@ -214,6 +216,7 @@ def _wire_use_cases(
     settings: Settings,
     reference: ReferenceData,
     adapters: AppDependencies,
+    classifier: ItemClassifier,
 ) -> None:
     store = LocalInvoiceFileStore(Path(settings.upload_dir))
     ingestion = IngestionRepository()
@@ -234,7 +237,7 @@ def _wire_use_cases(
     build_export = BuildJobExport(engine, app.state.read_job_status, ingestion, codings_in_force)
     app.state.export_job = ExportJob(build_export, SpreadsheetExportWriter(settings.csv_separator))
     _wire_review(app, engine, settings, reference.catalog, adapters)
-    app.state.worker = _build_worker(engine, settings, reference, adapters, store)
+    app.state.worker = _build_worker(engine, settings, reference, adapters, store, classifier)
 
 
 def _wire_review(
@@ -281,6 +284,7 @@ def _build_worker(
     reference: ReferenceData,
     adapters: AppDependencies,
     store: LocalInvoiceFileStore,
+    classifier: ItemClassifier,
 ) -> EncodingWorker:
     return EncodingWorker(
         WorkerCollaborators(
@@ -288,7 +292,7 @@ def _build_worker(
             repository=IngestionRepository(),
             store=store,
             extractor=adapters.extractor or PdfInvoiceExtractor(settings.pdf_min_chars_per_page),
-            encoder=_build_encoder(engine, reference.catalog, settings, adapters),
+            encoder=_build_encoder(engine, reference.catalog, settings, adapters, classifier),
             audit=AuditEventRepository(),
             clock=adapters.clock,
             identifiers=adapters.identifiers,
@@ -300,28 +304,67 @@ def _build_worker(
 
 
 def _build_encoder(
-    engine: AsyncEngine, catalog: Catalog, settings: Settings, adapters: AppDependencies
+    engine: AsyncEngine,
+    catalog: Catalog,
+    settings: Settings,
+    adapters: AppDependencies,
+    classifier: ItemClassifier,
 ) -> EncodeInvoice:
+    rules = coding_rules(
+        catalog, classifier, settings.generic_items, settings.model_max_attempts, adapters.sleep
+    )
     return EncodeInvoice(
         EncodingCollaborators(
             engine=engine,
+            coder=LineCoder(rules),
             catalog=catalog,
-            scorer=RapidfuzzLexicalScorer(),
-            classifier=_configured_classifier(adapters),
             repository=MatchingRepository(),
             audit=AuditEventRepository(),
             clock=adapters.clock,
             identifiers=adapters.identifiers,
-            fallback_item=_fallback_item(catalog),
-            retry_policy=RetryPolicy(settings.model_max_attempts, MODEL_RETRY_BASE_SECONDS),
-            sleep=adapters.sleep,
-            generic_items=frozenset(ItemNumber(n) for n in settings.generic_items),
         )
     )
 
 
-def _require_generic_items_in_catalog(settings: Settings, catalog: Catalog) -> None:
-    unknown = [n for n in settings.generic_items if catalog.find(ItemNumber(n)) is None]
+def coding_rules(
+    catalog: Catalog,
+    classifier: ItemClassifier,
+    generic_items: Sequence[str],
+    max_attempts: int,
+    sleep: Sleep,
+) -> CodingRules:
+    """The rules a line is decided by, as the application builds them.
+
+    Shared with the manual golden measurement, so it codes exactly as the application.
+
+    Example:
+        LineCoder(coding_rules(catalog, classifier, ("O00052",), 3, asyncio.sleep))
+
+    Raises:
+        StartupConfigurationError: when a generic item or O00999 is not in the catalog.
+    """
+    require_generic_items_in_catalog(generic_items, catalog)
+    return CodingRules(
+        catalog=catalog,
+        scorer=RapidfuzzLexicalScorer(),
+        classifier=classifier,
+        fallback_item=_fallback_item(catalog),
+        generic_items=frozenset(ItemNumber(n) for n in generic_items),
+        retry_policy=RetryPolicy(max_attempts, MODEL_RETRY_BASE_SECONDS),
+        sleep=sleep,
+    )
+
+
+def require_generic_items_in_catalog(generic_items: Sequence[str], catalog: Catalog) -> None:
+    """Refuse generic items that the catalog does not have (D-3.16).
+
+    Example:
+        require_generic_items_in_catalog(("O00052",), catalog)
+
+    Raises:
+        StartupConfigurationError: naming the unknown items.
+    """
+    unknown = [n for n in generic_items if catalog.find(ItemNumber(n)) is None]
     if unknown:
         raise StartupConfigurationError(
             f"SEXTANTE_GENERIC_ITEMS: items {unknown} are not in the catalog. "
@@ -361,10 +404,3 @@ def _load_catalog_or_refuse(settings: Settings) -> BuiltCatalog:
         raise StartupConfigurationError(f"SEXTANTE_CATALOG_PATH: {error}") from None
     except CatalogValidationError as error:
         raise StartupConfigurationError(f"Invalid catalog. {error}") from None
-
-
-def _configured_classifier(adapters: AppDependencies) -> ItemClassifier:
-    # The lifespan always sets one: the injected double, or the Claude adapter.
-    if adapters.classifier is None:
-        raise StartupConfigurationError("No item classifier configured. Expected one.")
-    return adapters.classifier

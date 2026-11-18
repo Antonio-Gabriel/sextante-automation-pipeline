@@ -242,12 +242,10 @@ def _coded_divergences(
     extraction: ExtractedInvoice,
     entity: EntityReference,
 ) -> list[str]:
-    verdict = check_billed_entity(
-        extraction.billed_entities, entity.target, entity.denylist
-    ).verdict
-    sheet = target_sheet_for(verdict)
+    verdict = check_billed_entity(extraction.billed_entities, entity.target, entity.denylist)
+    sheet = target_sheet_for(verdict.verdict)
     got: Mapping[str, object] = {
-        "entity": verdict.value,
+        "entity": verdict.verdict.value,
         "target_sheet": sheet.value if sheet else None,
         "line count": len(extraction.lines),
         "line types": [classify_line_type(line.description).value for line in extraction.lines],

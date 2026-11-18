@@ -3,11 +3,11 @@
 Not part of ``make test`` nor of continuous integration: it calls the Anthropic API and
 costs money. Run it on purpose, with ``make golden-model``, from backend/.
 
-It codes the samples as the application does (same request, same validation, same
-confidence rule) and compares the item numbers with the expected results. The report
-holds sample identifiers, line positions, item numbers and confidence only; no text
-from a sample. The expected results are a proposal until AMT confirms them (L-02), so
-the figures are for calibration, never for publication.
+It codes the samples with the application's own LineCoder, coding rules and API client
+(same request, retries, validation and confidence rule), and compares the item numbers
+with the expected results. The report holds sample identifiers, line positions, item
+numbers and confidence only; no text from a sample. The expected results are a proposal
+until AMT confirms them (L-02), so the figures are for calibration, never for publication.
 """
 
 import asyncio
@@ -16,37 +16,31 @@ import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
 
 from anthropic import APIStatusError, AsyncAnthropic
-from pydantic import SecretStr, field_validator
 
 from sextante.catalog.application.load_catalog import CatalogFileError, load_catalog
-from sextante.catalog.contracts import (
-    FALLBACK_ITEM_NUMBER,
-    Catalog,
-    CatalogItem,
-    ItemNumber,
-    TargetSheet,
-)
 from sextante.catalog.domain.errors import CatalogValidationError
 from sextante.catalog.infrastructure.xlsx_catalog_reader import XlsxCatalogWorkbookReader
-from sextante.ingestion.domain.line_type import LineType, classify_line_type
+from sextante.ingestion.domain.line_type import classify_line_type
 from sextante.ingestion.domain.model import ExtractedInvoice, FileFormat, StoredInvoice, StoredLine
 from sextante.ingestion.domain.normalization import normalize_extraction
 from sextante.ingestion.infrastructure.pdf_invoice_extractor import PdfInvoiceExtractor
-from sextante.matching.application.encode_invoice import item_choice_request
+from sextante.main import coding_rules
+from sextante.matching.application.line_coding import LineCoder, LineOutcome
 from sextante.matching.contracts import (
     ItemClassifierUnavailableError,
     check_billed_entity,
     target_sheet_for,
 )
-from sextante.matching.domain.choice_resolution import LineChoice, resolve_line_choices
-from sextante.matching.domain.line_decision import decide_line
-from sextante.matching.infrastructure.claude_classifier import ClaudeItemClassifier
-from sextante.matching.infrastructure.rapidfuzz_scorer import RapidfuzzLexicalScorer
+from sextante.matching.infrastructure.claude_classifier import (
+    ClaudeItemClassifier,
+    create_model_client,
+)
+from sextante.platform.settings import ModelCallSettings, StartupConfigurationError
 from tests.golden.runner import (
     EntityReference,
+    ExpectedLine,
     GoldenSetError,
     GoldenSettings,
     SampleExpectation,
@@ -55,23 +49,24 @@ from tests.golden.runner import (
     sample_file,
 )
 
-MODEL_TIMEOUT_SECONDS: Final = 120.0
 
-
-class ModelRunSettings(GoldenSettings):
-    """The golden set variables, plus what a real model call needs."""
+class ModelRunSettings(GoldenSettings, ModelCallSettings):
+    """The golden set variables, plus the model call's, read like the application's."""
 
     catalog_path: Path
-    anthropic_api_key: SecretStr
-    model_id: str = "claude-opus-5-5"
-    generic_items: tuple[str, ...] = ("O00052",)
 
-    @field_validator("generic_items", mode="before")
-    @classmethod
-    def _split(cls, value: object) -> object:
-        if isinstance(value, str):
-            return tuple(part.strip() for part in value.split(",") if part.strip())
-        return value
+
+@dataclass(frozen=True, slots=True)
+class TokenUsage:
+    """Tokens spent on model calls, input and output."""
+
+    input_tokens: int = 0
+    output_tokens: int = 0
+
+    def __add__(self, other: "TokenUsage") -> "TokenUsage":
+        return TokenUsage(
+            self.input_tokens + other.input_tokens, self.output_tokens + other.output_tokens
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,73 +77,67 @@ class LineResult:
     position: int
     expected: str
     assigned: str | None
-    confidence: str
+    confidence: str | None
     flagged: bool
+    note: str = ""
 
 
 @dataclass(frozen=True, slots=True)
 class _Coding:
-    catalog: Catalog
-    fallback: CatalogItem
+    coder: LineCoder
     client: AsyncAnthropic
-    classifier: ClaudeItemClassifier
     entity: EntityReference
-    generic_items: frozenset[ItemNumber]
 
 
 async def measure_sample(
     coding: _Coding, expectation: SampleExpectation, extraction: ExtractedInvoice
-) -> tuple[list[LineResult], tuple[int, int]]:
-    """Code one sample as the application would; return its lines and the tokens spent.
+) -> tuple[list[LineResult], TokenUsage]:
+    """Code one sample with the application's LineCoder; return its lines and tokens.
 
     Example:
-        results, (tokens_in, tokens_out) = await measure_sample(coding, expectation, ext)
+        results, usage = await measure_sample(coding, expectation, extraction)
     """
     invoice = normalize_extraction(extraction)
     entity = coding.entity
     verdict = check_billed_entity(invoice.billed_entities, entity.target, entity.denylist).verdict
     sheet = target_sheet_for(verdict)
     if sheet is None:
-        return _unassigned(expectation, "no target sheet"), (0, 0)
-    stored = _stored(expectation.id, invoice)
-    services = [line for line in stored.lines if line.line_type is LineType.SERVICE]
-    items = coding.catalog.items_of(sheet)
+        return _unassigned(expectation, "no target sheet"), TokenUsage()
     try:
-        response = await coding.classifier.choose(item_choice_request(stored, services, items))
+        coded = await coding.coder.code(_stored(expectation.id, invoice), sheet)
     except ItemClassifierUnavailableError:
-        return _unassigned(expectation, "model unavailable"), (0, 0)
-    choices = resolve_line_choices([s.position for s in services], items, sheet, response.choices)
-    results = [
-        _line_result(coding, expectation, sheet, line, choices[line.position]) for line in services
-    ]
-    return results, (response.input_tokens, response.output_tokens)
+        return _unassigned(expectation, "model unavailable"), TokenUsage()
+    by_position = {outcome.line.position: outcome for outcome in coded.outcomes}
+    results = [_line_result(expectation.id, line, by_position) for line in expectation.lines]
+    response = coded.response
+    usage = TokenUsage(response.input_tokens, response.output_tokens) if response else TokenUsage()
+    return results, usage
 
 
 def _line_result(
-    coding: _Coding,
-    expectation: SampleExpectation,
-    sheet: TargetSheet,
-    line: StoredLine,
-    choice: LineChoice,
+    sample_id: str, expected: ExpectedLine, by_position: Mapping[int, LineOutcome]
 ) -> LineResult:
-    scores = RapidfuzzLexicalScorer().score(line.description, coding.catalog.items_of(sheet))
-    decision = decide_line(choice, sheet, scores, coding.fallback, coding.generic_items)
-    expected = {e.position: e.item_number for e in expectation.lines}.get(line.position, "")
+    outcome = by_position.get(expected.position)
+    if outcome is None:
+        return LineResult(
+            sample_id, expected.position, expected.item_number, None, None, True, "line not found"
+        )
+    decision = outcome.decision
     assigned = decision.catalog_item.item_number.value if decision.catalog_item else None
     return LineResult(
-        expectation.id,
-        line.position,
-        expected,
+        sample_id,
+        expected.position,
+        expected.item_number,
         assigned,
         decision.confidence.value,
         bool(decision.flags),
     )
 
 
-def _unassigned(expectation: SampleExpectation, reason: str) -> list[LineResult]:
+def _unassigned(expectation: SampleExpectation, note: str) -> list[LineResult]:
     return [
-        LineResult(expectation.id, e.position, e.item_number, None, reason, True)
-        for e in expectation.lines
+        LineResult(expectation.id, line.position, line.item_number, None, None, True, note)
+        for line in expectation.lines
     ]
 
 
@@ -171,15 +160,15 @@ def _stored(sample_id: str, invoice: ExtractedInvoice) -> StoredInvoice:
     )
 
 
-def report(results: list[LineResult], tokens: tuple[int, int]) -> list[str]:
+def report(results: list[LineResult], usage: TokenUsage) -> list[str]:
     """One line per expected line, then the totals: codes and confidence only.
 
     Example:
-        report(results, (12000, 400))[-1]  # "Tokens: 12000 in, 400 out"
+        report(results, TokenUsage(12000, 400))[-2]  # "Tokens: 12000 in, 400 out"
     """
     lines = [
         f"{r.sample_id} line {r.position}: expected {r.expected}, assigned {r.assigned or '-'}, "
-        f"{r.confidence}{', flagged' if r.flagged else ''}"
+        f"{r.confidence or '-'}{', flagged' if r.flagged else ''}{f' ({r.note})' if r.note else ''}"
         for r in results
     ]
     hits = sum(1 for r in results if r.assigned == r.expected)
@@ -187,7 +176,7 @@ def report(results: list[LineResult], tokens: tuple[int, int]) -> list[str]:
     return [
         *lines,
         f"{len(results)} lines, {hits} as expected, {flagged} flagged for review",
-        f"Tokens: {tokens[0]} in, {tokens[1]} out",
+        f"Tokens: {usage.input_tokens} in, {usage.output_tokens} out",
         "Expected results are a proposal to be confirmed by AMT (L-02): not for publication.",
     ]
 
@@ -208,54 +197,51 @@ async def run(environ: Mapping[str, str], write: Callable[[str], None]) -> int:
         write(str(error))
         return 2
     try:
-        results, tokens = await _measure_all(settings, coding)
+        results, usage = await _measure_all(settings, coding)
     except APIStatusError as error:
         # The API's own message (a key or billing problem); it carries no invoice text.
         write(f"The Anthropic API refused the request ({error.status_code}): {error.message}")
         return 2
     finally:
         await coding.client.close()
-    for line in report(results, tokens):
+    for line in report(results, usage):
         write(line)
     return 0
 
 
 async def _measure_all(
     settings: ModelRunSettings, coding: _Coding
-) -> tuple[list[LineResult], tuple[int, int]]:
+) -> tuple[list[LineResult], TokenUsage]:
     extractor = PdfInvoiceExtractor(settings.pdf_min_chars_per_page)
     results: list[LineResult] = []
-    used_in = used_out = 0
+    usage = TokenUsage()
     for expectation in load_expectations(settings.expected_path).samples:
         sample = sample_file(settings.samples_path, expectation.id)
         if expectation.rejected is not None or sample is None:
             continue
         extraction = extractor.extract(sample.read_bytes(), FileFormat.PDF)
         if isinstance(extraction, ExtractedInvoice):
-            sample_results, (tokens_in, tokens_out) = await measure_sample(
-                coding, expectation, extraction
-            )
+            sample_results, sample_usage = await measure_sample(coding, expectation, extraction)
             results += sample_results
-            used_in, used_out = used_in + tokens_in, used_out + tokens_out
-    return results, (used_in, used_out)
+            usage += sample_usage
+    return results, usage
 
 
 def _coding(settings: ModelRunSettings) -> _Coding:
+    # The same client, rules and coder the application builds: only the samples differ.
     try:
         catalog = load_catalog(settings.catalog_path, XlsxCatalogWorkbookReader()).catalog
     except (CatalogFileError, CatalogValidationError) as error:
         raise GoldenSetError(f"SEXTANTE_CATALOG_PATH: {error}") from None
-    client = AsyncAnthropic(
-        api_key=settings.anthropic_api_key.get_secret_value(),
-        max_retries=2,
-        timeout=MODEL_TIMEOUT_SECONDS,
-    )
-    fallback = catalog.find(FALLBACK_ITEM_NUMBER)
-    if fallback is None:
-        raise GoldenSetError(f"Invalid catalog: no item {FALLBACK_ITEM_NUMBER}. Expected it.")
-    generic = frozenset(ItemNumber(n) for n in settings.generic_items)
+    client = create_model_client(settings.anthropic_api_key.get_secret_value())
     classifier = ClaudeItemClassifier(client, settings.model_id)
-    return _Coding(catalog, fallback, client, classifier, entity_reference(settings), generic)
+    try:
+        rules = coding_rules(
+            catalog, classifier, settings.generic_items, settings.model_max_attempts, asyncio.sleep
+        )
+    except StartupConfigurationError as error:
+        raise GoldenSetError(str(error)) from None
+    return _Coding(LineCoder(rules), client, entity_reference(settings))
 
 
 if __name__ == "__main__":

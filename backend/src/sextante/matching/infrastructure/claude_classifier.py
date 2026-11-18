@@ -34,8 +34,11 @@ BASE_MAX_TOKENS: Final = 2048
 MAX_TOKENS_PER_LINE: Final = 64
 EFFORT: Final = "low"
 FALLBACK_BETA: Final = "server-side-fallback-2026-07-01"
-# 429 and 5xx are transient: the use case retries them with backoff (REQ-PLT-003).
-RATE_LIMITED: Final = 429
+# One invoice is one call; a call that takes longer is treated as unavailable.
+MODEL_TIMEOUT_SECONDS: Final = 120.0
+# Timeout, conflict, rate limit and 5xx are transient: the use case retries them with
+# backoff (REQ-PLT-003). Any other refusal would fail the same way again.
+TRANSIENT_STATUSES: Final = frozenset({408, 409, 429})
 SERVER_ERROR: Final = 500
 
 ANSWER_SCHEMA: Final[dict[str, Any]] = {
@@ -57,6 +60,18 @@ ANSWER_SCHEMA: Final[dict[str, Any]] = {
     "required": ["choices"],
     "additionalProperties": False,
 }
+
+
+def create_model_client(api_key: str) -> AsyncAnthropic:
+    """The API client for the item choice: it never retries by itself.
+
+    The use case retries transient failures with its own backoff and attempt count, so
+    a call is never retried twice over (REQ-PLT-003).
+
+    Example:
+        client = create_model_client(settings.anthropic_api_key.get_secret_value())
+    """
+    return AsyncAnthropic(api_key=api_key, max_retries=0, timeout=MODEL_TIMEOUT_SECONDS)
 
 
 class ClaudeItemClassifier:
@@ -87,12 +102,8 @@ class ClaudeItemClassifier:
         """
         try:
             message = await self._create(request)
-        except APIConnectionError as error:
-            raise ItemClassifierUnavailableError(type(error).__name__) from None
-        except APIStatusError as error:
-            if error.status_code == RATE_LIMITED or error.status_code >= SERVER_ERROR:
-                raise ItemClassifierUnavailableError(type(error).__name__) from None
-            raise
+        except (APIConnectionError, APIStatusError) as error:
+            raise _unavailable_or_final(error) from None
         return ItemChoiceResponse(
             choices=_choices(message),
             model_id=message.model,
@@ -114,6 +125,21 @@ class ClaudeItemClassifier:
             betas=[FALLBACK_BETA],
             fallbacks="default",
         )
+
+
+def _unavailable_or_final(error: APIConnectionError | APIStatusError) -> Exception:
+    # No answer, a timeout, a conflict, a rate limit or a 5xx is transient: the use case
+    # retries it. Any other refusal would fail the same way again, so it stays as it is.
+    if isinstance(error, APIConnectionError):
+        return ItemClassifierUnavailableError(
+            f"Model call failed with {type(error).__name__}, no answer. "
+            "Expected an answer; the call is retried."
+        )
+    if error.status_code in TRANSIENT_STATUSES or error.status_code >= SERVER_ERROR:
+        return ItemClassifierUnavailableError(
+            f"Model call failed with status {error.status_code}. Expected 200; the call is retried."
+        )
+    return error
 
 
 def invoice_data(request: ItemChoiceRequest) -> str:

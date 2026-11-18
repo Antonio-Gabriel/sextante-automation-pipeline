@@ -43,6 +43,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                         └── CHG-0034  fix       Réplicas sem dados das amostras, XLSX recusado e padrão do conjunto dourado
                                                                                                                             └── CHG-0035  feat      Adaptador Claude do ItemClassifier e prompt v1
                                                                                                                                 └── CHG-0036  feat      Medição manual dos códigos com o modelo real
+                                                                                                                                    └── CHG-0037  fix       Correcções da revisão dos tickets 11 e 13
 ```
 
 ## Regras
@@ -107,6 +108,35 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0037 · Correcções da revisão dos tickets 11 e 13
+
+- **Data:** 2026-11-18
+- **Tipo:** fix
+- **Pai:** CHG-0036
+- **Estado:** activa
+- **Requisitos:** REQ-MAP-005, REQ-MAP-007, REQ-PLT-003, NFR-TST-001
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `backend/src/sextante/matching/application/line_coding.py` (novo: `LineCoder`), `encode_invoice.py`
+  - `backend/src/sextante/matching/infrastructure/claude_classifier.py` (`create_model_client`, estados transitórios, mensagens)
+  - `backend/src/sextante/main.py` (`coding_rules`, `require_generic_items_in_catalog`, classificador sem `None` intermédio), `platform/settings.py` (`ModelCallSettings`)
+  - `backend/tests/golden/model_run.py`, `runner.py`; testes `tests/adapters/`, `tests/golden/`
+  - tickets 11 e 13
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 306 testes; `mypy`, `ruff`, 8 contratos do `import-linter`, licenças, funções com 20 linhas ou menos. `make golden-model` contra a API real, com `claude-opus-5-5`: o pedido foi aceite e as respostas lidas; 12 linhas, 12 com o código esperado, 3 sinalizadas, 23 094 tokens de entrada e 304 de saída.
+
+**Uma só lógica de codificação.** Decidir as linhas (chamada com repetições, validação, regra de confiança, sinalizações da factura) passa para `LineCoder`, sem persistência. `EncodeInvoice` guarda o que ele decide. O comando manual usa o mesmo `LineCoder`, as mesmas regras (`coding_rules`) e o mesmo cliente (`create_model_client`), em vez de uma cópia que já divergia nas repetições. Os parâmetros da chamada ficam em `ModelCallSettings`, partilhada pelas duas configurações.
+
+**Adaptador.** 408 e 409 contam como transitórios, como 429 e 5xx. As mensagens de indisponível dizem o estado e a forma esperada. Um 400 não é repetido: o teste verifica um único pedido.
+
+**Arranque.** O classificador deixa de passar por `None` e `replace`: o injectado ou o de Claude é passado directamente, e o cliente da API só é criado quando é preciso.
+
+**Relatório manual.** O motivo de uma linha sem código (sem aba, modelo indisponível) deixa de ocupar o campo da confiança. Os tokens passam a ter um tipo próprio.
+
+**Primeira medição real.** Contra a proposta ainda por confirmar pela AMT: 12 de 12 linhas com o código esperado; sinalizadas uma linha com o recurso O00999 e duas `MEDIUM` com candidatos próximos. Só para calibração, não para publicação (L-02).
 
 ### CHG-0036 · Medição manual dos códigos com o modelo real
 

@@ -22,14 +22,37 @@ class StartupConfigurationError(RuntimeError):
     """Raised when the application cannot start with the configuration it was given."""
 
 
-class Settings(BaseModel):
+class ModelCallSettings(BaseModel):
+    """Settings of the model call, shared by the application and the manual golden run.
+
+    Example:
+        ModelCallSettings.model_validate({"anthropic_api_key": "..."}).model_id
+    """
+
+    anthropic_api_key: SecretStr = Field(max_length=SETTING_TEXT_MAX_LENGTH)
+    # Items that fit any expense; choosing one is always LOW and flagged (D-3.16).
+    # Comma-separated item numbers; tuning, not a secret, so it has a default.
+    generic_items: tuple[str, ...] = ("O00052",)
+    # Attempts per model call, the first included, for transient failures (REQ-PLT-003).
+    model_max_attempts: int = Field(default=3, ge=1, le=10)
+    # Claude model of the item choice; the latest suitable one by default (D-3.22).
+    model_id: str = Field(default="claude-opus-5-5", pattern=r"^[a-z0-9.-]{1,64}$")
+
+    @field_validator("generic_items", mode="before")
+    @classmethod
+    def _split_items(cls, value: object) -> object:
+        if isinstance(value, str):
+            return tuple(part.strip() for part in value.split(",") if part.strip())
+        return value
+
+
+class Settings(ModelCallSettings):
     """Mandatory configuration. No defaults: a missing value refuses startup (SEC-02, REQ-PLT-007).
 
     Example:
         settings = Settings.from_environment({"SEXTANTE_CATALOG_PATH": "catalog.xlsx", ...})
     """
 
-    anthropic_api_key: SecretStr = Field(max_length=SETTING_TEXT_MAX_LENGTH)
     catalog_path: Path
     database_url: SecretStr = Field(max_length=SETTING_TEXT_MAX_LENGTH)
     target_entity_name: str = Field(max_length=SETTING_TEXT_MAX_LENGTH)
@@ -39,15 +62,8 @@ class Settings(BaseModel):
     # Author of every review action in the audit trail: there is no login in this
     # version (L-07), so the identity comes from configuration (REQ-REV-004).
     reviewer_id: str = Field(max_length=REVIEWER_ID_MAX_LENGTH, pattern=REVIEWER_ID_PATTERN)
-    # Items that fit any expense; choosing one is always LOW and flagged (D-3.16).
-    # Comma-separated item numbers; tuning, not a secret, so it has a default.
-    generic_items: tuple[str, ...] = ("O00052",)
     # CSV separator, comma by default (REQ-EXP-005).
     csv_separator: str = ","
-    # Attempts per model call, the first included, for transient failures (REQ-PLT-003).
-    model_max_attempts: int = Field(default=3, ge=1, le=10)
-    # Claude model of the item choice; the latest suitable one by default (ticket 11).
-    model_id: str = Field(default="claude-opus-5-5", pattern=r"^[a-z0-9.-]{1,64}$")
     # Characters per page below which a PDF counts as scanned (REQ-ING-002, L-01).
     pdf_min_chars_per_page: int = Field(
         default=PDF_MIN_CHARS_DEFAULT, ge=1, le=PDF_MIN_CHARS_MAXIMUM
@@ -64,13 +80,6 @@ class Settings(BaseModel):
         if isinstance(value, str) and not value.strip():
             raise ValueError("value is blank. Expected a non-empty value")
         return value.strip() if isinstance(value, str) else value
-
-    @field_validator("generic_items", mode="before")
-    @classmethod
-    def _split_items(cls, value: object) -> object:
-        if isinstance(value, str):
-            return tuple(part.strip() for part in value.split(",") if part.strip())
-        return value
 
     @field_validator("csv_separator")
     @classmethod

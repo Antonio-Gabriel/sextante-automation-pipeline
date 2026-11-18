@@ -1,45 +1,23 @@
-"""Code the service lines of one routed invoice (REQ-MAP-004 to REQ-MAP-009, SEC-14)."""
+"""Code and store the lines of one routed invoice (REQ-MAP-004 to REQ-MAP-009, SEC-14).
 
-import dataclasses
-import logging
-from collections.abc import Awaitable, Callable, Sequence
+LineCoder decides; this use case stores the decisions, the model call and the audit
+events in one transaction.
+"""
+
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
-from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-from sextante.catalog.contracts import Catalog, CatalogItem, ItemNumber, TargetSheet
-from sextante.ingestion.contracts import LineType, StoredInvoice, StoredLine
-from sextante.matching.application.ports import (
-    ItemClassifier,
-    ItemClassifierUnavailableError,
-    LexicalScorer,
-    MatchingRepositoryPort,
-)
+from sextante.catalog.contracts import Catalog, TargetSheet
+from sextante.ingestion.contracts import StoredInvoice, StoredLine
+from sextante.matching.application.line_coding import LineCoder, LineOutcome, with_flags
+from sextante.matching.application.ports import MatchingRepositoryPort
 from sextante.matching.application.records import EncodedLineRecord, ModelCallRecord
-from sextante.matching.domain.choice_resolution import LineChoice, resolve_line_choices
-from sextante.matching.domain.item_choice import (
-    CandidateItem,
-    InvoiceContext,
-    ItemChoiceFromModel,
-    ItemChoiceRequest,
-    LineToCode,
-)
-from sextante.matching.domain.line_decision import (
-    FlagReason,
-    LineDecision,
-    LineNote,
-    decide_line,
-    non_service_line_decision,
-    uncoded_line_decision,
-)
-from sextante.matching.domain.scoring import LexicalScore
+from sextante.matching.domain.line_decision import FlagReason, uncoded_line_decision
 from sextante.platform.audit import AuditEventRepository
 from sextante.platform.clock import Clock, IdentifierGenerator
-from sextante.platform.retry import RetryPolicy, Sleep, call_with_retries
 from sextante.platform.text_normalization import normalize_for_comparison
-
-logger = logging.getLogger(__name__)
 
 # Writes another module makes in the same transaction as the line records, so that the
 # entity verdict and the lines it produced are stored together or not at all.
@@ -51,27 +29,12 @@ class EncodingCollaborators:
     """Everything EncodeInvoice needs, injected (04-padroes-de-codigo.md §4)."""
 
     engine: AsyncEngine
+    coder: LineCoder
     catalog: Catalog
-    scorer: LexicalScorer
-    classifier: ItemClassifier
     repository: MatchingRepositoryPort
     audit: AuditEventRepository
     clock: Clock
     identifiers: IdentifierGenerator
-    fallback_item: CatalogItem
-    generic_items: frozenset[ItemNumber]
-    retry_policy: RetryPolicy
-    sleep: Sleep
-
-
-@dataclass(frozen=True, slots=True)
-class _LineOutcome:
-    """What one line ends up with, before it gets its identifiers and timestamp."""
-
-    line: StoredLine
-    choice: LineChoice | None
-    decision: LineDecision
-    scores: tuple[LexicalScore, ...]
 
 
 class EncodeInvoice:
@@ -99,60 +62,16 @@ class EncodeInvoice:
         Example:
             await encoder.execute(stored_invoice, TargetSheet.OUTLAYS, record_header)
         """
-        services = [line for line in invoice.lines if line.line_type is LineType.SERVICE]
-        others = [
-            _non_service_outcome(line)
-            for line in invoice.lines
-            if line.line_type is not LineType.SERVICE
-        ]
-        call, coded = await self._code_services(invoice, services, target_sheet)
-        outcomes = sorted(coded + others, key=lambda outcome: outcome.line.position)
-        flagged = [_with_flags(outcome, invoice_flags) for outcome in outcomes]
-        await self._persist(flagged, target_sheet, call, also_write)
-
-    async def _code_services(
-        self, invoice: StoredInvoice, services: list[StoredLine], target_sheet: TargetSheet
-    ) -> tuple[ModelCallRecord | None, list[_LineOutcome]]:
-        # No service line, no model call: there is nothing to choose (REQ-ING-006).
-        if not services:
-            return None, []
         deps = self._collaborators
-        sheet_items = deps.catalog.items_of(target_sheet)
-        scores = {
-            line.line_id: deps.scorer.score(line.description, sheet_items) for line in services
-        }
-        call, choices = await self._ask_model(invoice, services, sheet_items, target_sheet)
-        decide = self._decide
-        outcomes = [
-            decide(line, choices[line.position], scores[line.line_id], target_sheet)
-            for line in services
-        ]
-        return call, outcomes
-
-    async def _ask_model(
-        self,
-        invoice: StoredInvoice,
-        services: list[StoredLine],
-        sheet_items: tuple[CatalogItem, ...],
-        target_sheet: TargetSheet,
-    ) -> tuple[ModelCallRecord, dict[int, LineChoice]]:
-        deps = self._collaborators
-        # The model call is made outside any transaction: it takes seconds (D-3.3).
-        request = item_choice_request(invoice, services, sheet_items)
-        response = await call_with_retries(
-            lambda: deps.classifier.choose(request),
-            ItemClassifierUnavailableError,
-            deps.retry_policy,
-            deps.sleep,
+        coded = await deps.coder.code(invoice, target_sheet, invoice_flags)
+        call = (
+            ModelCallRecord(
+                deps.identifiers.new_id(), invoice.invoice_id, coded.response, deps.clock.now()
+            )
+            if coded.response is not None
+            else None
         )
-        positions = [line.position for line in services]
-        choices = resolve_line_choices(
-            positions, sheet_items, target_sheet, _validated(response.choices)
-        )
-        call = ModelCallRecord(
-            deps.identifiers.new_id(), invoice.invoice_id, response, deps.clock.now()
-        )
-        return call, choices
+        await self._persist(list(coded.outcomes), target_sheet, call, also_write)
 
     async def record_uncoded(
         self,
@@ -167,25 +86,14 @@ class EncodeInvoice:
             await encoder.record_uncoded(stored_invoice, FlagReason.ENTITY_NIF_MISMATCH, write)
         """
         decision = uncoded_line_decision(reason)
-        outcomes = [_LineOutcome(line, None, decision, ()) for line in invoice.lines]
+        outcomes = [LineOutcome(line, None, decision, ()) for line in invoice.lines]
         await self._persist(
-            [_with_flags(o, invoice_flags) for o in outcomes], None, None, also_write
+            [with_flags(o, invoice_flags) for o in outcomes], None, None, also_write
         )
-
-    def _decide(
-        self,
-        line: StoredLine,
-        choice: LineChoice,
-        scores: tuple[LexicalScore, ...],
-        target_sheet: TargetSheet,
-    ) -> _LineOutcome:
-        deps = self._collaborators
-        decision = decide_line(choice, target_sheet, scores, deps.fallback_item, deps.generic_items)
-        return _LineOutcome(line, choice, decision, scores)
 
     async def _persist(
         self,
-        outcomes: list[_LineOutcome],
+        outcomes: list[LineOutcome],
         target_sheet: TargetSheet | None,
         call: ModelCallRecord | None,
         also_write: SameTransactionWrite,
@@ -205,7 +113,7 @@ class EncodeInvoice:
     async def _persist_line(
         self,
         connection: AsyncConnection,
-        outcome: _LineOutcome,
+        outcome: LineOutcome,
         target_sheet: TargetSheet | None,
         call: ModelCallRecord | None,
     ) -> None:
@@ -222,7 +130,7 @@ class EncodeInvoice:
         )
 
     def _record_for(
-        self, outcome: _LineOutcome, target_sheet: TargetSheet | None, call: ModelCallRecord | None
+        self, outcome: LineOutcome, target_sheet: TargetSheet | None, call: ModelCallRecord | None
     ) -> EncodedLineRecord:
         deps = self._collaborators
         return EncodedLineRecord(
@@ -236,55 +144,6 @@ class EncodeInvoice:
             model_call_id=call.call_id if call else None,
             encoded_at=deps.clock.now(),
         )
-
-
-def _validated(choices: Sequence[ItemChoiceFromModel]) -> list[ItemChoiceFromModel]:
-    # Every answer goes through the schema again, whatever the adapter did: an answer
-    # that fails it is dropped, and its line becomes an invalid response (SEC-14, REQ-MAP-007).
-    valid: list[ItemChoiceFromModel] = []
-    for choice in choices:
-        try:
-            valid.append(ItemChoiceFromModel.model_validate(choice.model_dump()))
-        except ValidationError:
-            logger.warning(
-                "model_answer_rejected_by_schema", extra={"line_position": choice.line_position}
-            )
-    return valid
-
-
-def _with_flags(outcome: _LineOutcome, flags: tuple[FlagReason, ...]) -> _LineOutcome:
-    if not flags:
-        return outcome
-    decision = dataclasses.replace(outcome.decision, flags=outcome.decision.flags + flags)
-    return dataclasses.replace(outcome, decision=decision)
-
-
-def _non_service_outcome(line: StoredLine) -> _LineOutcome:
-    note = LineNote.LINE_TYPE_TAX if line.line_type is LineType.TAX else LineNote.LINE_TYPE_DISCOUNT
-    return _LineOutcome(line, None, non_service_line_decision(note), ())
-
-
-def item_choice_request(
-    invoice: StoredInvoice, services: list[StoredLine], sheet_items: tuple[CatalogItem, ...]
-) -> ItemChoiceRequest:
-    """The one request per invoice: its context, its service lines, the whole sheet (D-3.16).
-
-    Example:
-        item_choice_request(stored, services, catalog.items_of(TargetSheet.OUTLAYS))
-    """
-    return ItemChoiceRequest(
-        context=InvoiceContext(supplier_name=invoice.supplier_name, currency=invoice.currency),
-        lines=tuple(LineToCode(line.position, line.description) for line in services),
-        candidates=tuple(
-            CandidateItem(
-                index,
-                catalog_item.item_number.value,
-                catalog_item.description_pt,
-                catalog_item.description_en,
-            )
-            for index, catalog_item in enumerate(sheet_items)
-        ),
-    )
 
 
 def _audit_payload(

@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx2
 import pytest
-from anthropic import AsyncAnthropic, DefaultAsyncHttpxClient
+from anthropic import AsyncAnthropic, BadRequestError, DefaultAsyncHttpxClient
 
 from sextante.matching.contracts import ItemClassifierUnavailableError
 from sextante.matching.domain.item_choice import (
@@ -158,9 +158,9 @@ async def test_an_entry_outside_the_schema_is_dropped_alone() -> None:
 
 
 @pytest.mark.requirement("REQ-PLT-003")
-@pytest.mark.parametrize("status", [429, 500, 529])
+@pytest.mark.parametrize("status", [408, 409, 429, 500, 529])
 async def test_transient_failures_are_unavailable_so_the_use_case_retries(status: int) -> None:
-    """Rate limit, server error and overload are the only retried failures."""
+    """Timeout, conflict, rate limit, server error and overload are the retried failures."""
 
     def handler(request: httpx2.Request) -> httpx2.Response:
         return httpx2.Response(
@@ -184,12 +184,14 @@ async def test_a_network_failure_is_unavailable() -> None:
 
 @pytest.mark.requirement("REQ-PLT-003")
 async def test_a_refused_request_is_not_retried() -> None:
-    """A 400 or a 401 would fail the same way again: the invoice fails, no retry."""
+    """A 400 would fail the same way again: one request, raised as is, not as unavailable."""
+    seen: list[httpx2.Request] = []
 
     def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
         return httpx2.Response(400, json={"type": "error", "error": {"type": "x", "message": "y"}})
 
-    with pytest.raises(Exception) as raised:
+    with pytest.raises(BadRequestError):
         await _classifier(handler).choose(REQUEST)
 
-    assert not isinstance(raised.value, ItemClassifierUnavailableError)
+    assert len(seen) == 1
