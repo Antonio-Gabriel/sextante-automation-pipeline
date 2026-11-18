@@ -127,7 +127,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0047
 - **Estado:** activa
 - **Requisitos:** SEC-06, SEC-11, SEC-12, SEC-19, L-07, L-11, REQ-PLT-008
-- **Commit:** pendente
+- **Commit:** `99f231e`
 - **Migração:** nenhuma (o esquema continua na revisão `0009`)
 - **Ficheiros:** `.scratch/frontend/issues/` (6 tickets), `.scratch/operacao/issues/` (4), `.scratch/deploy/issues/` (2)
 - **Reversibilidade:** total
