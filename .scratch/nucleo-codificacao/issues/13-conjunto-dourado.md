@@ -44,3 +44,5 @@ Nenhuma métrica de precisão é publicada até a AMT confirmar os resultados es
 Partly delivered on 2026-11-18 (CHG-0031). `make golden` measures extraction, entity, target sheet, line types and refusals without the model, and all 12 samples match the proposal, checked locally. Lines are named by position in `config/golden_expected.yaml`, so no excerpt of a sample enters the repository, unlike the table above, which predates that rule and stays only in this ticket.
 
 Not delivered, because ticket 11 is not done: the manual command that measures item codes with the real model. The two criteria about it stay unticked; "not part of make test nor CI" holds trivially until the command exists, and must be checked when it does.
+
+Review fixes on 2026-11-18 (CHG-0032): the runner and the expected results moved to `backend/tests/golden/`, as 02-arquitectura.md §2.4 places the golden set; the samples variable is `SEXTANTE_GOLDEN_SAMPLES_PATH`, as 02 documents; extraction is also measured by which fields are missing, by name only; an invalid variable ends with exit 2 and its name.

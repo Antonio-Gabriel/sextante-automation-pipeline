@@ -8,6 +8,7 @@ stays None; nothing is inferred.
 
 import dataclasses
 import re
+from bisect import bisect_left, bisect_right
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
@@ -219,9 +220,10 @@ def _lines(
     rows: list[_Row], glyphs: Sequence[Glyph], anchors: _Anchors, summary_start: float
 ) -> tuple[ExtractedLine, ...]:
     columns = anchors.columns
+    description_glyphs = _GlyphIndex([g for g in glyphs if g.x0 < columns.description_limit])
     lines: list[ExtractedLine] = []
     for row in _between(rows, anchors.table_row.top, summary_start):
-        raw = _description_glyphs(glyphs, row.top, columns.description_limit)
+        raw = description_glyphs.row_text(row.top)
         cells = _cells(row, columns)
         if lines and not any(cell is not None for cell in cells):
             # A continuation row: its raw text keeps a leading space when the break fell
@@ -248,9 +250,22 @@ def _cells(row: _Row, columns: _Columns) -> list[Decimal | None]:
     return cells
 
 
-def _description_glyphs(glyphs: Sequence[Glyph], top: float, limit: float) -> str:
-    row = [g for g in glyphs if abs(g.top - top) <= ROW_TOLERANCE and g.x0 < limit]
-    return "".join(g.text for g in sorted(row, key=lambda g: g.x0))
+class _GlyphIndex:
+    """Glyphs sorted by height once, so each row is found by bisection, not by a scan."""
+
+    def __init__(self, glyphs: Iterable[Glyph]) -> None:
+        self._glyphs = sorted(glyphs, key=lambda g: g.top)
+        self._tops = [g.top for g in self._glyphs]
+
+    def row_text(self, top: float) -> str:
+        """The row's characters left to right, spaces included.
+
+        Example:
+            index.row_text(221.0)  # "Passagem aérea ..."
+        """
+        low = bisect_left(self._tops, top - ROW_TOLERANCE)
+        high = bisect_right(self._tops, top + ROW_TOLERANCE)
+        return "".join(g.text for g in sorted(self._glyphs[low:high], key=lambda g: g.x0))
 
 
 def _summary_start(rows: list[_Row], table_row: _Row) -> float:

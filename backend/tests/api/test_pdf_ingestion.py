@@ -1,7 +1,9 @@
 """Ticket 12 end to end: SYNTHETIC PDFs read by the real extractor, then coded (D-3.6)."""
 
 import csv
+import dataclasses
 import io
+import json
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -11,9 +13,15 @@ from fastapi.testclient import TestClient
 
 from sextante.main import AppDependencies, create_app
 from tests.api.encoding_harness import running_application
+from tests.api.test_encoding_safeguards import _query
 from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fakes.fixed_clock import FixedClock, SequentialIdentifierGenerator
-from tests.fixtures.synthetic_invoices import AMT_NIF, taag_air_ticket_to_amt, with_description
+from tests.fixtures.synthetic_invoices import (
+    AMT_NIF,
+    extraction_of,
+    taag_air_ticket_to_amt,
+    with_description,
+)
 from tests.fixtures.synthetic_pdf import (
     air_ticket_pdf,
     care_of_pdf,
@@ -66,7 +74,7 @@ def test_a_pdf_is_read_by_its_bytes_whatever_its_name_or_declared_type(
         "YES",
         "O00004",
     )
-    assert line["line_description"].endswith("(Rotação equipa - Ref #SYN-0000001)")
+    assert line["line_description"].endswith("(Rotação equipa - Bilhete #SYN-0000001)")
 
 
 @pytest.mark.requirement("REQ-ING-005", "D-3.15")
@@ -127,3 +135,26 @@ def test_extracted_text_is_stored_in_nfc_and_without_control_characters(
         [line] = app.lines(job_id)
 
     assert line["line_description"] == "Café e serviço"
+
+
+@pytest.mark.requirement("REQ-ING-003", "REQ-AUD-001", "SEC-15")
+def test_a_missing_field_is_recorded_as_missing_with_the_invoice(
+    valid_environment: dict[str, str],
+) -> None:
+    """No date on the document: the date stays empty and the audit names the field."""
+    base = taag_air_ticket_to_amt()
+    invoice = dataclasses.replace(
+        base,
+        content=base.content + b"no-date",
+        extraction=dataclasses.replace(extraction_of(base), invoice_date=None),
+    )
+    with running_application(
+        valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
+    ) as app:
+        app.wait_for_job(app.upload(invoice)["job_id"])
+
+    [(payload,)] = _query(
+        valid_environment,
+        "SELECT payload FROM audit_event WHERE event_type = 'extraction_fields_missing'",
+    )
+    assert json.loads(str(payload)) == {"missing_fields": ["invoice_date"]}

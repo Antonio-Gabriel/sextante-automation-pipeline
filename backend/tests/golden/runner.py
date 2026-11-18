@@ -1,5 +1,7 @@
 """Golden set: the deterministic steps measured on the sample invoices (NFR-TST-001, D-3.18).
 
+Run with ``make golden``, which is ``python -m tests.golden.runner`` from backend/.
+
 Measures extraction, entity, target sheet, line types and refusals, without calling the
 model. The samples are read from a local folder and never enter the repository; the
 report names samples, fields and closed-set values only, never text from a sample.
@@ -8,6 +10,8 @@ Expected results are a proposal until AMT confirms them (L-02), so no accuracy f
 is published from this report.
 """
 
+import os
+import sys
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,7 +21,12 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from sextante.ingestion.domain.line_type import classify_line_type
-from sextante.ingestion.domain.model import ExtractedInvoice, ExtractionRejection, FileFormat
+from sextante.ingestion.domain.model import (
+    ExtractedInvoice,
+    ExtractionRejection,
+    FileFormat,
+    missing_fields,
+)
 from sextante.ingestion.domain.normalization import normalize_extraction
 from sextante.ingestion.domain.ports import InvoiceExtractor
 from sextante.ingestion.infrastructure.pdf_invoice_extractor import PdfInvoiceExtractor
@@ -28,23 +37,72 @@ from sextante.matching.contracts import (
     target_sheet_for,
 )
 from sextante.matching.infrastructure.denylist_file import DenylistFileError, read_entity_denylist
+from sextante.platform.settings import PDF_MIN_CHARS_DEFAULT, PDF_MIN_CHARS_MAXIMUM
 
-SAMPLES_DIR_VARIABLE: Final = "SEXTANTE_GOLDEN_SAMPLES_DIR"
+SAMPLES_PATH_VARIABLE: Final = "SEXTANTE_GOLDEN_SAMPLES_PATH"
 EXPECTED_PATH_VARIABLE: Final = "SEXTANTE_GOLDEN_EXPECTED_PATH"
-# backend/src/sextante/ -> the repository root holds config/.
-DEFAULT_EXPECTED_PATH: Final = (
-    Path(__file__).resolve().parents[3] / "config" / "golden_expected.yaml"
-)
-DEFAULT_MIN_CHARS: Final = 100
-ENTITY_VARIABLES: Final = (
-    "SEXTANTE_TARGET_ENTITY_NAME",
-    "SEXTANTE_TARGET_ENTITY_NIF",
-    "SEXTANTE_ENTITY_DENYLIST_PATH",
-)
+DEFAULT_EXPECTED_PATH: Final = Path(__file__).resolve().parent / "expected_results.yaml"
 
 
 class GoldenSetError(RuntimeError):
     """The golden set cannot run: missing folder, or an unreadable expected-results file."""
+
+
+@dataclass(frozen=True, slots=True)
+class EntityReference:
+    """The target entity and the denylist the entity check runs against."""
+
+    target: TargetEntity
+    denylist: EntityDenylist
+
+
+class GoldenSettings(BaseModel):
+    """The SEXTANTE_ variables the golden set reads, validated like the application's."""
+
+    model_config = ConfigDict(frozen=True, extra="ignore", str_strip_whitespace=True)
+
+    samples_path: Path
+    expected_path: Path = DEFAULT_EXPECTED_PATH
+    target_entity_name: str = Field(min_length=1)
+    target_entity_nif: str = Field(min_length=1)
+    entity_denylist_path: Path
+    pdf_min_chars_per_page: int = Field(
+        default=PDF_MIN_CHARS_DEFAULT, ge=1, le=PDF_MIN_CHARS_MAXIMUM
+    )
+
+    @classmethod
+    def from_environment(cls, environ: Mapping[str, str]) -> "GoldenSettings":
+        """Read the variables; a missing or invalid one is named in the error.
+
+        Example:
+            GoldenSettings.from_environment(os.environ).samples_path
+
+        Raises:
+            GoldenSetError: naming each missing or invalid variable.
+        """
+        if not environ.get(SAMPLES_PATH_VARIABLE, "").strip():
+            raise GoldenSetError(
+                f"{SAMPLES_PATH_VARIABLE} is not set. Expected the local folder with the "
+                "sample invoices, which never enter the repository."
+            )
+        values = {
+            name.removeprefix("SEXTANTE_GOLDEN_").removeprefix("SEXTANTE_").lower(): value
+            for name, value in environ.items()
+            if name.startswith("SEXTANTE_") and value.strip()
+        }
+        try:
+            return cls.model_validate(values)
+        except ValidationError as error:
+            names = ", ".join(_variable_name(e["loc"]) for e in error.errors())
+            raise GoldenSetError(
+                f"Invalid or missing {names}. Expected the values described in config/.env.example."
+            ) from None
+
+
+def _variable_name(location: tuple[int | str, ...]) -> str:
+    field = str(location[0]) if location else "?"
+    prefix = "SEXTANTE_GOLDEN_" if field in {"samples_path", "expected_path"} else "SEXTANTE_"
+    return prefix + field.upper()
 
 
 class ExpectedLine(BaseModel):
@@ -67,6 +125,8 @@ class SampleExpectation(BaseModel):
     entity: Literal["MATCH", "NO_MATCH", "AMBIGUOUS"] | None = None
     target_sheet: Literal["OUTLAYS", "OUTLAYSP"] | None = None
     lines: tuple[ExpectedLine, ...] = ()
+    # Field names the extraction is expected not to find, never their values.
+    missing_fields: tuple[str, ...] = ()
 
 
 class GoldenExpectations(BaseModel):
@@ -91,7 +151,7 @@ def load_expectations(path: Path) -> GoldenExpectations:
     """Read and validate the expected-results file.
 
     Example:
-        load_expectations(Path("config/golden_expected.yaml")).samples[0].id  # "INV-001"
+        load_expectations(DEFAULT_EXPECTED_PATH).samples[0].id  # "INV-001"
 
     Raises:
         GoldenSetError: when the file is missing or does not match the schema.
@@ -101,7 +161,7 @@ def load_expectations(path: Path) -> GoldenExpectations:
     except (OSError, yaml.YAMLError, ValidationError) as error:
         raise GoldenSetError(
             f"Expected results {path} are unreadable ({type(error).__name__}). "
-            "Expected the format of config/golden_expected.yaml."
+            "Expected the format of tests/golden/expected_results.yaml."
         ) from None
 
 
@@ -109,12 +169,12 @@ def run_golden(
     samples_dir: Path,
     expectations: GoldenExpectations,
     extractor: InvoiceExtractor,
-    entity: tuple[TargetEntity, EntityDenylist],
+    entity: EntityReference,
 ) -> list[SampleResult]:
     """Measure every expected sample found in the folder.
 
     Example:
-        results = run_golden(Path("/samples"), expectations, extractor, (target, denylist))
+        results = run_golden(Path("/samples"), expectations, extractor, entity)
 
     Raises:
         GoldenSetError: when the folder does not exist.
@@ -160,7 +220,7 @@ def _sample_file(samples_dir: Path, sample_id: str) -> Path | None:
 def _divergences(
     expectation: SampleExpectation,
     extraction: ExtractedInvoice | ExtractionRejection,
-    entity: tuple[TargetEntity, EntityDenylist],
+    entity: EntityReference,
 ) -> tuple[str, ...]:
     if isinstance(extraction, ExtractionRejection):
         got = extraction.reason.value
@@ -175,22 +235,25 @@ def _divergences(
 def _coded_divergences(
     expectation: SampleExpectation,
     extraction: ExtractedInvoice,
-    entity: tuple[TargetEntity, EntityDenylist],
+    entity: EntityReference,
 ) -> list[str]:
-    target, denylist = entity
-    verdict = check_billed_entity(extraction.billed_entities, target, denylist).verdict
+    verdict = check_billed_entity(
+        extraction.billed_entities, entity.target, entity.denylist
+    ).verdict
     sheet = target_sheet_for(verdict)
     got: Mapping[str, object] = {
         "entity": verdict.value,
         "target_sheet": sheet.value if sheet else None,
         "line count": len(extraction.lines),
         "line types": [classify_line_type(line.description).value for line in extraction.lines],
+        "missing fields": list(missing_fields(extraction)),
     }
     expected: Mapping[str, object] = {
         "entity": expectation.entity,
         "target_sheet": expectation.target_sheet,
         "line count": len(expectation.lines),
         "line types": [line.line_type for line in expectation.lines],
+        "missing fields": list(expectation.missing_fields),
     }
     return [
         _differs(name, expected[name], got[name]) for name in got if got[name] != expected[name]
@@ -204,15 +267,17 @@ def _differs(field: str, expected: object, got: object) -> str:
 def golden_main(environ: Mapping[str, str], write: Callable[[str], None]) -> int:
     """Run the golden set from SEXTANTE_ variables; 0 when every sample matches.
 
-    Returns 2, with a clear message, when the samples folder is not configured or the
-    configuration cannot be read; 1 when a sample diverges.
+    Returns 2, with a clear message, when a variable is missing or invalid or a file
+    cannot be read; 1 when a sample diverges.
 
     Example:
         sys.exit(golden_main(os.environ, print))
     """
     try:
-        samples_dir, expectations, extractor, entity = _configured(environ)
-        results = run_golden(samples_dir, expectations, extractor, entity)
+        settings = GoldenSettings.from_environment(environ)
+        expectations = load_expectations(settings.expected_path)
+        extractor = PdfInvoiceExtractor(settings.pdf_min_chars_per_page)
+        results = run_golden(settings.samples_path, expectations, extractor, _entity(settings))
     except GoldenSetError as error:
         write(str(error))
         return 2
@@ -223,32 +288,14 @@ def golden_main(environ: Mapping[str, str], write: Callable[[str], None]) -> int
     return 1 if any(result.divergences for result in results) else 0
 
 
-def _configured(
-    environ: Mapping[str, str],
-) -> tuple[Path, GoldenExpectations, InvoiceExtractor, tuple[TargetEntity, EntityDenylist]]:
-    samples = environ.get(SAMPLES_DIR_VARIABLE, "").strip()
-    if not samples:
-        raise GoldenSetError(
-            f"{SAMPLES_DIR_VARIABLE} is not set. Expected the local folder with the sample "
-            "invoices, which never enter the repository."
-        )
-    expectations = load_expectations(
-        Path(environ.get(EXPECTED_PATH_VARIABLE, "").strip() or DEFAULT_EXPECTED_PATH)
-    )
-    min_chars = int(environ.get("SEXTANTE_PDF_MIN_CHARS_PER_PAGE", "") or DEFAULT_MIN_CHARS)
-    return Path(samples), expectations, PdfInvoiceExtractor(min_chars), _entity(environ)
-
-
-def _entity(environ: Mapping[str, str]) -> tuple[TargetEntity, EntityDenylist]:
-    missing = [name for name in ENTITY_VARIABLES if not environ.get(name, "").strip()]
-    if missing:
-        raise GoldenSetError(f"{', '.join(missing)} not set. Expected the values of config/.env.")
-    target = TargetEntity(
-        environ["SEXTANTE_TARGET_ENTITY_NAME"].strip(),
-        environ["SEXTANTE_TARGET_ENTITY_NIF"].strip(),
-    )
+def _entity(settings: GoldenSettings) -> EntityReference:
     try:
-        entries = read_entity_denylist(Path(environ["SEXTANTE_ENTITY_DENYLIST_PATH"].strip()))
+        entries = read_entity_denylist(settings.entity_denylist_path)
     except DenylistFileError as error:
         raise GoldenSetError(f"SEXTANTE_ENTITY_DENYLIST_PATH: {error}") from None
-    return target, EntityDenylist.of(entries)
+    target = TargetEntity(settings.target_entity_name, settings.target_entity_nif)
+    return EntityReference(target, EntityDenylist.of(entries))
+
+
+if __name__ == "__main__":
+    sys.exit(golden_main(os.environ, print))

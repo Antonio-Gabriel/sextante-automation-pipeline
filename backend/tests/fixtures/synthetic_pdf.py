@@ -21,8 +21,12 @@ PAGE_HEIGHT: Final = 841.8898
 ASCENT: Final = 0.718
 DESCRIPTION_WRAP: Final = 52
 SYNTHETIC_TITLE: Final = "SYNTHETIC TEST INVOICE - not a real document"
+# A grey area where a scanned image would be: shapes, no text.
+SCANNED_SHAPE: Final = "0.8 g 40 400 515 400 re f"
 
-# Helvetica advance widths (1/1000 em) for the characters right-aligned columns use.
+# Helvetica advance widths (1/1000 em) of digits and separators, which right-aligned
+# values are made of. Other characters get an average width, so right-aligned headings
+# land a few points off; the extractor reads real positions, so that does not matter.
 _WIDTHS: Final = {**dict.fromkeys("0123456789", 556), ",": 278, ".": 278, "%": 889, " ": 278}
 _DEFAULT_WIDTH: Final = 556
 
@@ -76,7 +80,7 @@ def model_invoice_pdf(invoice: PdfInvoice) -> bytes:
     """The invoice drawn in the layout of the sample model.
 
     Example:
-        content = model_invoice_pdf(taag_like_pdf())
+        content = model_invoice_pdf(air_ticket_pdf())
     """
     page = _Page()
     _draw_header(page, invoice)
@@ -86,13 +90,26 @@ def model_invoice_pdf(invoice: PdfInvoice) -> bytes:
     return _document([page.operations])
 
 
+def with_scanned_page_pdf(invoice: PdfInvoice) -> bytes:
+    """The invoice followed by a page with no text layer, like a partly scanned file.
+
+    Example:
+        with_scanned_page_pdf(air_ticket_pdf())
+    """
+    page = _Page()
+    _draw_header(page, invoice)
+    _draw_parties(page, invoice)
+    _draw_summary(page, invoice, _draw_table(page, invoice) + 36)
+    return _document([page.operations, [SCANNED_SHAPE]])
+
+
 def scanned_pdf() -> bytes:
     """A page with an image-like shape and no text layer, like a scanned invoice.
 
     Example:
         scanned_pdf()
     """
-    return _document([["0.8 g 40 400 515 400 re f"]])
+    return _document([[SCANNED_SHAPE]])
 
 
 def other_document_pdf() -> bytes:
@@ -235,7 +252,7 @@ AMT_BILL_TO: Final = (
 
 
 def air_ticket_pdf() -> PdfInvoice:
-    """Like sample INV-001: one line broken mid-word ("Tic" + "ket"), total glued to its label.
+    """One line broken mid-word, and the total glued to its label (quirks of the samples).
 
     Example:
         model_invoice_pdf(air_ticket_pdf())
@@ -245,12 +262,12 @@ def air_ticket_pdf() -> PdfInvoice:
         supplier_address="Rua Sintética 123, Luanda, Angola",
         supplier_nif="5419990001",
         number="SYN-2026-001",
-        date="2026-10-12",
+        date="2026-01-12",
         currency="AOA",
         bill_to=AMT_BILL_TO,
         lines=(
             PdfLine(
-                "Passagem aérea Sintética - Rota Teste (Rotação equipa - Ref #SYN-0000001)",
+                "Passagem aérea Sintética - Rota Teste (Rotação equipa - Bilhete #SYN-0000001)",
                 "1",
                 "320,000.00",
                 "0%",
@@ -264,19 +281,23 @@ def air_ticket_pdf() -> PdfInvoice:
 
 
 def long_supplier_pdf() -> PdfInvoice:
-    """Like samples INV-004 and INV-007: the supplier name runs under "INVOICE / FACTURA".
+    """A supplier name long enough to run under "INVOICE / FACTURA" (a quirk of the samples).
 
     Example:
         model_invoice_pdf(long_supplier_pdf())
     """
     return PdfInvoice(
-        supplier_name="Serviços Sintéticos de Escolta & Trânsito Aduaneiro Lda",
+        supplier_name="Escoltas Sintéticas & Trânsito de Teste Angola Lda",
         supplier_address="Av. Sintética, Luanda",
         supplier_nif="5419990002",
         number="DU-SYN001/26",
-        date="2026-10-16",
+        date="2026-01-16",
         currency="AOA",
-        bill_to=("Petrolífera Sintética de Cabinda Lda", "Terminal Sintético, Cabinda, Angola", "NIF: 5419990003"),
+        bill_to=(
+            "Petrolífera Sintética de Cabinda Lda",
+            "Terminal Sintético, Cabinda, Angola",
+            "NIF: 5419990003",
+        ),
         lines=(
             PdfLine(
                 "Escolta aduaneira de carga sintética (Porto Teste -> Base Teste)",
@@ -292,7 +313,7 @@ def long_supplier_pdf() -> PdfInvoice:
 
 
 def care_of_pdf() -> PdfInvoice:
-    """Like sample INV-002: a "c/o" line, a break on a space, USD values like 1,206.00.
+    """A "c/o" line, a break on a space, and USD values in the 1,206.00 format.
 
     Example:
         model_invoice_pdf(care_of_pdf())
@@ -302,7 +323,7 @@ def care_of_pdf() -> PdfInvoice:
         supplier_address="Edifício Sintético, Luanda",
         supplier_nif="5419990004",
         number="AO-SYN0002",
-        date="2026-10-14",
+        date="2026-01-14",
         currency="USD",
         bill_to=(
             "Operadora Sintética de Petróleo Angola",
@@ -320,12 +341,12 @@ def care_of_pdf() -> PdfInvoice:
             ),
         ),
         summary=(("Subtotal", "1,206.00"), ("Tax / IVA", "0.00"), ("TOTAL", "1,206.00")),
-        notes="Payable to the synthetic USD account.",
+        notes="Nota sintética: pagamento em USD.",
     )
 
 
 def two_lines_with_vat_pdf() -> PdfInvoice:
-    """Like sample INV-009: two lines, one with VAT, the first broken mid-word.
+    """Two lines, one with VAT, and an invoice number with a space.
 
     Example:
         model_invoice_pdf(two_lines_with_vat_pdf())

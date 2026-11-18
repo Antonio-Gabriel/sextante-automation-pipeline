@@ -28,6 +28,7 @@ from tests.fixtures.synthetic_pdf import (
     other_document_pdf,
     scanned_pdf,
     two_lines_with_vat_pdf,
+    with_scanned_page_pdf,
 )
 
 MIN_CHARS_PER_PAGE = 100
@@ -47,7 +48,7 @@ def test_the_supplier_name_is_read_from_the_top_band_alone() -> None:
     """A long name runs under "INVOICE / FACTURA" and still comes out whole and alone."""
     extraction = _extract(long_supplier_pdf())
 
-    assert extraction.supplier.name == "Serviços Sintéticos de Escolta & Trânsito Aduaneiro Lda"
+    assert extraction.supplier.name == "Escoltas Sintéticas & Trânsito de Teste Angola Lda"
     assert extraction.invoice_number == "DU-SYN001/26"
 
 
@@ -69,7 +70,7 @@ def test_from_and_bill_to_are_separated_by_position() -> None:
 
 @pytest.mark.requirement("REQ-ING-005", "D-3.15")
 def test_a_care_of_line_is_kept_apart_from_the_billed_entity() -> None:
-    """ "c/o AMT" never becomes the billed entity (sample INV-002)."""
+    """ "c/o AMT" never becomes the billed entity."""
     [block] = _extract(care_of_pdf()).billed_entities
 
     assert (block.name, block.care_of, block.nif) == (
@@ -86,7 +87,7 @@ def test_number_date_and_currency_come_from_the_header_and_the_amount_column() -
     usd = _extract(care_of_pdf())
 
     assert (extraction.invoice_number, extraction.currency) == ("FT 2026/0099", "AOA")
-    assert (usd.invoice_date, usd.currency) == ("2026-10-14", "USD")
+    assert (usd.invoice_date, usd.currency) == ("2026-01-14", "USD")
 
 
 @pytest.mark.requirement("REQ-ING-004")
@@ -96,7 +97,7 @@ def test_a_continuation_row_joins_without_space_mid_word_and_with_space_on_a_spa
     [demurrage] = _extract(care_of_pdf()).lines
 
     assert ticket.description == (
-        "Passagem aérea Sintética - Rota Teste (Rotação equipa - Ref #SYN-0000001)"
+        "Passagem aérea Sintética - Rota Teste (Rotação equipa - Bilhete #SYN-0000001)"
     )
     assert demurrage.description == (
         "Sobrestadia sintética - Contentor SYNU0000001 (12d @ 100.50 USD/dia)"
@@ -147,7 +148,10 @@ def test_a_missing_field_stays_empty_and_is_logged_by_name_only(
     finally:
         extractor_logger.removeHandler(caplog.handler)
 
-    [record] = [r for r in caplog.records if r.message == "extraction_fields_missing"]
+    # Whether or not "sextante" propagates, the same record may reach the capture twice.
+    [record] = {
+        id(r): r for r in caplog.records if r.message == "extraction_fields_missing"
+    }.values()
     assert extraction.invoice_date is None
     assert record.missing_fields == ["invoice_date"]  # type: ignore[attr-defined]
     assert "Hotel" not in caplog.text
@@ -167,6 +171,16 @@ def test_a_pdf_without_enough_text_per_page_is_refused_as_scanned() -> None:
     )
 
 
+@pytest.mark.requirement("REQ-ING-002", "L-01")
+def test_one_scanned_page_among_native_ones_refuses_the_pdf() -> None:
+    """The minimum holds for every page, not on average over the file."""
+    content = with_scanned_page_pdf(air_ticket_pdf())
+
+    result = PdfInvoiceExtractor(MIN_CHARS_PER_PAGE).extract(content, FileFormat.PDF)
+
+    assert result == ExtractionRejection(RejectionReason.PDF_WITHOUT_TEXT_LAYER)
+
+
 @pytest.mark.requirement("REQ-ING-009", "L-14")
 def test_a_document_without_the_model_structure_is_refused() -> None:
     """A customs notice has text but no FROM, BILL TO or table: unsupported_document_type."""
@@ -182,7 +196,7 @@ def test_a_file_that_is_not_a_readable_pdf_is_refused_not_failed() -> None:
 
     result = PdfInvoiceExtractor(MIN_CHARS_PER_PAGE).extract(truncated, FileFormat.PDF)
 
-    assert isinstance(result, ExtractionRejection)
+    assert result == ExtractionRejection(RejectionReason.UNSUPPORTED_DOCUMENT_TYPE)
 
 
 @pytest.mark.requirement("D-3.6", "L-01")

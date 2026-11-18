@@ -12,6 +12,8 @@ SETTING_TEXT_MAX_LENGTH: Final = 512
 # PostgreSQL migration path of 00-decisoes-e-lacunas.md §6 is taken.
 DATABASE_URL_PREFIX: Final = "sqlite+aiosqlite:///"
 CSV_SEPARATORS: Final = frozenset({",", ";", "|"})
+PDF_MIN_CHARS_DEFAULT: Final = 100
+PDF_MIN_CHARS_MAXIMUM: Final = 10_000
 REVIEWER_ID_MAX_LENGTH: Final = 128
 REVIEWER_ID_PATTERN: Final = r"^[A-Za-z0-9._@-]+$"
 
@@ -45,7 +47,9 @@ class Settings(BaseModel):
     # Attempts per model call, the first included, for transient failures (REQ-PLT-003).
     model_max_attempts: int = Field(default=3, ge=1, le=10)
     # Characters per page below which a PDF counts as scanned (REQ-ING-002, L-01).
-    pdf_min_chars_per_page: int = Field(default=100, ge=1, le=10_000)
+    pdf_min_chars_per_page: int = Field(
+        default=PDF_MIN_CHARS_DEFAULT, ge=1, le=PDF_MIN_CHARS_MAXIMUM
+    )
 
     # A plain model, not pydantic-settings: the environment is always passed in explicitly,
     # so a stray variable in the process cannot silently fill a missing setting.

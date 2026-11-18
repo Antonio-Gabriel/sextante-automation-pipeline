@@ -15,6 +15,7 @@ from sextante.ingestion.contracts import (
     FileFormat,
     InvoiceExtractor,
     StoredInvoice,
+    missing_fields,
 )
 from sextante.ingestion.domain.ports import InvoiceFileStore
 from sextante.ingestion.domain.statuses import InvoiceStatus, JobStatus
@@ -143,7 +144,25 @@ class EncodingWorker:
                 {"summary_rows": [asdict(row) for row in extraction.summary_rows]},
                 deps.clock.now(),
             )
+            await self._audit_missing_fields(connection, invoice_id, extraction)
         return stored
+
+    async def _audit_missing_fields(
+        self, connection: AsyncConnection, invoice_id: str, extraction: ExtractedInvoice
+    ) -> None:
+        # A field the document did not show stays empty and is recorded as missing, by
+        # name, with the invoice (REQ-ING-003).
+        missing = missing_fields(extraction)
+        if missing:
+            deps = self._collaborators
+            await deps.audit.append(
+                connection,
+                deps.identifiers.new_id(),
+                "extraction_fields_missing",
+                ("invoice", invoice_id),
+                {"missing_fields": list(missing)},
+                deps.clock.now(),
+            )
 
     async def _encode(self, stored: StoredInvoice) -> tuple[InvoiceStatus, str | None]:
         deps = self._collaborators

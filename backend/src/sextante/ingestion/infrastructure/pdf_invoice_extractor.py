@@ -8,7 +8,6 @@ implemented in this version (D-3.6), so an XLSX upload is refused with its own r
 
 import io
 import logging
-from dataclasses import fields
 from typing import Final
 
 import pdfplumber
@@ -21,6 +20,7 @@ from sextante.ingestion.domain.model import (
     ExtractionRejection,
     FileFormat,
     RejectionReason,
+    missing_fields,
 )
 from sextante.ingestion.infrastructure.model_invoice_layout import Glyph, Word, read_model_invoice
 from sextante.platform.limits import MAX_PDF_PAGES
@@ -30,7 +30,6 @@ logger = logging.getLogger(__name__)
 # Pages are stacked one under the other, so a table that runs over a page break keeps
 # its rows in order.
 PAGE_GAP: Final = 50.0
-OPTIONAL_FIELDS: Final = ("invoice_number", "invoice_date", "currency")
 
 
 class PdfInvoiceExtractor:
@@ -63,15 +62,21 @@ class PdfInvoiceExtractor:
             return ExtractionRejection(RejectionReason.UNSUPPORTED_DOCUMENT_TYPE)
 
     def _extract_pages(self, pages: list[Page]) -> ExtractedInvoice | ExtractionRejection:
+        # Counting pages reads only the page tree; no content stream is decoded before
+        # the count is known to be within the limit.
         if not pages or len(pages) > MAX_PDF_PAGES:
             return ExtractionRejection(RejectionReason.UNSUPPORTED_DOCUMENT_TYPE)
-        if sum(len(page.chars) for page in pages) < self._min_chars_per_page * len(pages):
+        # Each page must have enough text: a scanned page among native ones is not read
+        # as an empty page of a valid invoice (REQ-ING-002).
+        if any(len(page.chars) < self._min_chars_per_page for page in pages):
             return ExtractionRejection(RejectionReason.PDF_WITHOUT_TEXT_LAYER)
         words, glyphs = _stacked_text(pages)
         invoice = read_model_invoice(words, glyphs)
         if invoice is None:
             return ExtractionRejection(RejectionReason.UNSUPPORTED_DOCUMENT_TYPE)
-        _log_missing_fields(invoice)
+        missing = missing_fields(invoice)
+        if missing:
+            logger.info("extraction_fields_missing", extra={"missing_fields": list(missing)})
         return invoice
 
 
@@ -96,19 +101,3 @@ def _stacked_text(pages: list[Page]) -> tuple[list[Word], list[Glyph]]:
         ]
         offset += float(page.height) + PAGE_GAP
     return words, glyphs
-
-
-def _log_missing_fields(invoice: ExtractedInvoice) -> None:
-    # A missing field is recorded as missing, by name only: never its neighbours' text
-    # (REQ-ING-003, SEC-15).
-    missing = [name for name in OPTIONAL_FIELDS if getattr(invoice, name) is None]
-    missing += [] if invoice.supplier.name else ["supplier_name"]
-    missing += [] if invoice.billed_entities else ["billed_entity"]
-    missing += [
-        f"line_{line.position}.{field.name}"
-        for line in invoice.lines
-        for field in fields(line)
-        if getattr(line, field.name) is None
-    ]
-    if missing:
-        logger.info("extraction_fields_missing", extra={"missing_fields": missing})

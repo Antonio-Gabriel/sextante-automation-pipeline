@@ -15,6 +15,7 @@ from sextante.ingestion.domain.model import (
     StoredInvoice,
     StoredLine,
     SummaryRow,
+    missing_fields,
 )
 from sextante.ingestion.domain.ports import InvoiceExtractor
 from sextante.ingestion.domain.statuses import InvoiceStatus
@@ -40,4 +41,5 @@ __all__ = [
     "StoredInvoice",
     "StoredLine",
     "SummaryRow",
+    "missing_fields",
 ]

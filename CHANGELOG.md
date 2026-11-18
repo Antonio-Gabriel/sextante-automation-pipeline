@@ -38,6 +38,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                     └── CHG-0029  improve   Saída da resolução humana e do duplicado provável
                                                                                                         └── CHG-0030  feat      Extracção de PDF nativo no modelo das amostras
                                                                                                             └── CHG-0031  feat      Conjunto dourado sem o modelo
+                                                                                                                └── CHG-0032  fix       Correcções da revisão dos tickets 12 e 13
 ```
 
 ## Regras
@@ -102,6 +103,38 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0032 · Correcções da revisão dos tickets 12 e 13
+
+- **Data:** 2026-11-18
+- **Tipo:** fix
+- **Pai:** CHG-0031
+- **Estado:** activa
+- **Requisitos:** REQ-ING-002, REQ-ING-003, NFR-TST-001, D-3.18, SEC-15, SEC-20
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `backend/src/sextante/ingestion/` (extractor, leitor do layout, `missing_fields`, contratos), `worker.py`, `platform/settings.py`
+  - `backend/tests/golden/runner.py` e `expected_results.yaml` (movidos de `src/sextante/golden_set.py` e `config/golden_expected.yaml`); `backend/scripts/golden.py` retirado; `backend/Makefile`
+  - testes: `tests/fixtures/synthetic_pdf.py`, `tests/extraction/`, `tests/api/test_pdf_ingestion.py`, `tests/golden/`
+  - `README.md`, `config/.env.example`, tickets 12 e 13
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 290 testes. O teste da página digitalizada falha com a regra antiga, a da média. `make golden` sobre as 12 amostras, localmente: 12 sem divergências. `mypy`, `ruff`, 8 contratos do `import-linter`, `make licenses` (inclui `pdfplumber`, MIT pelo classificador do pacote, que não preenche o campo `License`), funções com 20 linhas ou menos.
+
+**Excertos de amostras.** As réplicas sintéticas de CHG-0030 traziam valores tirados das amostras reais: números de bilhete, de contentor e de processo, NIFs, nomes de clientes e descrições. Foram substituídos por valores inventados, que mantêm as particularidades: quebra a meio da palavra, quebra num espaço, número com espaço, nome longo na faixa de topo. Os valores antigos continuam no histórico do commit `44d25bd`.
+
+**Texto por página.** O mínimo de caracteres vale para cada página, e não para a média do ficheiro. Uma página digitalizada no meio de páginas nativas recusa o PDF.
+
+**Campos ausentes.** Além do log, ficam na auditoria da factura (`extraction_fields_missing`), só pelo nome. A função que os lista é partilhada pelo extractor, pelo trabalhador e pelo conjunto dourado.
+
+**Conjunto dourado.**
+- Passa para `backend/tests/golden/`, como 02 §2.4 o coloca; `make golden` corre `python -m tests.golden.runner`.
+- A variável é `SEXTANTE_GOLDEN_SAMPLES_PATH`, como 02 a documenta.
+- Mede também os campos que a extracção não encontrou, pelo nome.
+- As variáveis são validadas como as da aplicação: um valor inválido, incluindo um mínimo de texto igual a 0, termina com código 2 e o nome da variável.
+
+**Robustez.** Os caracteres da descrição são indexados por altura uma só vez, em vez de percorridos em cada linha da tabela. Um PDF ilegível tem teste do motivo exacto.
 
 ### CHG-0031 · Conjunto dourado sem o modelo
 

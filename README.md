@@ -58,9 +58,9 @@ The application refuses to start, with a message naming the problem, in either o
 
 ## Golden set
 
-The sample invoices never enter the repository. Point `SEXTANTE_GOLDEN_SAMPLES_DIR`, in `config/.env`, at the local folder that holds them, then run `make golden` from `backend/`. Each sample is reported as `ok` or with the fields that diverge; the report holds no text from any sample.
+The sample invoices never enter the repository. Point `SEXTANTE_GOLDEN_SAMPLES_PATH`, in `config/.env`, at the local folder that holds them, then run `make golden` from `backend/`. It measures, for each sample, the refusal, the entity, the target sheet, the number and types of lines, and which fields the extraction did not find. Each sample is reported as `ok` or with the fields that diverge; the report holds no text from any sample.
 
-The expected results in `config/golden_expected.yaml` are a **proposal still to be confirmed by AMT** (gap L-02). Lines are named by position, never by description. Until AMT confirms them, the thresholds below stay provisional and no accuracy figure is published.
+The expected results in `backend/tests/golden/expected_results.yaml` are a **proposal still to be confirmed by AMT** (gap L-02). Lines are named by position, never by description. Until AMT confirms them, the thresholds below stay provisional and no accuracy figure is published.
 
 Item codes are not measured by `make golden`, which never calls the model. Measuring them with the real model is a separate manual command, outside `make test` and continuous integration, that arrives with the Claude adapter (ticket 11).
 
@@ -88,7 +88,7 @@ Run from `backend/`.
 | `make boundaries` | Layer boundaries, with `import-linter` |
 | `make licenses` | Dependency licences against the allow-list of NFR-LIC-001 |
 | `make traceability-matrix` | Tests cited by requirement. Fails on an unknown identifier |
-| `make golden` | Golden set on the local samples, without the model: extraction, entity, target sheet, line types and refusals. Needs `SEXTANTE_GOLDEN_SAMPLES_DIR` |
+| `make golden` | Golden set on the local samples, without the model: extraction, entity, target sheet, line types and refusals. Needs `SEXTANTE_GOLDEN_SAMPLES_PATH` |
 
 ## Documentation
 

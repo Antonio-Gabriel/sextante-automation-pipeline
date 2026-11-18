@@ -104,3 +104,29 @@ class StoredInvoice:
     currency: str | None
     billed_entities: tuple[BilledEntityBlock, ...]
     lines: tuple[StoredLine, ...]
+
+
+def missing_fields(invoice: ExtractedInvoice) -> tuple[str, ...]:
+    """Names of the fields the extraction did not find: recorded as missing, never inferred.
+
+    Names only, never the text around them, so the result may go to logs and the audit
+    trail (REQ-ING-003, SEC-15).
+
+    Example:
+        missing_fields(extraction)  # ("invoice_date", "line_1.vat_rate")
+    """
+    header = {
+        "supplier_name": invoice.supplier.name,
+        "invoice_number": invoice.invoice_number,
+        "invoice_date": invoice.invoice_date,
+        "currency": invoice.currency,
+        "billed_entity": invoice.billed_entities or None,
+    }
+    names = [name for name, value in header.items() if value is None]
+    names += [
+        f"line_{line.position}.{name}"
+        for line in invoice.lines
+        for name in ("quantity", "unit_price", "vat_rate", "amount")
+        if getattr(line, name) is None
+    ]
+    return tuple(names)

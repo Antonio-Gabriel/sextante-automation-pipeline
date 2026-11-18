@@ -5,13 +5,13 @@ from pathlib import Path
 import pytest
 import yaml
 
-from sextante.golden_set import DEFAULT_EXPECTED_PATH, golden_main, load_expectations
 from tests.fixtures.synthetic_pdf import (
     air_ticket_pdf,
     care_of_pdf,
     model_invoice_pdf,
     scanned_pdf,
 )
+from tests.golden.runner import DEFAULT_EXPECTED_PATH, golden_main, load_expectations
 
 CARE_OF_EXPECTATION: dict[str, object] = {
     "id": "SYN-002",
@@ -46,7 +46,7 @@ def golden_environment(tmp_path: Path, valid_environment: dict[str, str]) -> dic
     expected.write_text(yaml.safe_dump(EXPECTATIONS), encoding="utf-8")
     return {
         **valid_environment,
-        "SEXTANTE_GOLDEN_SAMPLES_DIR": str(samples),
+        "SEXTANTE_GOLDEN_SAMPLES_PATH": str(samples),
         "SEXTANTE_GOLDEN_EXPECTED_PATH": str(expected),
     }
 
@@ -86,7 +86,7 @@ def test_without_the_samples_folder_the_command_says_so(valid_environment: dict[
 
     assert code == 2
     assert output == [
-        "SEXTANTE_GOLDEN_SAMPLES_DIR is not set. Expected the local folder with the sample "
+        "SEXTANTE_GOLDEN_SAMPLES_PATH is not set. Expected the local folder with the sample "
         "invoices, which never enter the repository."
     ]
 
@@ -97,7 +97,7 @@ def test_the_report_carries_no_text_from_a_sample(golden_environment: dict[str, 
     _, output = _run(golden_environment)
     report = "\n".join(output)
 
-    for excerpt in ("Passagem", "Demurrage", "operadora petrolífera", "Synthetic", "SYN-2026"):
+    for excerpt in ("Passagem", "Sobrestadia", "Operadora", "Synthetic", "SYN-2026"):
         assert excerpt not in report
 
 
@@ -113,3 +113,29 @@ def test_the_repository_expected_results_name_lines_by_position_only() -> None:
     assert [sample.id for sample in expectations.samples] == [f"INV-{n:03d}" for n in range(1, 13)]
     assert expectations.proposal is True
     assert line_keys == {"position", "line_type", "item_number"}
+
+
+@pytest.mark.requirement("NFR-TST-001")
+@pytest.mark.parametrize("value", ["many", "0"])
+def test_an_invalid_minimum_of_text_is_named_not_a_traceback(
+    golden_environment: dict[str, str], value: str
+) -> None:
+    """A non-number, or 0, which would switch off the scanned-PDF refusal: exit 2."""
+    code, output = _run({**golden_environment, "SEXTANTE_PDF_MIN_CHARS_PER_PAGE": value})
+
+    assert code == 2
+    assert "SEXTANTE_PDF_MIN_CHARS_PER_PAGE" in output[0]
+
+
+@pytest.mark.requirement("NFR-TST-001", "REQ-ING-003")
+def test_a_field_extracted_or_missing_against_expectation_is_a_divergence(
+    golden_environment: dict[str, str], tmp_path: Path
+) -> None:
+    """Extraction is measured on its fields too: by name, never by value."""
+    expecting_no_date = {**CARE_OF_EXPECTATION, "missing_fields": ["invoice_date"]}
+    wrong = {**EXPECTATIONS, "samples": [expecting_no_date]}
+    (tmp_path / "expected.yaml").write_text(yaml.safe_dump(wrong), encoding="utf-8")
+
+    code, output = _run(golden_environment)
+
+    assert (code, output[0]) == (1, "SYN-002 missing fields: expected ['invoice_date'], got []")

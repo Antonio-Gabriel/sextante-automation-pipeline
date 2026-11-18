@@ -3,9 +3,11 @@
 # A PROPOSAL, still to be confirmed by AMT (L-02). No accuracy figure is published
 # before that confirmation. Item numbers use the current catalog and may change with it.
 #
-# Samples are read from SEXTANTE_GOLDEN_SAMPLES_DIR and never enter the repository.
+# Samples are read from SEXTANTE_GOLDEN_SAMPLES_PATH and never enter the repository.
 # Lines are named by position only: no description, nor any other excerpt of a sample,
 # is written here.
+# A sample may list `missing_fields`: names of fields its extraction should not find.
+# None is listed below: every sample shows all of its header and line fields.
 version: 1
 proposal: true
 samples:
