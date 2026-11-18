@@ -123,7 +123,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0043
 - **Estado:** activa
 - **Requisitos:** NFR-REL-002, REQ-REV-004, D-3.23, SEC-19
-- **Commit:** pendente
+- **Commit:** `1aca630`
 - **Migração:** nenhuma (o esquema continua na revisão `0009`)
 - **Ficheiros:**
   - `backend/src/sextante/matching/` (porta `ReviewedLinesReader`, sinalização das linhas revistas dentro da transacção, `read_line_history`, `summary_in_force` em vez de `codings_in_force`)
