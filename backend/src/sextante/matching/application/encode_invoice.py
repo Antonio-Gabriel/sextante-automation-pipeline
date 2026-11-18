@@ -1,11 +1,11 @@
 """Code the service lines of one routed invoice (REQ-MAP-004 to REQ-MAP-009, SEC-14)."""
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 
 from pydantic import ValidationError
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from sextante.catalog.contracts import Catalog, CatalogItem, ItemNumber, TargetSheet
 from sextante.ingestion.contracts import StoredInvoice, StoredLine
@@ -24,10 +24,10 @@ from sextante.matching.domain.item_choice import (
     LineToCode,
 )
 from sextante.matching.domain.line_decision import (
-    Confidence,
     FlagReason,
     LineDecision,
     decide_line,
+    uncoded_line_decision,
 )
 from sextante.matching.domain.scoring import LexicalScore
 from sextante.platform.audit import AuditEventRepository
@@ -35,6 +35,10 @@ from sextante.platform.clock import Clock, IdentifierGenerator
 from sextante.platform.text_normalization import normalize_for_comparison
 
 logger = logging.getLogger(__name__)
+
+# Writes another module makes in the same transaction as the line records, so that the
+# entity verdict and the lines it produced are stored together or not at all.
+SameTransactionWrite = Callable[[AsyncConnection], Awaitable[None]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,17 +71,19 @@ class EncodeInvoice:
     """One model call per invoice, then every answer validated, decided and audited.
 
     Example:
-        await EncodeInvoice(collaborators).execute(stored_invoice, TargetSheet.OUTLAYS)
+        await EncodeInvoice(collaborators).execute(stored_invoice, TargetSheet.OUTLAYS, write)
     """
 
     def __init__(self, collaborators: EncodingCollaborators) -> None:
         self._collaborators = collaborators
 
-    async def execute(self, invoice: StoredInvoice, target_sheet: TargetSheet) -> None:
+    async def execute(
+        self, invoice: StoredInvoice, target_sheet: TargetSheet, also_write: SameTransactionWrite
+    ) -> None:
         """Score, ask the model once, resolve answers against the sheet, decide and persist.
 
         Example:
-            await encoder.execute(stored_invoice, TargetSheet.OUTLAYS)
+            await encoder.execute(stored_invoice, TargetSheet.OUTLAYS, record_header)
         """
         deps = self._collaborators
         sheet_items = deps.catalog.items_of(target_sheet)
@@ -97,17 +103,19 @@ class EncodeInvoice:
             self._decide(line, choices[line.position], scores[line.line_id], target_sheet)
             for line in invoice.lines
         ]
-        await self._persist(outcomes, target_sheet, call)
+        await self._persist(outcomes, target_sheet, call, also_write)
 
-    async def record_uncoded(self, invoice: StoredInvoice, reason: FlagReason) -> None:
+    async def record_uncoded(
+        self, invoice: StoredInvoice, reason: FlagReason, also_write: SameTransactionWrite
+    ) -> None:
         """Record every line of an ambiguous invoice: no sheet, no code, LOW, flagged (D-3.15).
 
         Example:
-            await encoder.record_uncoded(stored_invoice, FlagReason.ENTITY_NIF_MISMATCH)
+            await encoder.record_uncoded(stored_invoice, FlagReason.ENTITY_NIF_MISMATCH, write)
         """
-        decision = LineDecision(None, Confidence.LOW, (reason,), "entity_ambiguous")
+        decision = uncoded_line_decision(reason)
         outcomes = [_LineOutcome(line, None, decision, ()) for line in invoice.lines]
-        await self._persist(outcomes, None, None)
+        await self._persist(outcomes, None, None, also_write)
 
     def _decide(
         self,
@@ -125,9 +133,11 @@ class EncodeInvoice:
         outcomes: list[_LineOutcome],
         target_sheet: TargetSheet | None,
         call: ModelCallRecord | None,
+        also_write: SameTransactionWrite,
     ) -> None:
         deps = self._collaborators
         async with deps.engine.begin() as connection:
+            await also_write(connection)
             if call is not None:
                 await deps.repository.record_model_call(connection, call)
             for outcome in outcomes:

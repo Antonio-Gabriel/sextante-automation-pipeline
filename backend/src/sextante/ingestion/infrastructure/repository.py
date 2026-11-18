@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sextante.ingestion.application.records import (
     ClaimedJob,
     DuplicateContentError,
+    EntityCheckRecord,
     JobLine,
     JobSummary,
     NewInvoice,
@@ -165,18 +166,17 @@ class IngestionRepository:
         )
 
     async def record_entity_check(
-        self,
-        connection: AsyncConnection,
-        invoice_id: str,
-        check: tuple[str, str | None],
-        target_sheet: str | None,
+        self, connection: AsyncConnection, invoice_id: str, check: EntityCheckRecord
     ) -> None:
         """Record the entity verdict, its reason, and the routing decision (D-3.15)."""
-        verdict, reason = check
         await connection.execute(
             update(INVOICE_HEADER_TABLE)
             .where(INVOICE_HEADER_TABLE.c.invoice_id == invoice_id)
-            .values(entity_verdict=verdict, entity_reason=reason, target_sheet=target_sheet)
+            .values(
+                entity_verdict=check.verdict,
+                entity_reason=check.reason,
+                target_sheet=check.target_sheet,
+            )
         )
 
     async def job_summary(self, connection: AsyncConnection, job_id: str) -> JobSummary | None:

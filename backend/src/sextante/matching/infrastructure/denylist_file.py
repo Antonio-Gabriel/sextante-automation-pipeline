@@ -29,7 +29,10 @@ def read_entity_denylist(path: Path) -> frozenset[str]:
         DenylistFileError: naming what is wrong and the expected structure.
     """
     if not path.is_file():
-        raise DenylistFileError(f"Denylist file {path.name!r} does not exist.")
+        raise DenylistFileError(
+            f"Denylist file {path.name!r} does not exist. Expected the path of a YAML file "
+            "such as config/entity_denylist.yaml."
+        )
     document = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(document, dict) or document.get("version") != DENYLIST_FORMAT_VERSION:
         raise DenylistFileError(

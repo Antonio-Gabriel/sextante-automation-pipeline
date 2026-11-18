@@ -25,6 +25,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                 └── CHG-0016  docs      Diagramas regenerados com o desenho actual
                                                     └── CHG-0017  feat      Verificação de entidade e encaminhamento para OUTLAYSP
                                                         └── CHG-0018  feat      Confiança, recurso e sinalização
+                                                            └── CHG-0019  fix       Correcções da revisão dos tickets 03 e 04
 ```
 
 ## Regras
@@ -89,6 +90,42 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0019 · Correcções da revisão dos tickets 03 e 04
+
+- **Data:** 2026-11-18
+- **Tipo:** fix
+- **Pai:** CHG-0018
+- **Estado:** activa
+- **Requisitos:** REQ-ENT-003, REQ-ENT-007, REQ-CNF-002, REQ-PLT-002, NFR-REL-001, D-3.8, D-3.15, SEC-18
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `backend/src/sextante/matching/domain/entity_check.py`, `line_decision.py`
+  - `backend/src/sextante/matching/application/encode_invoice.py`, `worker.py`, `main.py`
+  - `backend/src/sextante/ingestion/` (registo `EntityCheckRecord`)
+  - `backend/src/sextante/review/`
+  - `README.md`, e os testes
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit. O esquema não mudou.
+- **Verificação:** 154 testes, `mypy`, `ruff`, 7 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+Resolve os achados da revisão dos tickets 03 e 04.
+
+**Spec:**
+
+- Os limiares de `HIGH` passam a estritos ("acima", D-3.8). No limite exacto, a linha é `MEDIUM` e fica sinalizada como conflito.
+- Um NIF sem dígitos, como "N/D", conta como não extraído e não veta a AMT.
+- O arranque recusa uma lista de exclusão que contenha a própria AMT.
+- O veredicto da entidade e as linhas passam a gravar-se na mesma transacção.
+
+**Padrões:**
+
+- `AmbiguityReason` sai: a verificação de entidade passa a usar `FlagReason`.
+- A lista de exclusão é um objecto de valor, normalizado uma só vez.
+- A decisão das linhas sem código passa a viver na regra de confiança.
+- Os dados de referência, o registo do veredicto e a projecção da resposta passam a ter tipos com nome.
+- As mensagens de erro passam a indicar a forma esperada.
 
 ### CHG-0018 · Confiança, recurso e sinalização
 

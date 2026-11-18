@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from sextante.ingestion.application.records import (
     ClaimedJob,
+    EntityCheckRecord,
     JobLine,
     JobSummary,
     NewInvoice,
@@ -77,8 +78,7 @@ class IngestionRepositoryPort(Protocol):
         self,
         connection: AsyncConnection,
         invoice_id: str,
-        check: tuple[str, str | None],
-        target_sheet: str | None,
+        check: EntityCheckRecord,
     ) -> None:
         """Record the entity verdict, its reason, and the routing decision."""
         ...

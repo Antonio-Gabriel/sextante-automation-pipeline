@@ -9,8 +9,8 @@ from typing import Final
 from fastapi.testclient import TestClient
 
 from sextante.main import AppDependencies, create_app
+from sextante.matching.contracts import ItemClassifier
 from tests.fakes.fake_invoice_extractor import FakeInvoiceExtractor
-from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fakes.fixed_clock import FixedClock, SequentialIdentifierGenerator
 from tests.fixtures.synthetic_invoices import SyntheticInvoice
 
@@ -25,7 +25,7 @@ class EncodingHarness:
 
     client: TestClient
     extractor: FakeInvoiceExtractor
-    classifier: FakeItemClassifier
+    classifier: ItemClassifier
 
     def upload(self, *invoices: SyntheticInvoice) -> dict[str, object]:
         """Upload the invoices in one request and return the response body."""
@@ -57,7 +57,7 @@ class EncodingHarness:
 def running_application(
     environment: dict[str, str],
     invoices: list[SyntheticInvoice],
-    classifier: FakeItemClassifier,
+    classifier: ItemClassifier,
 ) -> Iterator[EncodingHarness]:
     """Start the application with fakes for the extractor and the model, nothing else.
 

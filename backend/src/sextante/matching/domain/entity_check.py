@@ -6,7 +6,7 @@ would accept it (R4, REQ-ENT-003). The NIF vetoes a match before name equality i
 looked at (REQ-ENT-007). Anything that only a human can decide is AMBIGUOUS.
 """
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final
@@ -14,6 +14,8 @@ from typing import Final
 from rapidfuzz import fuzz
 
 from sextante.ingestion.contracts import BilledEntityBlock
+from sextante.matching.domain.line_decision import FlagReason
+from sextante.platform.errors import DomainError
 from sextante.platform.text_normalization import fold_for_matching
 
 # Provisional until the golden set calibrates it (L-02). Measured on the samples: third
@@ -30,13 +32,8 @@ class EntityVerdict(StrEnum):
     AMBIGUOUS = "AMBIGUOUS"
 
 
-class AmbiguityReason(StrEnum):
-    """Why an entity is ambiguous. These are also flag reasons (REQ-CNF-004)."""
-
-    ENTITY_LABEL_NOT_FOUND = "entity_label_not_found"
-    MULTIPLE_BILLED_ENTITIES = "multiple_billed_entities"
-    ENTITY_SIMILAR_NOT_EQUAL = "entity_similar_not_equal"
-    ENTITY_NIF_MISMATCH = "entity_nif_mismatch"
+class EntityVerdictWithoutReasonError(DomainError):
+    """An AMBIGUOUS verdict reached the caller without its reason: a defect, never a gap."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,10 +46,49 @@ class TargetEntity:
 
 @dataclass(frozen=True, slots=True)
 class EntityCheckResult:
-    """The verdict and, when AMBIGUOUS, the reason."""
+    """The verdict and, when AMBIGUOUS, the flag that says why."""
 
     verdict: EntityVerdict
-    reason: AmbiguityReason | None = None
+    reason: FlagReason | None = None
+
+    def ambiguity_flag(self) -> FlagReason:
+        """Return the reason of an AMBIGUOUS verdict.
+
+        Example:
+            result.ambiguity_flag()  # FlagReason.ENTITY_NIF_MISMATCH
+
+        Raises:
+            EntityVerdictWithoutReasonError: when there is no reason to return.
+        """
+        if self.reason is None:
+            raise EntityVerdictWithoutReasonError(
+                f"Entity verdict {self.verdict} has no reason. Expected one for AMBIGUOUS."
+            )
+        return self.reason
+
+
+@dataclass(frozen=True, slots=True)
+class EntityDenylist:
+    """Denylisted names, normalized once when the list is loaded (REQ-ENT-003).
+
+    Example:
+        EntityDenylist.of(["AMT - Agentes de Navegação Lda"])
+    """
+
+    normalized_names: frozenset[str]
+
+    @classmethod
+    def of(cls, names: Iterable[str]) -> "EntityDenylist":
+        """Build the denylist from names as written in configuration."""
+        return cls(frozenset(normalize_entity_name(name) for name in names))
+
+    def excludes(self, name: str) -> bool:
+        """Tell whether the name, once normalized, is on the list.
+
+        Example:
+            denylist.excludes("AMT - AGENTES DE NAVEGACAO, LDA.")  # True
+        """
+        return normalize_entity_name(name) in self.normalized_names
 
 
 def normalize_entity_name(name: str) -> str:
@@ -69,35 +105,33 @@ def normalize_entity_name(name: str) -> str:
 
 
 def check_billed_entity(
-    blocks: Sequence[BilledEntityBlock], target: TargetEntity, denylist: frozenset[str]
+    blocks: Sequence[BilledEntityBlock], target: TargetEntity, denylist: EntityDenylist
 ) -> EntityCheckResult:
     """Apply the seven rules of D-3.15, in order. "Care of" lines never take part.
 
     Example:
         check_billed_entity(extraction.billed_entities, amt, denylist).verdict  # MATCH
-
-    ``denylist`` holds names as written in configuration; they are normalized here.
     """
     if not blocks:
-        return EntityCheckResult(EntityVerdict.AMBIGUOUS, AmbiguityReason.ENTITY_LABEL_NOT_FOUND)
+        return EntityCheckResult(EntityVerdict.AMBIGUOUS, FlagReason.ENTITY_LABEL_NOT_FOUND)
     if len(blocks) > 1:
-        return EntityCheckResult(EntityVerdict.AMBIGUOUS, AmbiguityReason.MULTIPLE_BILLED_ENTITIES)
-    name = normalize_entity_name(blocks[0].name)
-    if name in {normalize_entity_name(entry) for entry in denylist}:
+        return EntityCheckResult(EntityVerdict.AMBIGUOUS, FlagReason.MULTIPLE_BILLED_ENTITIES)
+    if denylist.excludes(blocks[0].name):
         return EntityCheckResult(EntityVerdict.NO_MATCH)
-    same_name = name == normalize_entity_name(target.name)
-    if _nif_differs(blocks[0].nif, target.nif) and same_name:
-        return EntityCheckResult(EntityVerdict.AMBIGUOUS, AmbiguityReason.ENTITY_NIF_MISMATCH)
-    if same_name and not _nif_differs(blocks[0].nif, target.nif):
+    name, target_name = normalize_entity_name(blocks[0].name), normalize_entity_name(target.name)
+    nif_vetoes = _nif_differs(blocks[0].nif, target.nif)
+    if name == target_name:
+        if nif_vetoes:
+            return EntityCheckResult(EntityVerdict.AMBIGUOUS, FlagReason.ENTITY_NIF_MISMATCH)
         return EntityCheckResult(EntityVerdict.MATCH)
-    return _by_similarity(name, normalize_entity_name(target.name))
+    return _by_similarity(name, target_name)
 
 
 def _nif_differs(extracted_nif: str | None, target_nif: str) -> bool:
-    # An absent NIF neither vetoes nor confirms: only a present, different one vetoes.
-    if extracted_nif is None:
-        return False
-    return _digits(extracted_nif) != _digits(target_nif)
+    # Only an extracted NIF can veto. An absent one, or a placeholder with no digits such
+    # as "N/D", neither vetoes nor confirms (REQ-ENT-007).
+    digits = _digits(extracted_nif or "")
+    return bool(digits) and digits != _digits(target_nif)
 
 
 def _digits(nif: str) -> str:
@@ -109,4 +143,4 @@ def _by_similarity(name: str, target_name: str) -> EntityCheckResult:
     # score 100 (D-3.15).
     if fuzz.token_sort_ratio(name, target_name) < ENTITY_SIMILARITY_LOW:
         return EntityCheckResult(EntityVerdict.NO_MATCH)
-    return EntityCheckResult(EntityVerdict.AMBIGUOUS, AmbiguityReason.ENTITY_SIMILAR_NOT_EQUAL)
+    return EntityCheckResult(EntityVerdict.AMBIGUOUS, FlagReason.ENTITY_SIMILAR_NOT_EQUAL)

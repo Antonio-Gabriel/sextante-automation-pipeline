@@ -43,7 +43,21 @@ def _chosen(number: str) -> LineChoice:
         ("O00004", _scores(("O00004", 92), ("O00051", 70)), Confidence.HIGH, ()),
         (
             "O00004",
-            _scores(("O00004", ITEM_SCORE_HIGH), ("O00051", ITEM_SCORE_HIGH - ITEM_MARGIN_MIN)),
+            _scores(("O00004", ITEM_SCORE_HIGH), ("O00051", ITEM_SCORE_HIGH - ITEM_MARGIN_MIN - 5)),
+            Confidence.MEDIUM,
+            (),
+        ),
+        (
+            "O00004",
+            _scores(
+                ("O00004", ITEM_SCORE_HIGH + 1), ("O00051", ITEM_SCORE_HIGH + 1 - ITEM_MARGIN_MIN)
+            ),
+            Confidence.MEDIUM,
+            (FlagReason.CONFLICTING_CANDIDATES,),
+        ),
+        (
+            "O00004",
+            _scores(("O00004", ITEM_SCORE_HIGH + 1), ("O00051", ITEM_SCORE_HIGH - ITEM_MARGIN_MIN)),
             Confidence.HIGH,
             (),
         ),
@@ -65,7 +79,9 @@ def _chosen(number: str) -> LineChoice:
     ],
     ids=[
         "top, high score, wide gap",
-        "at both thresholds exactly",
+        "score exactly at the high threshold",
+        "gap exactly at the minimum margin",
+        "just above both thresholds",
         "top, one point below the high score",
         "second item, wide gap",
         "top, gap one point too narrow",
@@ -157,3 +173,13 @@ def test_every_decision_names_the_rule_that_produced_it() -> None:
     decision = _decide(LineChoice(ChoiceOutcome.NO_ITEM_FITS, None, None), TargetSheet.OUTLAYSP, ())
 
     assert decision.rule == "fallback_outlaysp"
+
+
+@pytest.mark.requirement("REQ-CNF-002", "D-3.8")
+def test_a_single_item_sheet_has_no_runner_up_to_compare_with() -> None:
+    """With no second item there is no gap to fail and nothing to conflict with."""
+    decision = _decide(
+        _chosen("O00004"), TargetSheet.OUTLAYS, _scores(("O00004", ITEM_SCORE_HIGH + 5))
+    )
+
+    assert (decision.confidence, decision.flags) == (Confidence.HIGH, ())

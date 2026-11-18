@@ -4,11 +4,11 @@ import asyncio
 import logging
 from dataclasses import dataclass
 
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from sextante.catalog.contracts import TargetSheet
 from sextante.ingestion.application.ports import IngestionRepositoryPort
-from sextante.ingestion.application.records import ClaimedJob, QueuedInvoice
+from sextante.ingestion.application.records import ClaimedJob, EntityCheckRecord, QueuedInvoice
 from sextante.ingestion.contracts import (
     ExtractionRejection,
     FileFormat,
@@ -17,10 +17,10 @@ from sextante.ingestion.contracts import (
 )
 from sextante.ingestion.domain.ports import InvoiceFileStore
 from sextante.ingestion.domain.statuses import InvoiceStatus, JobStatus
-from sextante.matching.application.encode_invoice import EncodeInvoice
+from sextante.matching.application.encode_invoice import EncodeInvoice, SameTransactionWrite
 from sextante.matching.contracts import (
     EntityCheckResult,
-    FlagReason,
+    EntityDenylist,
     TargetEntity,
     check_billed_entity,
     target_sheet_for,
@@ -43,7 +43,7 @@ class WorkerCollaborators:
     clock: Clock
     identifiers: IdentifierGenerator
     target_entity: TargetEntity
-    denylist: frozenset[str]
+    denylist: EntityDenylist
     poll_seconds: float
 
 
@@ -121,34 +121,31 @@ class EncodingWorker:
         deps = self._collaborators
         check = check_billed_entity(stored.billed_entities, deps.target_entity, deps.denylist)
         target_sheet = target_sheet_for(check.verdict)
-        await self._record_entity_check(stored.invoice_id, check, target_sheet)
+        record_header = self._header_writer(stored.invoice_id, check, target_sheet)
         if target_sheet is None:
             # An ambiguous entity is never coded by guess: its lines are recorded LOW and
             # flagged with the reason, and a reviewer resolves the entity (D-3.15).
-            reason = _ambiguity_flag(check)
-            await deps.encoder.record_uncoded(stored, reason)
+            reason = check.ambiguity_flag()
+            await deps.encoder.record_uncoded(stored, reason, record_header)
             return InvoiceStatus.NOT_CODED, reason.value
-        await deps.encoder.execute(stored, target_sheet)
+        await deps.encoder.execute(stored, target_sheet, record_header)
         extra = {"invoice_id": stored.invoice_id, "line_count": len(stored.lines)}
         logger.info("invoice_encoded", extra=extra)
         return InvoiceStatus.ENCODED, None
 
-    async def _record_entity_check(
+    def _header_writer(
         self, invoice_id: str, check: EntityCheckResult, target_sheet: TargetSheet | None
-    ) -> None:
-        reason = check.reason.value if check.reason else None
-        sheet = target_sheet.value if target_sheet else None
-        async with self._collaborators.engine.begin() as connection:
-            await self._collaborators.repository.record_entity_check(
-                connection, invoice_id, (check.verdict.value, reason), sheet
-            )
-
-
-def _ambiguity_flag(check: EntityCheckResult) -> FlagReason:
-    # Every AMBIGUOUS verdict carries its reason by construction; a missing one is a
-    # defect to surface, not a gap to fill with a guessed reason.
-    if check.reason is None:
-        raise ValueError(
-            f"Entity verdict {check.verdict} has no reason. Expected one for AMBIGUOUS."
+    ) -> SameTransactionWrite:
+        # Run inside the transaction that stores the lines, so the verdict is never kept
+        # without the lines it produced, nor the reverse.
+        record = EntityCheckRecord(
+            verdict=check.verdict.value,
+            reason=check.reason.value if check.reason else None,
+            target_sheet=target_sheet.value if target_sheet else None,
         )
-    return FlagReason(check.reason.value)
+        repository = self._collaborators.repository
+
+        async def write(connection: AsyncConnection) -> None:
+            await repository.record_entity_check(connection, invoice_id, record)
+
+        return write

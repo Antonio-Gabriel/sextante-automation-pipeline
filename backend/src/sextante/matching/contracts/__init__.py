@@ -3,8 +3,8 @@
 from sextante.matching.application.ports import CodingsReader, ItemClassifier, LexicalScorer
 from sextante.matching.application.records import LineCoding
 from sextante.matching.domain.entity_check import (
-    AmbiguityReason,
     EntityCheckResult,
+    EntityDenylist,
     EntityVerdict,
     TargetEntity,
     check_billed_entity,
@@ -22,11 +22,11 @@ from sextante.matching.domain.routing import target_sheet_for
 from sextante.matching.domain.scoring import LexicalScore
 
 __all__ = [
-    "AmbiguityReason",
     "CandidateItem",
     "CodingsReader",
     "Confidence",
     "EntityCheckResult",
+    "EntityDenylist",
     "EntityVerdict",
     "FlagReason",
     "InvoiceContext",

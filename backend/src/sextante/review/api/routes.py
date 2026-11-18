@@ -74,10 +74,17 @@ async def read_results(
 
 
 def _line_response(line: ResultLine) -> ResultLineResponse:
-    fields = {
-        name: getattr(line, name) for name in ResultLine.__dataclass_fields__ if name != "flags"
-    }
-    flags = [
-        FlagResponse(code=code, message=USER_MESSAGES_PT[f"flags.{code}"]) for code in line.flags
-    ]
-    return ResultLineResponse(**fields, flags=flags)
+    # Field by field, never by reflection: the projection is what SEC-18 asks to be explicit.
+    return ResultLineResponse(
+        invoice_number=line.invoice_number,
+        billed_entity_detected=line.billed_entity_detected,
+        exact_entity_match=line.exact_entity_match,
+        line_position=line.line_position,
+        line_description=line.line_description,
+        target_sheet=line.target_sheet,
+        item_number=line.item_number,
+        catalog_description=line.catalog_description,
+        confidence=line.confidence,
+        review_status=line.review_status,
+        flags=[FlagResponse(code=c, message=USER_MESSAGES_PT[f"flags.{c}"]) for c in line.flags],
+    )

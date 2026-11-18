@@ -5,6 +5,7 @@ here, in one place, and are provisional until the golden set calibrates them
 (L-02, REQ-CNF-005).
 """
 
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
@@ -14,8 +15,13 @@ from sextante.catalog.contracts import CatalogItem, ItemNumber, TargetSheet
 from sextante.matching.domain.choice_resolution import ChoiceOutcome, LineChoice
 from sextante.matching.domain.scoring import LexicalScore
 
+# HIGH needs a score strictly above ITEM_SCORE_HIGH and a lead strictly above
+# ITEM_MARGIN_MIN over the second item ("acima", D-3.8).
 ITEM_SCORE_HIGH: Final = 85
 ITEM_MARGIN_MIN: Final = 10
+# A sheet with a single item has no runner-up: nothing to fall short of, nothing to
+# conflict with.
+NO_RUNNER_UP_GAP: Final = math.inf
 
 
 class Confidence(StrEnum):
@@ -55,7 +61,11 @@ class LineDecision:
 
     @property
     def review_status(self) -> ReviewStatus:
-        """A flagged line starts pending, any other starts accepted (REQ-REV-005)."""
+        """A flagged line starts pending, any other starts accepted (REQ-REV-005).
+
+        Example:
+            decide_line(...).review_status  # "pending"
+        """
         return "pending" if self.flags else "accepted"
 
 
@@ -80,6 +90,15 @@ def decide_line(
     return _chosen(choice.catalog_item, scores)
 
 
+def uncoded_line_decision(reason: FlagReason) -> LineDecision:
+    """The decision for a line of an ambiguous invoice: no item, LOW, flagged (D-3.15).
+
+    Example:
+        uncoded_line_decision(FlagReason.ENTITY_NIF_MISMATCH).confidence  # Confidence.LOW
+    """
+    return _low(None, reason, "entity_ambiguous")
+
+
 def _no_item_fits(target_sheet: TargetSheet, fallback_item: CatalogItem) -> LineDecision:
     # The O00999 fallback is limited to OUTLAYSP and decided here, in code (R3, SEC-14).
     # OUTLAYS has none: the gap goes back to a reviewer (L-08, REQ-MAP-009).
@@ -90,13 +109,13 @@ def _no_item_fits(target_sheet: TargetSheet, fallback_item: CatalogItem) -> Line
 
 def _chosen(catalog_item: CatalogItem, scores: Sequence[LexicalScore]) -> LineDecision:
     chosen_rank = _rank_of(catalog_item, scores)
-    gap = scores[0].score - scores[1].score if len(scores) > 1 else float(ITEM_SCORE_HIGH)
-    top_is_high = bool(scores) and scores[0].score >= ITEM_SCORE_HIGH
-    if chosen_rank == 1 and top_is_high and gap >= ITEM_MARGIN_MIN:
+    gap = scores[0].score - scores[1].score if len(scores) > 1 else NO_RUNNER_UP_GAP
+    top_is_high = bool(scores) and scores[0].score > ITEM_SCORE_HIGH
+    if chosen_rank == 1 and top_is_high and gap > ITEM_MARGIN_MIN:
         return LineDecision(catalog_item, Confidence.HIGH, (), "high_agreement")
     # Conflicting only when the choice is one of two close leaders: a clear third
     # choice is the model disagreeing, not a toss-up (D-3.8).
-    conflicting = chosen_rank in (1, 2) and len(scores) > 1 and gap < ITEM_MARGIN_MIN
+    conflicting = chosen_rank in (1, 2) and gap <= ITEM_MARGIN_MIN
     flags = (FlagReason.CONFLICTING_CANDIDATES,) if conflicting else ()
     return LineDecision(catalog_item, Confidence.MEDIUM, flags, "medium_chosen")
 

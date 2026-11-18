@@ -6,11 +6,12 @@ import pytest
 
 from sextante.ingestion.contracts import BilledEntityBlock
 from sextante.matching.domain.entity_check import (
-    AmbiguityReason,
+    EntityDenylist,
     EntityVerdict,
     TargetEntity,
     check_billed_entity,
 )
+from sextante.matching.domain.line_decision import FlagReason
 
 AMT: Final = TargetEntity(
     name="Advanced Maritime Transports - Transitarios Limitada", nif="5419990000"
@@ -22,8 +23,8 @@ def _block(name: str, nif: str | None = None, care_of: tuple[str, ...] = ()) -> 
     return BilledEntityBlock(name=name, nif=nif, care_of=care_of, address_lines=())
 
 
-def _check(*blocks: BilledEntityBlock) -> tuple[EntityVerdict, AmbiguityReason | None]:
-    result = check_billed_entity(blocks, AMT, denylist=frozenset({SISTER_IN_DENYLIST}))
+def _check(*blocks: BilledEntityBlock) -> tuple[EntityVerdict, FlagReason | None]:
+    result = check_billed_entity(blocks, AMT, denylist=EntityDenylist.of([SISTER_IN_DENYLIST]))
     return result.verdict, result.reason
 
 
@@ -71,24 +72,24 @@ def test_other_entities_are_a_definite_no_match(block: BilledEntityBlock) -> Non
 AMBIGUOUS_CASES: Final = {
     "unlisted sister with a geographic suffix": (
         (_block("Advanced Maritime Transports Moçambique Limitada"),),
-        AmbiguityReason.ENTITY_SIMILAR_NOT_EQUAL,
+        FlagReason.ENTITY_SIMILAR_NOT_EQUAL,
     ),
     "name contained in the target name": (
         (_block("Advanced Maritime Transports"),),
-        AmbiguityReason.ENTITY_SIMILAR_NOT_EQUAL,
+        FlagReason.ENTITY_SIMILAR_NOT_EQUAL,
     ),
     "target name with another NIF": (
         (_block("Advanced Maritime Transports - Transitarios Limitada", "5419990099"),),
-        AmbiguityReason.ENTITY_NIF_MISMATCH,
+        FlagReason.ENTITY_NIF_MISMATCH,
     ),
     "similar name with another NIF": (
         (_block("Advanced Maritime Transports - Agentes de Navegação", "5419990099"),),
-        AmbiguityReason.ENTITY_SIMILAR_NOT_EQUAL,
+        FlagReason.ENTITY_SIMILAR_NOT_EQUAL,
     ),
-    "no billed-entity block": ((), AmbiguityReason.ENTITY_LABEL_NOT_FOUND),
+    "no billed-entity block": ((), FlagReason.ENTITY_LABEL_NOT_FOUND),
     "two billed-entity blocks": (
         (_block("Engenharia Sintética Angola"), _block("Advanced Maritime Transports - Transitarios Limitada")),
-        AmbiguityReason.MULTIPLE_BILLED_ENTITIES,
+        FlagReason.MULTIPLE_BILLED_ENTITIES,
     ),
 }
 
@@ -108,3 +109,12 @@ def test_the_target_nif_alone_never_makes_a_match() -> None:
     verdict, _ = _check(_block("Engenharia Sintética Angola", "5419990000"))
 
     assert verdict is not EntityVerdict.MATCH
+
+
+@pytest.mark.requirement("REQ-ENT-007")
+@pytest.mark.parametrize("unreadable_nif", ["N/D", "", "—"])
+def test_a_nif_without_digits_counts_as_not_extracted(unreadable_nif: str) -> None:
+    """Only an extracted NIF can veto: a placeholder is not a different NIF."""
+    block = _block("Advanced Maritime Transports - Transitarios Limitada", unreadable_nif)
+
+    assert _check(block) == (EntityVerdict.MATCH, None)

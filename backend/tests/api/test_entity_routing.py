@@ -127,3 +127,39 @@ def test_the_repository_denylist_has_structure_and_no_invented_content() -> None
     shipped = Path(__file__).resolve().parents[3] / "config" / "entity_denylist.yaml"
 
     assert read_entity_denylist(shipped) == frozenset()
+
+
+@pytest.mark.requirement("REQ-ENT-003", "REQ-PLT-007")
+def test_application_refuses_a_denylist_that_would_exclude_amt_itself(
+    valid_environment: dict[str, str], tmp_path: Path
+) -> None:
+    """A denylist entry equal to the target, once normalized, would route AMT to OUTLAYSP."""
+    bad = tmp_path / "self-denylist.yaml"
+    bad.write_text(
+        'version: 1\nentities:\n  - name: "ADVANCED MARITIME TRANSPORTS TRANSITARIOS LDA"\n'
+        "    kind: sister_company\n",
+        encoding="utf-8",
+    )
+    valid_environment["SEXTANTE_ENTITY_DENYLIST_PATH"] = str(bad)
+
+    with pytest.raises(StartupConfigurationError) as refusal:
+        create_app(valid_environment)
+
+    assert "target entity" in str(refusal.value)
+
+
+@pytest.mark.requirement("REQ-PLT-002", "NFR-REL-001")
+def test_a_failed_coding_leaves_no_entity_verdict_without_lines(
+    valid_environment: dict[str, str],
+) -> None:
+    """The verdict and the lines are written in one transaction: all or nothing."""
+    from sextante.matching.infrastructure.unconfigured_classifier import UnconfiguredItemClassifier
+
+    invoice = taag_air_ticket_to_amt()
+    with running_application(valid_environment, [invoice], UnconfiguredItemClassifier()) as app:
+        job = app.wait_for_job(app.upload(invoice)["job_id"])
+
+    assert job["invoice_counts"] == {"failed": 1}
+    assert _query(valid_environment, "SELECT entity_verdict, target_sheet FROM invoice_header") == [
+        (None, None)
+    ]

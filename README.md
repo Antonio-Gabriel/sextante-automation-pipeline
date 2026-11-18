@@ -57,8 +57,8 @@ There is no confirmed golden set yet (gap L-02), so every threshold below is pro
 | Threshold | Value | Where | Effect |
 |---|---|---|---|
 | Entity similarity, low | 60 | `matching/domain/entity_check.py` | Below it, a name that is not AMT's is `NO_MATCH`; at or above it, `AMBIGUOUS` |
-| Item score for `HIGH` | 85 | `matching/domain/line_decision.py` | The chosen item must be the lexical top with at least this score |
-| Margin to the second item | 10 | `matching/domain/line_decision.py` | Minimum gap for `HIGH`; below it, the two leaders are flagged as conflicting |
+| Item score for `HIGH` | 85 | `matching/domain/line_decision.py` | The chosen item must be the lexical top, with a score above this value |
+| Margin to the second item | 10 | `matching/domain/line_decision.py` | For `HIGH` the gap must be above this value; at or below it, the two leaders are flagged as conflicting |
 
 The entity threshold was measured on the 12 samples: third parties score below 40, names close to AMT's score above 70.
 

@@ -59,3 +59,15 @@ class DuplicateContentError(Exception):
     The unique constraint on the digest decides concurrent uploads (REQ-ING-007); this
     error carries that decision to the use case without a database type.
     """
+
+
+@dataclass(frozen=True, slots=True)
+class EntityCheckRecord:
+    """The entity verdict, its reason and the routing, as stored on the invoice header.
+
+    Plain text here: the closed sets belong to the matching module (D-3.15).
+    """
+
+    verdict: str
+    reason: str | None
+    target_sheet: str | None
