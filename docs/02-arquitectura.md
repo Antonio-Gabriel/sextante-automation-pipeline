@@ -236,7 +236,7 @@ Uma chamada ao Claude por factura, com todas as linhas de serviço e a lista de 
 
 Duas razões. A primeira é custo e latência: reduz as chamadas mensais de cerca de 50.000 para cerca de 5.000. A segunda é qualidade: ver as linhas vizinhas da mesma factura ajuda em descrições abreviadas, porque o contexto de uma factura de desembaraço aduaneiro informa o que "THC" significa naquela linha.
 
-Configuração: `temperature=0`, saída estruturada com esquema declarado, `max_tokens` dimensionado ao número de linhas. A resposta é validada por Pydantic antes de qualquer uso.
+Configuração: saída estruturada com esquema declarado (`output_config.format`), esforço baixo, `max_tokens` dimensionado ao número de linhas, sem parâmetros de amostragem (00-decisoes-e-lacunas.md §3.22). A resposta é validada por Pydantic antes de qualquer uso.
 
 **O modelo devolve o índice do candidato na lista que o servidor lhe deu, ou a indicação de que nenhum serve. Nunca um código de item.** O índice é validado contra o comprimento da lista, e o código correspondente é validado contra o catálogo, antes de ser persistido.
 

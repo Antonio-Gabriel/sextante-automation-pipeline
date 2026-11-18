@@ -5,9 +5,10 @@ import contextlib
 import os
 from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
+from anthropic import AsyncAnthropic
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -43,10 +44,10 @@ from sextante.ingestion.infrastructure.pdf_invoice_extractor import PdfInvoiceEx
 from sextante.ingestion.infrastructure.repository import IngestionRepository
 from sextante.matching.application.encode_invoice import EncodeInvoice, EncodingCollaborators
 from sextante.matching.contracts import EntityDenylist, ItemClassifier, TargetEntity
+from sextante.matching.infrastructure.claude_classifier import ClaudeItemClassifier
 from sextante.matching.infrastructure.denylist_file import DenylistFileError, read_entity_denylist
 from sextante.matching.infrastructure.rapidfuzz_scorer import RapidfuzzLexicalScorer
 from sextante.matching.infrastructure.repository import MatchingRepository
-from sextante.matching.infrastructure.unconfigured_classifier import UnconfiguredItemClassifier
 from sextante.platform.audit import AuditEventRepository
 from sextante.platform.clock import Clock, IdentifierGenerator, SystemClock, UuidIdentifierGenerator
 from sextante.platform.correlation import CorrelationIdMiddleware
@@ -86,6 +87,8 @@ from sextante.worker import EncodingWorker, WorkerCollaborators
 
 # The first retry waits 1 s, the next 2 s, and so on (REQ-PLT-003).
 MODEL_RETRY_BASE_SECONDS = 1.0
+# One invoice is one call; a call that takes longer is treated as unavailable.
+MODEL_TIMEOUT_SECONDS = 120.0
 
 
 @dataclass(frozen=True)
@@ -124,7 +127,7 @@ class AppDependencies:
     """
 
     extractor: InvoiceExtractor | None = None
-    classifier: ItemClassifier = field(default_factory=UnconfiguredItemClassifier)
+    classifier: ItemClassifier | None = None
     clock: Clock = field(default_factory=SystemClock)
     identifiers: IdentifierGenerator = field(default_factory=UuidIdentifierGenerator)
     worker_poll_seconds: float = 1.0
@@ -171,7 +174,9 @@ def _lifespan(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = create_database_engine(settings.database_url.get_secret_value())
         app.state.database_engine = engine
-        _wire_use_cases(app, engine, settings, reference, adapters)
+        model_client = _model_client(settings)
+        classifier = adapters.classifier or ClaudeItemClassifier(model_client, settings.model_id)
+        _wire_use_cases(app, engine, settings, reference, replace(adapters, classifier=classifier))
         tasks = [
             asyncio.create_task(app.state.worker.run_forever()),
             asyncio.create_task(purge_periodically(app.state.idempotency, PURGE_INTERVAL_SECONDS)),
@@ -179,13 +184,28 @@ def _lifespan(
         try:
             yield
         finally:
-            for task in tasks:
-                task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await task
+            await _stop(tasks)
+            await model_client.close()
             await engine.dispose()
 
     return lifespan
+
+
+async def _stop(tasks: list[asyncio.Task[None]]) -> None:
+    for task in tasks:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+
+def _model_client(settings: Settings) -> AsyncAnthropic:
+    # The SDK does not retry: the use case retries transient failures with its own
+    # backoff and attempt count, so a call is never retried twice over (REQ-PLT-003).
+    return AsyncAnthropic(
+        api_key=settings.anthropic_api_key.get_secret_value(),
+        max_retries=0,
+        timeout=MODEL_TIMEOUT_SECONDS,
+    )
 
 
 def _wire_use_cases(
@@ -287,7 +307,7 @@ def _build_encoder(
             engine=engine,
             catalog=catalog,
             scorer=RapidfuzzLexicalScorer(),
-            classifier=adapters.classifier,
+            classifier=_configured_classifier(adapters),
             repository=MatchingRepository(),
             audit=AuditEventRepository(),
             clock=adapters.clock,
@@ -341,3 +361,10 @@ def _load_catalog_or_refuse(settings: Settings) -> BuiltCatalog:
         raise StartupConfigurationError(f"SEXTANTE_CATALOG_PATH: {error}") from None
     except CatalogValidationError as error:
         raise StartupConfigurationError(f"Invalid catalog. {error}") from None
+
+
+def _configured_classifier(adapters: AppDependencies) -> ItemClassifier:
+    # The lifespan always sets one: the injected double, or the Claude adapter.
+    if adapters.classifier is None:
+        raise StartupConfigurationError("No item classifier configured. Expected one.")
+    return adapters.classifier

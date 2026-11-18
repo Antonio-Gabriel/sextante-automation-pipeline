@@ -41,6 +41,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                 └── CHG-0032  fix       Correcções da revisão dos tickets 12 e 13
                                                                                                                     └── CHG-0033  docs      Histórico sem Co-Authored-By e hashes actualizados
                                                                                                                         └── CHG-0034  fix       Réplicas sem dados das amostras, XLSX recusado e padrão do conjunto dourado
+                                                                                                                            └── CHG-0035  feat      Adaptador Claude do ItemClassifier e prompt v1
 ```
 
 ## Regras
@@ -105,6 +106,34 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0035 · Adaptador Claude do ItemClassifier e prompt v1
+
+- **Data:** 2026-11-18
+- **Tipo:** feat
+- **Pai:** CHG-0034
+- **Estado:** activa
+- **Requisitos:** REQ-MAP-005, REQ-MAP-007, REQ-AUD-003, REQ-AUD-004, REQ-PLT-003, SEC-14, SEC-15
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Dependência nova:** `anthropic` 1.17 (MIT), sobre `httpx2`, que já estava no projecto. `make licenses` passa.
+- **Ficheiros:**
+  - `backend/src/sextante/matching/infrastructure/claude_classifier.py` (novo); `unconfigured_classifier.py` retirado
+  - `backend/src/sextante/prompts/` (novo: `item_choice_v1.txt`, o texto aprovado, e o carregador com a versão)
+  - `backend/src/sextante/main.py`, `platform/settings.py` (`SEXTANTE_MODEL_ID`), `backend/pyproject.toml`
+  - testes: `tests/adapters/test_claude_classifier.py` (novo), `tests/api/test_entity_routing.py`
+  - `docs/00-decisoes-e-lacunas.md` (§3.22, e nota em §3.7), `docs/01-requisitos.md` (REQ-MAP-007), `docs/02-arquitectura.md`, spec, `config/.env.example`, `README.md`, tickets 11 e 14
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit. Sem classificador, as facturas com linhas de serviço voltam a falhar sem código.
+- **Verificação:** 304 testes. Os do adaptador respondem por um transporte HTTP em memória e verificam o pedido (prompt aprovado, esquema, esforço baixo, sem `temperature` nem ferramentas, recurso de servidor), os dados delimitados que uma descrição não consegue fechar, a leitura da resposta (índices, modelo, versão, tokens), as respostas inutilizáveis sem valor por omissão, e o mapeamento de 429, 5xx e falha de rede para indisponível. Nenhum teste chama a API. `mypy`, `ruff`, 8 contratos do `import-linter`, licenças.
+
+**Aprovação.** O responsável aprovou a configuração da chamada e o texto do prompt `item-choice-v1` em 18-11-2026, tal como propostos. O registo está em §3.22 e no ticket 11.
+
+**Configuração.** Sem `temperature`, que a API recusa em todos os modelos desde 21-10-2026. Resposta JSON restringida por `output_config.format`, porque os modelos actuais recusam ferramenta forçada. Modelo `SEXTANTE_MODEL_ID`, por omissão `claude-opus-5-5`. `effort` baixo. `max_tokens` de 2048 mais 64 por linha. Recurso de servidor numa recusa de segurança. O cliente não repete: a repetição é do caso de uso.
+
+**Fronteira do modelo.** O conteúdo da factura vai como JSON dentro de `<invoice_data>`, com `<` escapado. O prompt pede só um índice ou `null` por linha e não repete nenhuma regra que vive em código. Uma resposta recusada, cortada ou ilegível não dá escolha nenhuma: todas as linhas ficam inválidas, `LOW` e sinalizadas. Uma entrada fora do esquema perde só a sua linha. O log guarda só o motivo de paragem ou o tipo de erro.
+
+**Chave.** A chave do responsável foi usada uma vez, à mão, só pelo ambiente. Não está em nenhum ficheiro.
 
 ### CHG-0034 · Réplicas sem dados das amostras, XLSX recusado e padrão do conjunto dourado
 

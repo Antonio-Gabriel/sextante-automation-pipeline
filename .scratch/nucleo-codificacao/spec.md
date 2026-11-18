@@ -273,8 +273,8 @@ Uma linha com resposta inválida fica sem código, com `LOW` e o motivo `model_r
 
 **Configuração da chamada:**
 
-- `temperature` 0;
-- saída estruturada por ferramenta com esquema declarado;
+- sem `temperature`, que a API já não aceita *(revisto em 18-11-2026, 00-decisoes-e-lacunas.md §3.22)*;
+- saída estruturada por esquema declarado (`output_config.format`), em vez de ferramenta forçada;
 - `max_tokens` proporcional ao número de linhas.
 
 O prompt é versionado e a versão fica registada em cada decisão. **O texto do prompt tem de ser confirmado pelo responsável antes de entrar**, porque é código que muda o comportamento do sistema.

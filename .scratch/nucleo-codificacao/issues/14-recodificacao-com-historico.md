@@ -18,3 +18,5 @@
 Created on 2026-11-18 from the review of tickets 07 and 08 (00-decisoes-e-lacunas.md §3.20). Open question before implementation: whether a re-coding keeps, discards or flags the human reviews of the previous coding.
 
 Prerequisite found in the review of tickets 09 and 10 (CHG-0028): `encoded_line` already keeps superseded codings (migration 0007), but `lexical_score` has primary key (invoice_line_id, item_number) and no link to a coding. Coding again a line that already has scores fails on that key, and the candidates endpoint could not tell current scores from earlier ones. This ticket must link scores to the coding (or supersede them) before re-coding coded invoices.
+
+Unblocked on 2026-11-18: ticket 11 is resolved. Still needs-triage for the open question above, on what happens to the human reviews of the previous coding.

@@ -4,7 +4,7 @@ Automatic coding of supplier invoice lines for AMT, Advanced Maritime Transports
 
 For each line of a supplier invoice, Sextante assigns the exact item number from the catalog, computes a confidence rating, and flags for human review any line where the decision is not safe.
 
-**Status:** under construction. This version delivers tickets 01 to 10 and 12 of `.scratch/nucleo-codificacao/`:
+**Status:** under construction. This version delivers tickets 01 to 13 of `.scratch/nucleo-codificacao/`:
 
 - application startup with a validated catalog;
 - upload of invoices into a background job;
@@ -13,9 +13,8 @@ For each line of a supplier invoice, Sextante assigns the exact item number from
 - a computed confidence (`HIGH`, `MEDIUM`, `LOW`), the `O00999` fallback in OUTLAYSP only, and review flags;
 - line types: a line made only of VAT or discount wording is recorded without code, and only services reach the model;
 - the coded results, read back through the API, and exported as CSV or XLSX with the nine columns of the brief;
-- review of coded lines, entity resolution and possible duplicates.
-
-**Not wired yet: calling the Claude model** (ticket 11, waiting for the prompt to be approved). Until then, an invoice with service lines ends `failed`, without any code invented, and can be reprocessed from its stored text once the model is wired.
+- review of coded lines, entity resolution and possible duplicates;
+- the item choice by Claude, with the approved prompt `item-choice-v1` (ticket 11). The model is `SEXTANTE_MODEL_ID`, `claude-opus-5-5` by default; it answers only an index of the target sheet's list, or none, and the server validates it.
 
 ## Requirements
 
@@ -62,7 +61,7 @@ The sample invoices never enter the repository. Point `SEXTANTE_GOLDEN_SAMPLES_P
 
 The expected results in `backend/tests/golden/expected_results.yaml` are a **proposal still to be confirmed by AMT** (gap L-02). Lines are named by position, never by description. Until AMT confirms them, the thresholds below stay provisional and no accuracy figure is published.
 
-Item codes are not measured by `make golden`, which never calls the model. Measuring them with the real model is a separate manual command, outside `make test` and continuous integration, that arrives with the Claude adapter (ticket 11).
+Item codes are not measured by `make golden`, which never calls the model. `make golden-model` measures them with the real model: it codes the samples as the application does and reports, per line, the expected and the assigned item number, the confidence, the lines flagged for review and the tokens spent. It calls the Anthropic API and costs money, so it is run on purpose only, and is never part of `make test` nor of continuous integration. It also needs `SEXTANTE_CATALOG_PATH` and `SEXTANTE_ANTHROPIC_API_KEY`.
 
 ## Provisional thresholds
 
@@ -88,6 +87,7 @@ Run from `backend/`.
 | `make boundaries` | Layer boundaries, with `import-linter` |
 | `make licenses` | Dependency licences against the allow-list of NFR-LIC-001 |
 | `make traceability-matrix` | Tests cited by requirement. Fails on an unknown identifier |
+| `make golden-model` | Manual only: item codes measured with the real model on the local samples. Calls the Anthropic API and costs money |
 | `make golden` | Golden set on the local samples, without the model: extraction, entity, target sheet, line types and refusals. Needs `SEXTANTE_GOLDEN_SAMPLES_PATH` |
 
 ## Documentation

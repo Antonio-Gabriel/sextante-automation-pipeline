@@ -153,10 +153,9 @@ def test_a_failed_coding_leaves_no_entity_verdict_without_lines(
     valid_environment: dict[str, str],
 ) -> None:
     """The verdict and the lines are written in one transaction: all or nothing."""
-    from sextante.matching.infrastructure.unconfigured_classifier import UnconfiguredItemClassifier
-
     invoice = air_ticket_to_amt()
-    with running_application(valid_environment, [invoice], UnconfiguredItemClassifier()) as app:
+    permanent = FakeItemClassifier(failures=[RuntimeError("synthetic permanent failure")])
+    with running_application(valid_environment, [invoice], permanent) as app:
         job = app.wait_for_job(app.upload(invoice)["job_id"])
 
     assert job["invoice_counts"] == {"failed": 1}

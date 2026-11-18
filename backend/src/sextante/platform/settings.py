@@ -46,6 +46,8 @@ class Settings(BaseModel):
     csv_separator: str = ","
     # Attempts per model call, the first included, for transient failures (REQ-PLT-003).
     model_max_attempts: int = Field(default=3, ge=1, le=10)
+    # Claude model of the item choice; the latest suitable one by default (ticket 11).
+    model_id: str = Field(default="claude-opus-5-5", pattern=r"^[a-z0-9.-]{1,64}$")
     # Characters per page below which a PDF counts as scanned (REQ-ING-002, L-01).
     pdf_min_chars_per_page: int = Field(
         default=PDF_MIN_CHARS_DEFAULT, ge=1, le=PDF_MIN_CHARS_MAXIMUM

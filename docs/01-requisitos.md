@@ -254,7 +254,7 @@ As linhas de serviço de uma factura **devem** ser enviadas ao modelo numa só c
 
 ### REQ-MAP-007 · Determinismo da chamada
 
-A chamada ao modelo **deve** usar `temperature=0`, saída estruturada com esquema declarado, e `max_tokens` dimensionado ao número de linhas.
+A chamada ao modelo **deve** usar saída estruturada com esquema declarado e `max_tokens` dimensionado ao número de linhas. *Revisto em 18-11-2026:* `temperature=0` foi retirado, porque a API deixou de aceitar parâmetros de amostragem; ver 00-decisoes-e-lacunas.md §3.22.
 
 A resposta **deve** ser validada contra o esquema antes de qualquer uso. Uma resposta inválida é tratada como falha da linha, com confiança `LOW` e sinalização, e **não** como motivo para o sistema improvisar um código.
 

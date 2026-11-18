@@ -176,7 +176,7 @@ Esta é a decisão central do projecto e a pergunta que o enunciado faz explicit
 
 **Agrupamento das chamadas.** Uma factura é uma chamada ao modelo, com todas as suas linhas de serviço e a lista de itens da aba de destino, enviada uma vez. Não uma chamada por linha. Reduz as chamadas mensais de cerca de 50.000 para cerca de 5.000, e dá ao modelo o contexto das linhas vizinhas, que ajuda em descrições abreviadas.
 
-**Configuração da chamada.** `temperature=0`, saída estruturada por ferramenta com esquema declarado, e `max_tokens` dimensionado ao número de linhas. A resposta é validada por Pydantic antes de qualquer uso. Uma resposta que não cumpra o esquema é tratada como falha de linha, não como motivo para improvisar.
+**Configuração da chamada.** *Revista em 18-11-2026 por 3.22.* `temperature=0`, saída estruturada por ferramenta com esquema declarado, e `max_tokens` dimensionado ao número de linhas. A resposta é validada por Pydantic antes de qualquer uso. Uma resposta que não cumpra o esquema é tratada como falha de linha, não como motivo para improvisar.
 
 ### 3.8 Confiança derivada, não auto-declarada
 
@@ -333,6 +333,18 @@ Decisão: nesta versão, o reprocessamento aceita só facturas `failed`. Uma fac
 
 - **O que fica por fazer.** NFR-REL-002 dá como motivo recalibrar limiares ou corrigir um prompt, e SEC-19 pede que um reprocessamento escreva uma nova linha de resultado, sem alterar a anterior. Recodificar uma factura já codificada, com o histórico guardado, fica para um ticket próprio, depois do adaptador e do prompt (ticket 11), porque é a mudança de prompt que o justifica.
 - **Até lá,** NFR-REL-002 está cumprido para facturas com falha: a codificação parte do texto guardado, sem nova extracção nem novo carregamento.
+
+### 3.22 Configuração da chamada ao modelo e prompt v1
+
+Decisão tomada pelo responsável em 18-11-2026, ao aprovar a proposta do ticket 11. Substitui a configuração de 3.7.
+
+- **Sem `temperature`.** A API recusa `temperature`, `top_p` e `top_k` em todos os modelos desde 21-10-2026. A reprodutibilidade que importa vive em código: a confiança, as sinalizações e o recurso não dependem da amostragem (3.8).
+- **Saída por esquema, não por ferramenta forçada.** Os modelos actuais recusam `tool_choice` forçado. A resposta é JSON restringido por `output_config.format`, com o esquema declarado, e continua validada no servidor antes de qualquer efeito (SEC-14).
+- **Modelo.** `SEXTANTE_MODEL_ID`, por omissão `claude-opus-5-5`, o mais recente adequado. O modelo que respondeu fica registado em cada decisão.
+- **Esforço e limite.** `effort` baixo, por ser uma classificação. `max_tokens` de 2048 mais 64 por linha, porque o raciocínio, sempre ligado nestes modelos, conta para o limite.
+- **Recusa de segurança.** O recurso de servidor (`fallbacks: "default"`) tenta outro modelo. Se a recusa persistir, ou a resposta vier cortada ou ilegível, todas as linhas ficam com resposta inválida, `LOW` e sinalizadas, sem nova tentativa.
+- **Falhas transitórias.** Rede, tempo esgotado, 429 e 5xx são `ItemClassifierUnavailableError`, repetidas pelo caso de uso com recuo. O cliente da API não repete por si.
+- **Prompt v1** (`item-choice-v1`). O texto em `backend/src/sextante/prompts/item_choice_v1.txt` foi aprovado pelo responsável tal como está. Pede só um índice ou `null` por linha, trata o conteúdo da factura como dados delimitados (`<invoice_data>`, com `<` escapado) e não repete nenhuma regra que vive em código. Mudar o texto exige nova aprovação e nova versão.
 
 ### 3.21 Saída de uma resolução humana e de um duplicado provável
 
