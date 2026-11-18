@@ -116,7 +116,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0036
 - **Estado:** activa
 - **Requisitos:** REQ-MAP-005, REQ-MAP-007, REQ-PLT-003, NFR-TST-001
-- **Commit:** pendente
+- **Commit:** `8299028`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/matching/application/line_coding.py` (novo: `LineCoder`), `encode_invoice.py`
