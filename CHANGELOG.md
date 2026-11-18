@@ -93,7 +93,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0012
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** pendente
+- **Commit:** 05dd1a6
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `.graphifyignore`
@@ -124,7 +124,7 @@ Grafo de conhecimento local do código e dos documentos, que serve de memória e
 - **Pai:** CHG-0012
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** pendente
+- **Commit:** 05dd1a6
 - **Migração:** nenhuma
 - **Ficheiros:** `CHANGELOG.md`, `CLAUDE.md` (secção «Registo de alterações» e passo 6 do fecho de tarefa)
 - **Reversibilidade:** total
