@@ -476,7 +476,7 @@ Neste projecto o ponto caro não é a autenticação: é **tudo o que chama o mo
 
 Acresce um limite que não é por endpoint e que é o que realmente protege o orçamento: **um tecto de chamadas ao modelo por janela de tempo**, aplicado no trabalhador e não na API, com o excedente a ficar em `queued` em vez de ser recusado. Recusar o carregamento seria perder trabalho; atrasá-lo é apenas atrasá-lo.
 
-Nesta versão o contador vive em memória do processo. Com um só processo, funciona. **Com duas réplicas, deixa de funcionar**, e isso é o achado reportado: a mitigação em produção é um contador partilhado, em Redis ou Valkey, e consta de `00-decisoes-e-lacunas.md` §6. Um limite em memória local é um dos erros mais comuns e mais silenciosos deste tipo de sistema, porque passa todos os testes numa instância.
+Nesta versão o contador vive em memória do processo. Com um só processo, funciona. *Implementado em 19-11-2026 (CHG-0049):* janelas fixas sobre um relógio monotónico, por chamador; o chamador é o digest da chave da API, ou o endereço de origem sem chave. Os cinco limites são configuráveis, com os valores da tabela por omissão. O tecto de chamadas ao modelo fica para o ticket de operação 02. **Com duas réplicas, deixa de funcionar**, e isso é o achado reportado: a mitigação em produção é um contador partilhado, em Redis ou Valkey, e consta de `00-decisoes-e-lacunas.md` §6. Um limite em memória local é um dos erros mais comuns e mais silenciosos deste tipo de sistema, porque passa todos os testes numa instância.
 
 Resposta `429` com `Retry-After`.
 

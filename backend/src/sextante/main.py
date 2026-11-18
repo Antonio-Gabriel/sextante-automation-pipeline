@@ -3,6 +3,7 @@
 import asyncio
 import contextlib
 import os
+import time
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass, field
@@ -66,6 +67,16 @@ from sextante.platform.idempotency import (
     IdempotentExecutor,
     purge_periodically,
 )
+from sextante.platform.rate_limit import (
+    GENERAL_RULE,
+    HOUR,
+    MINUTE,
+    Monotonic,
+    RateLimit,
+    RateLimiter,
+    RateLimitExceededError,
+    enforce_rate_limits,
+)
 from sextante.platform.retry import RetryPolicy, Sleep
 from sextante.platform.settings import Settings, StartupConfigurationError
 from sextante.platform.structured_logging import configure_logging
@@ -108,6 +119,7 @@ HTTP_STATUS_BY_ERROR = {
     InvoiceNotFoundError: 404,
     InvoiceNotReprocessableError: 409,
     ApiKeyInvalidError: 401,
+    RateLimitExceededError: 429,
     InvoiceNotAmbiguousError: 409,
     JobNotFoundError: 404,
     EncodedLineNotFoundError: 404,
@@ -137,6 +149,8 @@ class AppDependencies:
     identifiers: IdentifierGenerator = field(default_factory=UuidIdentifierGenerator)
     worker_poll_seconds: float = 1.0
     sleep: Sleep = asyncio.sleep
+    # The rate limiter's clock: monotonic, apart from the business clock (SEC-12).
+    monotonic: Monotonic = time.monotonic
 
 
 def create_app(
@@ -167,16 +181,34 @@ def create_app(
     app.state.catalog = catalog
     app.add_middleware(CorrelationIdMiddleware)
     install_error_handlers(app, HTTP_STATUS_BY_ERROR)
+    app.state.rate_limiter = RateLimiter(rate_limits(settings), adapters.monotonic)
     _include_routers(app, settings)
     return app
+
+
+def rate_limits(settings: Settings) -> dict[str, RateLimit]:
+    """The limits of SEC-12, from the settings.
+
+    Example:
+        RateLimiter(rate_limits(settings), time.monotonic)
+    """
+    return {
+        GENERAL_RULE: RateLimit(settings.rate_limit_general_per_minute, MINUTE),
+        "upload": RateLimit(settings.rate_limit_upload_per_minute, MINUTE),
+        "reprocess": RateLimit(settings.rate_limit_reprocess_per_hour, HOUR),
+        "export": RateLimit(settings.rate_limit_export_per_hour, HOUR),
+        "correction": RateLimit(settings.rate_limit_correction_per_minute, MINUTE),
+    }
 
 
 def _include_routers(app: FastAPI, settings: Settings) -> None:
     app.state.api_key = settings.api_key
     app.include_router(health_router)
-    # Every /api route but health needs the key (L-07); the docs stay open to read.
+    # Every /api route but health needs the key (L-07), then counts against the rate
+    # limits (SEC-12); the docs stay open to read.
+    guards = [Depends(require_api_key), Depends(enforce_rate_limits)]
     for router in (ingestion_router, review_router, export_router):
-        app.include_router(router, dependencies=[Depends(require_api_key)])
+        app.include_router(router, dependencies=guards)
 
 
 def _lifespan(

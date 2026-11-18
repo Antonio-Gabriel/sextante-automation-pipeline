@@ -55,6 +55,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                         └── CHG-0046  fix       Idempotency-Key declarado na documentação da API
                                                                                                                                                                             └── CHG-0047  security  Chave da API em todo o /api excepto health
                                                                                                                                                                                 └── CHG-0048  docs      Tickets do frontend, da operação e do deploy
+                                                                                                                                                                                    └── CHG-0049  security  Limites de taxa por endpoint
 ```
 
 ## Regras
@@ -119,6 +120,27 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0049 · Limites de taxa por endpoint
+
+- **Data:** 2026-11-19
+- **Tipo:** security
+- **Pai:** CHG-0048
+- **Estado:** activa
+- **Requisitos:** SEC-12, SEC-19, SEC-15
+- **Commit:** pendente
+- **Migração:** nenhuma (o esquema continua na revisão `0009`)
+- **Ficheiros:**
+  - `backend/src/sextante/platform/rate_limit.py` (novo), `platform/http_errors.py` (`Retry-After`), `platform/settings.py`, `platform/user_messages.py`, `main.py`
+  - testes: `tests/api/test_rate_limits.py` (novo)
+  - `docs/03-seguranca.md` (SEC-12), `README.md`, `config/.env.example`, ticket de operação 01
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 329 testes e um `xfail` estrito: 429 com `Retry-After` acima do limite, a janela que reabre, o limite geral sobre todas as chamadas, health e credenciais recusadas fora das quotas, limites próprios de reprocessamento, exportação e correcção, e um limite abaixo de 1 a recusar o arranque. O teste com duas instâncias falha na asserção esperada, como documentação da limitação. `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+**Limites.** Os de SEC-12, configuráveis: 300 por minuto em todo o `/api`, 10 carregamentos por minuto, 20 reprocessamentos por hora, 30 exportações por hora e 120 correcções por minuto. Acima de um limite, `429` com `Retry-After` e a mensagem habitual em Português. `/api/health` fica de fora, e a verificação da chave corre antes, para que uma credencial recusada não gaste quota.
+
+**Limitação declarada.** O contador vive em memória do processo. Com duas instâncias, cada uma permite a quota inteira; o teste que o prova falha de propósito. Em produção, um contador partilhado.
 
 ### CHG-0048 · Tickets do frontend, da operação e do deploy
 

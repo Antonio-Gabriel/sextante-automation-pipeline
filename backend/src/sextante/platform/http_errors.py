@@ -16,7 +16,9 @@ logger = logging.getLogger(__name__)
 DOMAIN_ERROR_DEFAULT_STATUS: Final = 422
 
 
-def error_response(status_code: int, user_message_key: str) -> JSONResponse:
+def error_response(
+    status_code: int, user_message_key: str, headers: Mapping[str, str] | None = None
+) -> JSONResponse:
     """Build the error body: stable code, Portuguese message, correlation id.
 
     Example:
@@ -24,6 +26,7 @@ def error_response(status_code: int, user_message_key: str) -> JSONResponse:
     """
     return JSONResponse(
         status_code=status_code,
+        headers=dict(headers or {}),
         content={
             "code": user_message_key,
             "message": USER_MESSAGES_PT[user_message_key],
@@ -48,7 +51,10 @@ def install_error_handlers(app: FastAPI, status_by_error: Mapping[type[DomainErr
             (code for error_type, code in status_by_error.items() if isinstance(error, error_type)),
             DOMAIN_ERROR_DEFAULT_STATUS,
         )
-        return error_response(status, error.user_message_key)
+        # A rate limit says when to come back (SEC-12); no other error carries headers.
+        retry_after = getattr(error, "retry_after", None)
+        headers = {"Retry-After": str(retry_after)} if retry_after is not None else None
+        return error_response(status, error.user_message_key, headers)
 
     @app.exception_handler(Exception)
     async def respond_to_unexpected_error(request: Request, error: Exception) -> JSONResponse:

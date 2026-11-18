@@ -16,6 +16,7 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
         "errors.upload.no_files": "Nenhum ficheiro foi enviado.",
         "errors.job.not_found": "Trabalho não encontrado.",
         "errors.auth.api_key_invalid": "Chave da API em falta ou inválida.",
+        "errors.rate_limit.exceeded": "Pedidos a mais em pouco tempo. Tente de novo mais tarde.",
         "errors.invoice.not_found": "Factura não encontrada.",
         "errors.invoice.not_reprocessable": (
             "Só uma factura com falha ou já codificada pode ser reprocessada."

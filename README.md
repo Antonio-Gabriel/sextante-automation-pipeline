@@ -58,6 +58,20 @@ The application refuses to start, with a message naming the problem, in either o
 - a variable in `config/.env` is missing;
 - the catalog is invalid. A missing sheet, a duplicate or empty item number, a missing `O00999`, or a sheet with more than 100 items all count.
 
+## Rate limits
+
+Every caller has quotas per time window (SEC-12). Over a quota the answer is `429` with a `Retry-After` header, in seconds. The health check is never limited, and a request refused for its API key never uses a quota.
+
+| Limit | Default | Variable |
+|---|---|---|
+| All `/api` calls | 300 per minute | `SEXTANTE_RATE_LIMIT_GENERAL_PER_MINUTE` |
+| Upload | 10 per minute | `SEXTANTE_RATE_LIMIT_UPLOAD_PER_MINUTE` |
+| Reprocessing | 20 per hour | `SEXTANTE_RATE_LIMIT_REPROCESS_PER_HOUR` |
+| Export | 30 per hour | `SEXTANTE_RATE_LIMIT_EXPORT_PER_HOUR` |
+| Line correction | 120 per minute | `SEXTANTE_RATE_LIMIT_CORRECTION_PER_MINUTE` |
+
+The counters live in the memory of the server process. With one process that is enough. With two or more instances each one allows the full quota: running more than one instance needs a shared counter, such as Redis or Valkey.
+
 ## Golden set
 
 The sample invoices never enter the repository. Point `SEXTANTE_GOLDEN_SAMPLES_PATH`, in `config/.env`, at the local folder that holds them, then run `make golden` from `backend/`. It measures, for each sample, the refusal, the entity, the target sheet, the number and types of lines, and which fields the extraction did not find. Each sample is reported as `ok` or with the fields that diverge; the report holds no text from any sample.

@@ -14,6 +14,7 @@ DATABASE_URL_PREFIX: Final = "sqlite+aiosqlite:///"
 CSV_SEPARATORS: Final = frozenset({",", ";", "|"})
 # A key a person could guess is refused at startup.
 API_KEY_MIN_LENGTH: Final = 16
+RATE_LIMIT_MAXIMUM: Final = 100_000
 PDF_MIN_CHARS_DEFAULT: Final = 100
 PDF_MIN_CHARS_MAXIMUM: Final = 10_000
 REVIEWER_ID_MAX_LENGTH: Final = 128
@@ -68,6 +69,12 @@ class Settings(ModelCallSettings):
     reviewer_id: str = Field(max_length=REVIEWER_ID_MAX_LENGTH, pattern=REVIEWER_ID_PATTERN)
     # CSV separator, comma by default (REQ-EXP-005).
     csv_separator: str = ","
+    # Rate limits per caller (SEC-12). Defaults are the table of SEC-12.
+    rate_limit_upload_per_minute: int = Field(default=10, ge=1, le=RATE_LIMIT_MAXIMUM)
+    rate_limit_reprocess_per_hour: int = Field(default=20, ge=1, le=RATE_LIMIT_MAXIMUM)
+    rate_limit_export_per_hour: int = Field(default=30, ge=1, le=RATE_LIMIT_MAXIMUM)
+    rate_limit_correction_per_minute: int = Field(default=120, ge=1, le=RATE_LIMIT_MAXIMUM)
+    rate_limit_general_per_minute: int = Field(default=300, ge=1, le=RATE_LIMIT_MAXIMUM)
     # Characters per page below which a PDF counts as scanned (REQ-ING-002, L-01).
     pdf_min_chars_per_page: int = Field(
         default=PDF_MIN_CHARS_DEFAULT, ge=1, le=PDF_MIN_CHARS_MAXIMUM
