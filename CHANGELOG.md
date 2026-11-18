@@ -122,7 +122,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0042
 - **Estado:** activa
 - **Requisitos:** NFR-REL-002, REQ-REV-004, REQ-AUD-002, REQ-AUD-003, SEC-19, D-3.23
-- **Commit:** pendente
+- **Commit:** `64db2b8`
 - **Migração:** `0009_scores_per_coding` (`lexical_score` passa a ter chave `(encoded_line_id, item_number)`; as pontuações existentes passam para a codificação em vigor da sua linha)
 - **Ficheiros:**
   - `backend/src/sextante/ingestion/application/reprocess_invoice.py`, `worker.py`, `main.py`
