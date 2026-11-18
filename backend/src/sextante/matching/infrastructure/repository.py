@@ -2,8 +2,9 @@
 
 from collections import defaultdict
 from collections.abc import Sequence
+from datetime import datetime
 
-from sqlalchemy import Row, func, select
+from sqlalchemy import Row, func, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from sextante.matching.application.records import (
@@ -42,6 +43,19 @@ class MatchingRepository:
             )
         )
 
+    async def supersede_codings(
+        self, connection: AsyncConnection, invoice_line_ids: Sequence[str], at: datetime
+    ) -> None:
+        """Mark the codings in force of these lines as superseded; nothing is overwritten."""
+        table = ENCODED_LINE_TABLE
+        await connection.execute(
+            update(table)
+            .where(
+                table.c.invoice_line_id.in_(list(invoice_line_ids)), table.c.superseded_at.is_(None)
+            )
+            .values(superseded_at=at.isoformat())
+        )
+
     async def record_encoded_line(
         self, connection: AsyncConnection, record: EncodedLineRecord
     ) -> None:
@@ -78,7 +92,9 @@ class MatchingRepository:
         table = ENCODED_LINE_TABLE
         rows = (
             await connection.execute(
-                select(table).where(table.c.invoice_line_id.in_(list(line_ids)))
+                select(table).where(
+                    table.c.invoice_line_id.in_(list(line_ids)), table.c.superseded_at.is_(None)
+                )
             )
         ).all()
         flags = await _flags_of(connection, [str(r.id) for r in rows])
@@ -89,7 +105,8 @@ class MatchingRepository:
     ) -> LineCoding | None:
         """Return one coding by its own identifier, or None."""
         table = ENCODED_LINE_TABLE
-        row = (await connection.execute(select(table).where(table.c.id == encoded_line_id))).first()
+        query = select(table).where(table.c.id == encoded_line_id, table.c.superseded_at.is_(None))
+        row = (await connection.execute(query)).first()
         if row is None:
             return None
         flags = await _flags_of(connection, [encoded_line_id])
@@ -100,7 +117,9 @@ class MatchingRepository:
     ) -> LineCandidates | None:
         """Return the scored items of the line's sheet, best first, and the model's choice."""
         table = ENCODED_LINE_TABLE
-        query = select(table).where(table.c.invoice_line_id == invoice_line_id)
+        query = select(table).where(
+            table.c.invoice_line_id == invoice_line_id, table.c.superseded_at.is_(None)
+        )
         row = (await connection.execute(query)).first()
         if row is None:
             return None

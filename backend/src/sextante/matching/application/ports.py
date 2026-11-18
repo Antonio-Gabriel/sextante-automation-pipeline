@@ -9,6 +9,8 @@ from sextante.matching.domain.scoring import LexicalScore
 from sextante.platform.errors import DomainError
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from sqlalchemy.ext.asyncio import AsyncConnection
 
     from sextante.matching.application.records import (
@@ -95,4 +97,10 @@ class MatchingRepositoryPort(Protocol):
         self, connection: "AsyncConnection", record: "EncodedLineRecord"
     ) -> None:
         """Insert the encoded line and the lexical scores of every item of its sheet."""
+        ...
+
+    async def supersede_codings(
+        self, connection: "AsyncConnection", invoice_line_ids: Sequence[str], at: "datetime"
+    ) -> None:
+        """Mark the codings in force of these lines as superseded; nothing is overwritten."""
         ...

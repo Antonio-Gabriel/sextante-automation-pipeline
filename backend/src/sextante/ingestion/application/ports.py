@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sextante.ingestion.application.records import (
     ClaimedJob,
     EntityCheckRecord,
+    EntityResolutionRecord,
     ExportInvoice,
     InvoiceState,
     JobLine,
@@ -95,6 +96,22 @@ class IngestionRepositoryPort(Protocol):
         """Return the stored extraction, or None when the invoice was never extracted."""
         ...
 
+    async def entity_resolution(self, connection: AsyncConnection, invoice_id: str) -> str | None:
+        """Return the verdict a reviewer chose for this invoice, or None."""
+        ...
+
+    async def earlier_invoice_with_same_number(
+        self, connection: AsyncConnection, invoice_id: str
+    ) -> str | None:
+        """Return the first invoice uploaded before this one with its supplier and number."""
+        ...
+
+    async def record_possible_duplicate(
+        self, connection: AsyncConnection, invoice_id: str, earlier_invoice_id: str
+    ) -> None:
+        """Point the invoice at the earlier one it may duplicate."""
+        ...
+
 
 class ReprocessingRepositoryPort(Protocol):
     """Port: find an invoice, put it back in the queue, and reload what was stored."""
@@ -109,6 +126,12 @@ class ReprocessingRepositoryPort(Protocol):
         self, connection: AsyncConnection, invoice_id: str, job_id: str
     ) -> None:
         """Queue the invoice again and reopen its job."""
+        ...
+
+    async def record_entity_resolution(
+        self, connection: AsyncConnection, invoice_id: str, resolution: EntityResolutionRecord
+    ) -> bool:
+        """Store the resolution; False when the invoice already had one."""
         ...
 
 

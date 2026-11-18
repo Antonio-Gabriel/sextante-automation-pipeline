@@ -1,6 +1,6 @@
 """Tables owned by the ingestion module (02-arquitectura.md §5)."""
 
-from sqlalchemy import Column, ForeignKey, Integer, String, Table, Text, UniqueConstraint
+from sqlalchemy import Column, ForeignKey, Index, Integer, String, Table, Text, UniqueConstraint
 
 from sextante.platform.schema import SCHEMA_METADATA
 
@@ -47,6 +47,19 @@ INVOICE_HEADER_TABLE = Table(
     Column("target_sheet", String(16), nullable=True),
     Column("entity_verdict", String(16), nullable=True),
     Column("entity_reason", String(40), nullable=True),
+    Column("supplier_key", Text, nullable=True),
+    Column("possible_duplicate_of", String(64), nullable=True),
+    Index("ix_invoice_header_supplier_number", "supplier_key", "invoice_number"),
+)
+
+ENTITY_RESOLUTION_TABLE = Table(
+    "entity_resolution",
+    SCHEMA_METADATA,
+    Column("invoice_id", String(64), ForeignKey("invoice.id"), primary_key=True),
+    Column("verdict", String(16), nullable=False),
+    Column("note", Text, nullable=False),
+    Column("resolved_by", String(128), nullable=False),
+    Column("resolved_at", String(40), nullable=False),
 )
 
 INVOICE_LINE_TABLE = Table(

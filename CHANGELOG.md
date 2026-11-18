@@ -33,6 +33,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                 └── CHG-0024  feat      Revisão de linhas
                                                                                     └── CHG-0025  fix       Correcções da revisão dos tickets 07 e 08
                                                                                         └── CHG-0026  docs      Isenção do carregamento e reprocessamento só de falhas
+                                                                                            └── CHG-0027  feat      Resolução de entidade e duplicado provável
 ```
 
 ## Regras
@@ -97,6 +98,33 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0027 · Resolução de entidade e duplicado provável
+
+- **Data:** 2026-11-18
+- **Tipo:** feat
+- **Pai:** CHG-0026
+- **Estado:** activa
+- **Requisitos:** REQ-REV-006, REQ-ING-011, REQ-REV-004, REQ-AUD-002, SEC-08, SEC-19, D-3.10, D-3.15
+- **Commit:** pendente
+- **Migração:** `0007_entity_resolution_and_duplicates` (tabela `entity_resolution`; `encoded_line.superseded_at` com índice único parcial no lugar da restrição única; `invoice_header.supplier_key` e `possible_duplicate_of`, com índice não único sobre fornecedor e número)
+- **Ficheiros:**
+  - `backend/src/sextante/ingestion/` (caso de uso `ResolveEntity`, rota, repositório, tabelas)
+  - `backend/src/sextante/matching/` (codificações substituídas, sinalização da factura inteira)
+  - `backend/src/sextante/worker.py`, `main.py`
+  - `backend/src/sextante/platform/supplier_key.py` (novo, partilhado com a exportação), `limits.py`, `user_messages.py`
+  - `backend/src/sextante/review/` (resultados com `possible_duplicate_of`)
+  - testes: `test_entity_resolution.py`, `test_possible_duplicate.py` (novos), harness e fixtures
+  - `README.md`, tickets 09 e 10
+- **Reversibilidade:** parcial
+- **Reversão:** reverter o commit e descer a migração para `0006`. A descida repõe a restrição única em `encoded_line`, e falha se houver codificações substituídas: essas têm de ser retiradas à mão primeiro. As resoluções gravadas perdem-se com a tabela; os eventos `entity_resolved` e `possible_duplicate_detected` ficam em `audit_event`.
+- **Verificação:** 258 testes, incluindo resolução `MATCH` para OUTLAYS e `NO_MATCH` para OUTLAYSP com `O00999`, auditoria com o veredicto anterior e o novo, codificação anterior guardada como substituída, recusa de factura não ambígua, resolução repetida que codifica uma só vez, contrato da nota, lista de exclusão inalterada, duplicado sinalizado com referência, mesmo digest sem sinalização, factura sem número e outro fornecedor com o mesmo número; migração verificada a subir, descer e subir; `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+**Resolução de entidade.** `POST /api/invoices/{id}/entity-resolution` aceita `MATCH` ou `NO_MATCH` e uma nota obrigatória de 500 caracteres no máximo, com `Idempotency-Key`. Só uma factura `AMBIGUOUS` por resolver é aceite. A resolução fica em `entity_resolution`, gera `entity_resolved` com o autor configurado e põe a factura na fila. O trabalhador usa a resolução em vez da verificação, e as linhas seguem a regra normal de confiança. A lista de exclusão não muda.
+
+**Codificação substituída.** As linhas da factura ambígua já tinham um registo sem código. A nova codificação marca-o como substituído (`superseded_at`) em vez de o sobrescrever; leituras, revisão, candidatos e exportação mostram só a codificação em vigor.
+
+**Duplicado provável.** Uma factura com o mesmo fornecedor (NIF, ou nome normalizado) e o mesmo número de outra carregada antes, com outro digest, é codificada e todas as linhas ficam com `possible_duplicate`. Os resultados indicam a anterior em `possible_duplicate_of`. Sem número nunca é duplicado; o mesmo ficheiro continua a devolver o trabalho existente.
 
 ### CHG-0026 · Isenção do carregamento e reprocessamento só de falhas
 

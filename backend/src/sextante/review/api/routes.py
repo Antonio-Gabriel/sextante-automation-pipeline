@@ -60,6 +60,8 @@ class ResultLineResponse(BaseModel):
     flags: list[FlagResponse]
     notes: list[FlagResponse]
     review_note: str | None
+    # The invoice uploaded earlier with the same supplier and number (REQ-ING-011).
+    possible_duplicate_of: str | None
 
 
 class ResultsPageResponse(BaseModel):
@@ -171,6 +173,7 @@ def _line_response(line: ResultLine) -> ResultLineResponse:
         flags=[FlagResponse(code=c, message=USER_MESSAGES_PT[f"flags.{c}"]) for c in line.flags],
         notes=[FlagResponse(code=c, message=USER_MESSAGES_PT[f"notes.{c}"]) for c in line.notes],
         review_note=line.review_note,
+        possible_duplicate_of=line.possible_duplicate_of,
     )
 
 

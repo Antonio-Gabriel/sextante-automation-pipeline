@@ -27,6 +27,11 @@ from sextante.ingestion.application.reprocess_invoice import (
     InvoiceNotReprocessableError,
     ReprocessInvoice,
 )
+from sextante.ingestion.application.resolve_entity import (
+    InvoiceNotAmbiguousError,
+    ResolutionCollaborators,
+    ResolveEntity,
+)
 from sextante.ingestion.application.upload_invoices import (
     FileTooLargeError,
     UnsupportedFileTypeError,
@@ -95,6 +100,7 @@ class ReferenceData:
 HTTP_STATUS_BY_ERROR = {
     InvoiceNotFoundError: 404,
     InvoiceNotReprocessableError: 409,
+    InvoiceNotAmbiguousError: 409,
     JobNotFoundError: 404,
     EncodedLineNotFoundError: 404,
     InvoiceLineNotFoundError: 404,
@@ -218,6 +224,7 @@ def _wire_review(
     adapters: AppDependencies,
 ) -> None:
     app.state.reviewer_id = settings.reviewer_id
+    app.state.resolve_entity = _build_entity_resolution(settings, adapters)
     app.state.idempotency = IdempotentExecutor(engine, adapters.clock)
     app.state.read_line_candidates = ReadLineCandidates(
         engine, IngestionRepository(), MatchingRepository(), catalog
@@ -227,6 +234,18 @@ def _wire_review(
             codings=MatchingRepository(),
             reviews=ReviewRepository(),
             catalog=catalog,
+            audit=AuditEventRepository(),
+            clock=adapters.clock,
+            identifiers=adapters.identifiers,
+            reviewer_id=settings.reviewer_id,
+        )
+    )
+
+
+def _build_entity_resolution(settings: Settings, adapters: AppDependencies) -> ResolveEntity:
+    return ResolveEntity(
+        ResolutionCollaborators(
+            repository=IngestionRepository(),
             audit=AuditEventRepository(),
             clock=adapters.clock,
             identifiers=adapters.identifiers,

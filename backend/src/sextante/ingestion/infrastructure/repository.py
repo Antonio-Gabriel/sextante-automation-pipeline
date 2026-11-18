@@ -4,7 +4,7 @@ import json
 from dataclasses import asdict
 from datetime import datetime
 
-from sqlalchemy import Row, Select, func, select, update
+from sqlalchemy import Row, Select, Subquery, func, literal, select, tuple_, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -12,6 +12,7 @@ from sextante.ingestion.application.records import (
     ClaimedJob,
     DuplicateContentError,
     EntityCheckRecord,
+    EntityResolutionRecord,
     ExportInvoice,
     ExportLine,
     InvoiceState,
@@ -31,11 +32,13 @@ from sextante.ingestion.domain.model import (
 from sextante.ingestion.domain.normalization import normalize_extraction
 from sextante.ingestion.domain.statuses import InvoiceStatus, JobStatus
 from sextante.ingestion.infrastructure.tables import (
+    ENTITY_RESOLUTION_TABLE,
     INVOICE_HEADER_TABLE,
     INVOICE_LINE_TABLE,
     INVOICE_TABLE,
     JOB_TABLE,
 )
+from sextante.platform.supplier_key import supplier_key
 from sextante.platform.text_normalization import normalize_for_comparison
 
 
@@ -208,6 +211,7 @@ class IngestionRepository:
                 description=str(r.description),
                 billed_entity=_detected_entity(_blocks(r.billed_entities)),
                 entity_verdict=r.entity_verdict,
+                possible_duplicate_of=r.possible_duplicate_of,
             )
             for r in rows
         ]
@@ -223,12 +227,67 @@ class IngestionRepository:
     async def invoice_state(
         self, connection: AsyncConnection, invoice_id: str
     ) -> InvoiceState | None:
-        """Return the invoice's job and status, or None when unknown."""
-        query = select(INVOICE_TABLE.c.job_id, INVOICE_TABLE.c.status).where(
-            INVOICE_TABLE.c.id == invoice_id
+        """Return the invoice's job, status and entity verdict, or None when unknown."""
+        header = INVOICE_HEADER_TABLE
+        query = (
+            select(
+                INVOICE_TABLE.c.job_id,
+                INVOICE_TABLE.c.status,
+                header.c.entity_verdict,
+                header.c.entity_reason,
+            )
+            .outerjoin(header, header.c.invoice_id == INVOICE_TABLE.c.id)
+            .where(INVOICE_TABLE.c.id == invoice_id)
         )
         row = (await connection.execute(query)).first()
-        return InvoiceState(str(row.job_id), InvoiceStatus(str(row.status))) if row else None
+        if row is None:
+            return None
+        status = InvoiceStatus(str(row.status))
+        return InvoiceState(str(row.job_id), status, row.entity_verdict, row.entity_reason)
+
+    async def record_entity_resolution(
+        self, connection: AsyncConnection, invoice_id: str, resolution: EntityResolutionRecord
+    ) -> bool:
+        """Store the resolution; False when the invoice already had one (REQ-REV-006)."""
+        statement = (
+            ENTITY_RESOLUTION_TABLE.insert()
+            .prefix_with("OR IGNORE")
+            .values(
+                invoice_id=invoice_id,
+                verdict=resolution.verdict,
+                note=resolution.note,
+                resolved_by=resolution.resolved_by,
+                resolved_at=resolution.resolved_at.isoformat(),
+            )
+        )
+        return (await connection.execute(statement)).rowcount == 1
+
+    async def entity_resolution(self, connection: AsyncConnection, invoice_id: str) -> str | None:
+        """Return the verdict a reviewer chose for this invoice, or None."""
+        table = ENTITY_RESOLUTION_TABLE
+        query = select(table.c.verdict).where(table.c.invoice_id == invoice_id)
+        verdict = (await connection.execute(query)).scalar_one_or_none()
+        return str(verdict) if verdict is not None else None
+
+    async def earlier_invoice_with_same_number(
+        self, connection: AsyncConnection, invoice_id: str
+    ) -> str | None:
+        """Return the first other invoice of the same supplier and number, or None.
+
+        An invoice without number, or without supplier, never matches (REQ-ING-011).
+        """
+        rows = (await connection.execute(_same_number_query(invoice_id))).all()
+        return str(rows[0][0]) if rows else None
+
+    async def record_possible_duplicate(
+        self, connection: AsyncConnection, invoice_id: str, earlier_invoice_id: str
+    ) -> None:
+        """Point the invoice at the earlier one it may duplicate."""
+        await connection.execute(
+            update(INVOICE_HEADER_TABLE)
+            .where(INVOICE_HEADER_TABLE.c.invoice_id == invoice_id)
+            .values(possible_duplicate_of=earlier_invoice_id)
+        )
 
     async def requeue_invoice(
         self, connection: AsyncConnection, invoice_id: str, job_id: str
@@ -268,6 +327,37 @@ class IngestionRepository:
         return [_export_invoice(row, lines.get(str(row.id), ())) for row in invoices]
 
 
+def _supplier_and_number_of(invoice_id: str) -> Subquery:
+    header, uploaded = INVOICE_HEADER_TABLE, INVOICE_TABLE.alias("uploaded")
+    return (
+        select(header.c.supplier_key, header.c.invoice_number, uploaded.c.created_at)
+        .join(uploaded, uploaded.c.id == header.c.invoice_id)
+        .where(header.c.invoice_id == invoice_id, func.trim(header.c.invoice_number) != "")
+        .subquery()
+    )
+
+
+def _same_number_query(invoice_id: str) -> Select[tuple[object, ...]]:
+    # Only an invoice uploaded before this one counts, so two copies never point at
+    # each other; the non-unique index on (supplier_key, invoice_number) serves the join.
+    earlier = INVOICE_HEADER_TABLE.alias("earlier")
+    this = _supplier_and_number_of(invoice_id)
+    same_invoice = (earlier.c.supplier_key == this.c.supplier_key) & (
+        earlier.c.invoice_number == this.c.invoice_number
+    )
+    before = tuple_(INVOICE_TABLE.c.created_at, INVOICE_TABLE.c.id) < tuple_(
+        this.c.created_at, literal(invoice_id)
+    )
+    return (
+        select(earlier.c.invoice_id)
+        .join(this, same_invoice)
+        .join(INVOICE_TABLE, INVOICE_TABLE.c.id == earlier.c.invoice_id)
+        .where(before)
+        .order_by(INVOICE_TABLE.c.created_at, INVOICE_TABLE.c.id)
+        .limit(1)
+    )
+
+
 def _job_lines_query(job_id: str, invoice_id: str | None) -> Select[tuple[object, ...]]:
     lines, header = INVOICE_LINE_TABLE, INVOICE_HEADER_TABLE
     query = (
@@ -279,6 +369,7 @@ def _job_lines_query(job_id: str, invoice_id: str | None) -> Select[tuple[object
             lines.c.description,
             header.c.billed_entities,
             header.c.entity_verdict,
+            header.c.possible_duplicate_of,
         )
         .join(INVOICE_TABLE, INVOICE_TABLE.c.id == lines.c.invoice_id)
         .join(header, header.c.invoice_id == lines.c.invoice_id)
@@ -407,6 +498,7 @@ def _header_row(invoice_id: str, extraction: ExtractedInvoice) -> dict[str, obje
             [asdict(r) for r in extraction.summary_rows], ensure_ascii=False, default=str
         ),
         "notes": extraction.notes,
+        "supplier_key": supplier_key(extraction.supplier.nif, extraction.supplier.name),
     }
 
 

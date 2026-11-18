@@ -42,6 +42,7 @@ def test_invoice_billed_to_amt_is_coded_against_outlays_and_read_back(
             "flags": [],
             "notes": [],
             "review_note": None,
+            "possible_duplicate_of": None,
         }
     ]
 

@@ -4,7 +4,7 @@ import time
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Final
+from typing import Any, Final
 
 from fastapi.testclient import TestClient
 
@@ -44,6 +44,12 @@ class EncodingHarness:
                 return job
             time.sleep(WORKER_POLL_SECONDS)
         raise AssertionError(f"Job {job_id} did not finish within {JOB_TIMEOUT_SECONDS}s")
+
+    def lines(self, job_id: object) -> list[dict[str, Any]]:
+        """Return the first page of the job's lines, as dictionaries."""
+        lines = self.results(job_id)["lines"]
+        assert isinstance(lines, list)
+        return lines
 
     def results(self, job_id: object, **params: int) -> dict[str, object]:
         """Return one page of the job's encoded lines."""

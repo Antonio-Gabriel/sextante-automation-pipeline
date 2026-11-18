@@ -1,6 +1,6 @@
 """Tables owned by the matching module (02-arquitectura.md §5)."""
 
-from sqlalchemy import Column, Float, ForeignKey, Integer, String, Table, Text, UniqueConstraint
+from sqlalchemy import Column, Float, ForeignKey, Index, Integer, String, Table, Text, text
 
 from sextante.platform.schema import SCHEMA_METADATA
 
@@ -33,7 +33,14 @@ ENCODED_LINE_TABLE = Table(
     Column("review_status", String(16), nullable=False),
     Column("note", String(32), nullable=True),
     Column("encoded_at", String(40), nullable=False),
-    UniqueConstraint("invoice_line_id", name="uq_encoded_line_invoice_line"),
+    # Set when a later coding of the same line takes over (migration 0007).
+    Column("superseded_at", String(40), nullable=True),
+    Index(
+        "uq_encoded_line_in_force",
+        "invoice_line_id",
+        unique=True,
+        sqlite_where=text("superseded_at IS NULL"),
+    ),
 )
 
 LEXICAL_SCORE_TABLE = Table(

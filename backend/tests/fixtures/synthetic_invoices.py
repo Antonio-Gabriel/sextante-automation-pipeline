@@ -196,3 +196,24 @@ def extraction_of(invoice: SyntheticInvoice) -> ExtractedInvoice:
     """
     assert isinstance(invoice.extraction, ExtractedInvoice)
     return invoice.extraction
+
+
+def reexported(invoice: SyntheticInvoice, label: str) -> SyntheticInvoice:
+    """The same invoice in a new file, as when it is exported again: same supplier and number.
+
+    Example:
+        reexported(taag_air_ticket_to_amt(), "INV-001-again")
+    """
+    return SyntheticInvoice(
+        f"{label}_synthetic.pdf", synthetic_pdf_bytes(label), extraction_of(invoice)
+    )
+
+
+def without_invoice_number(invoice: SyntheticInvoice, label: str) -> SyntheticInvoice:
+    """The invoice in a new file, with no invoice number extracted.
+
+    Example:
+        without_invoice_number(taag_air_ticket_to_amt(), "INV-001-no-number")
+    """
+    extraction = dataclasses.replace(extraction_of(invoice), invoice_number=None)
+    return SyntheticInvoice(f"{label}_synthetic.pdf", synthetic_pdf_bytes(label), extraction)

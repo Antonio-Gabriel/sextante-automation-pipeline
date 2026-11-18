@@ -46,6 +46,7 @@ The response gives the SHA-256 of the loaded catalog.
 | `GET /api/jobs/{job_id}` | Job status, invoices counted by status and in total, and the tokens spent, per invoice and in total |
 | `POST /api/invoices/{invoice_id}/reprocess` | Queue a failed invoice again; it is coded from its stored text, without a new upload. Needs `Idempotency-Key` |
 | `GET /api/jobs/{job_id}/results` | Coded lines in document order, with the reviewed values in force, paginated (`limit` up to 100, `offset`). Filters: `confidence`, `target_sheet`, `flagged`, `invoice_id` |
+| `POST /api/invoices/{invoice_id}/entity-resolution` | Resolve an ambiguous entity as `MATCH` or `NO_MATCH`, with a mandatory note; the invoice is coded again from its stored text. Needs `Idempotency-Key` |
 | `GET /api/invoices/{invoice_id}/lines/{line_id}/candidates` | Every item of the line's target sheet, best lexical score first, with the model's choice marked |
 | `PATCH /api/encoded-lines/{encoded_line_id}` | Correct the code with an item of the line's target sheet, with an optional note. Needs `Idempotency-Key` |
 | `POST /api/encoded-lines/{encoded_line_id}/accept` | Accept a pending line without changing its code. Needs `Idempotency-Key` |

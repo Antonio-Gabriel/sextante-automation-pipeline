@@ -57,6 +57,7 @@ class ResultLine:
     flags: tuple[str, ...]
     notes: tuple[str, ...]
     review_note: str | None
+    possible_duplicate_of: str | None
 
 
 class ListJobResults:
@@ -119,4 +120,5 @@ def _result_line(line: JobLine, coding: CodingInForce | None) -> ResultLine:
         flags=coding.flags if coding else (),
         notes=(coding.note,) if coding and coding.note else (),
         review_note=coding.review_note if coding else None,
+        possible_duplicate_of=line.possible_duplicate_of,
     )

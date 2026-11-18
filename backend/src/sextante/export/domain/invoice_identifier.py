@@ -2,7 +2,7 @@
 
 from typing import Final
 
-from sextante.platform.text_normalization import digits_only, fold_for_matching
+from sextante.platform.supplier_key import supplier_key
 
 SHORT_DIGEST_LENGTH: Final = 12
 
@@ -20,12 +20,5 @@ def invoice_identifier(
         # "5419990001/SYN-2026-001"
     """
     reference = number.strip() if number and number.strip() else digest[:SHORT_DIGEST_LENGTH]
-    supplier = _supplier_key(supplier_nif, supplier_name)
+    supplier = supplier_key(supplier_nif, supplier_name)
     return f"{supplier}/{reference}" if supplier else reference
-
-
-def _supplier_key(supplier_nif: str | None, supplier_name: str | None) -> str | None:
-    digits = digits_only(supplier_nif)
-    if digits:
-        return digits
-    return fold_for_matching(supplier_name) if supplier_name else None

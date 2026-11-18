@@ -1,5 +1,6 @@
 """Code the service lines of one routed invoice (REQ-MAP-004 to REQ-MAP-009, SEC-14)."""
 
+import dataclasses
 import logging
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
@@ -84,9 +85,16 @@ class EncodeInvoice:
         self._collaborators = collaborators
 
     async def execute(
-        self, invoice: StoredInvoice, target_sheet: TargetSheet, also_write: SameTransactionWrite
+        self,
+        invoice: StoredInvoice,
+        target_sheet: TargetSheet,
+        also_write: SameTransactionWrite,
+        invoice_flags: tuple[FlagReason, ...] = (),
     ) -> None:
         """Code the service lines with one model call; record VAT and discount lines as such.
+
+        ``invoice_flags`` concern the whole invoice, such as a possible duplicate, and are
+        added to every line, sending it to review (REQ-ING-011).
 
         Example:
             await encoder.execute(stored_invoice, TargetSheet.OUTLAYS, record_header)
@@ -99,7 +107,8 @@ class EncodeInvoice:
         ]
         call, coded = await self._code_services(invoice, services, target_sheet)
         outcomes = sorted(coded + others, key=lambda outcome: outcome.line.position)
-        await self._persist(outcomes, target_sheet, call, also_write)
+        flagged = [_with_flags(outcome, invoice_flags) for outcome in outcomes]
+        await self._persist(flagged, target_sheet, call, also_write)
 
     async def _code_services(
         self, invoice: StoredInvoice, services: list[StoredLine], target_sheet: TargetSheet
@@ -146,7 +155,11 @@ class EncodeInvoice:
         return call, choices
 
     async def record_uncoded(
-        self, invoice: StoredInvoice, reason: FlagReason, also_write: SameTransactionWrite
+        self,
+        invoice: StoredInvoice,
+        reason: FlagReason,
+        also_write: SameTransactionWrite,
+        invoice_flags: tuple[FlagReason, ...] = (),
     ) -> None:
         """Record every line of an ambiguous invoice: no sheet, no code, LOW, flagged (D-3.15).
 
@@ -155,7 +168,9 @@ class EncodeInvoice:
         """
         decision = uncoded_line_decision(reason)
         outcomes = [_LineOutcome(line, None, decision, ()) for line in invoice.lines]
-        await self._persist(outcomes, None, None, also_write)
+        await self._persist(
+            [_with_flags(o, invoice_flags) for o in outcomes], None, None, also_write
+        )
 
     def _decide(
         self,
@@ -178,22 +193,33 @@ class EncodeInvoice:
         deps = self._collaborators
         async with deps.engine.begin() as connection:
             await also_write(connection)
+            # A line coded again, after an entity resolution, keeps its earlier coding as
+            # superseded: the new one takes over without overwriting it (REQ-REV-004).
+            line_ids = [outcome.line.line_id for outcome in outcomes]
+            await deps.repository.supersede_codings(connection, line_ids, deps.clock.now())
             if call is not None:
                 await deps.repository.record_model_call(connection, call)
             for outcome in outcomes:
-                record = self._record_for(outcome, target_sheet, call)
-                await deps.repository.record_encoded_line(connection, record)
-                event = "line_encoded" if target_sheet else "line_not_coded"
-                subject = ("invoice_line", outcome.line.line_id)
-                payload = _audit_payload(outcome.line, record, call)
-                await deps.audit.append(
-                    connection,
-                    deps.identifiers.new_id(),
-                    event,
-                    subject,
-                    payload,
-                    record.encoded_at,
-                )
+                await self._persist_line(connection, outcome, target_sheet, call)
+
+    async def _persist_line(
+        self,
+        connection: AsyncConnection,
+        outcome: _LineOutcome,
+        target_sheet: TargetSheet | None,
+        call: ModelCallRecord | None,
+    ) -> None:
+        deps = self._collaborators
+        record = self._record_for(outcome, target_sheet, call)
+        await deps.repository.record_encoded_line(connection, record)
+        await deps.audit.append(
+            connection,
+            deps.identifiers.new_id(),
+            "line_encoded" if target_sheet else "line_not_coded",
+            ("invoice_line", outcome.line.line_id),
+            _audit_payload(outcome.line, record, call),
+            record.encoded_at,
+        )
 
     def _record_for(
         self, outcome: _LineOutcome, target_sheet: TargetSheet | None, call: ModelCallRecord | None
@@ -224,6 +250,13 @@ def _validated(choices: Sequence[ItemChoiceFromModel]) -> list[ItemChoiceFromMod
                 "model_answer_rejected_by_schema", extra={"line_position": choice.line_position}
             )
     return valid
+
+
+def _with_flags(outcome: _LineOutcome, flags: tuple[FlagReason, ...]) -> _LineOutcome:
+    if not flags:
+        return outcome
+    decision = dataclasses.replace(outcome.decision, flags=outcome.decision.flags + flags)
+    return dataclasses.replace(outcome, decision=decision)
 
 
 def _non_service_outcome(line: StoredLine) -> _LineOutcome:

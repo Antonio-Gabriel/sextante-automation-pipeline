@@ -26,6 +26,9 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
             "O item escolhido não pertence à aba de destino da linha."
         ),
         "errors.review.not_pending": "Só uma linha pendente pode ser aceite.",
+        "errors.entity.not_ambiguous": (
+            "Só uma factura com entidade ambígua, ainda por resolver, pode ser resolvida."
+        ),
         "errors.idempotency.key_required": "Falta o cabeçalho Idempotency-Key, ou é inválido.",
         "errors.idempotency.key_reused": "A chave Idempotency-Key já foi usada noutro pedido.",
         "flags.entity_label_not_found": "Não foi encontrada a entidade facturada na factura.",

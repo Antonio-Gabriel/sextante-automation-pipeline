@@ -22,6 +22,8 @@ from sextante.matching.application.encode_invoice import EncodeInvoice, SameTran
 from sextante.matching.contracts import (
     EntityCheckResult,
     EntityDenylist,
+    EntityVerdict,
+    FlagReason,
     TargetEntity,
     check_billed_entity,
     target_sheet_for,
@@ -144,22 +146,43 @@ class EncodingWorker:
 
     async def _encode(self, stored: StoredInvoice) -> tuple[InvoiceStatus, str | None]:
         deps = self._collaborators
-        check = check_billed_entity(stored.billed_entities, deps.target_entity, deps.denylist)
+        resolved, earlier = await self._invoice_context(stored.invoice_id)
+        check = resolved or check_billed_entity(
+            stored.billed_entities, deps.target_entity, deps.denylist
+        )
         target_sheet = target_sheet_for(check.verdict)
-        record_header = self._header_writer(stored.invoice_id, check, target_sheet)
+        # A possible duplicate is coded as usual, never blocked, and flagged (REQ-ING-011).
+        flags = (FlagReason.POSSIBLE_DUPLICATE,) if earlier else ()
+        record_header = self._header_writer(stored.invoice_id, check, target_sheet, earlier)
         if target_sheet is None:
             # An ambiguous entity is never coded by guess: its lines are recorded LOW and
             # flagged with the reason, and a reviewer resolves the entity (D-3.15).
             reason = check.ambiguity_flag()
-            await deps.encoder.record_uncoded(stored, reason, record_header)
+            await deps.encoder.record_uncoded(stored, reason, record_header, flags)
             return InvoiceStatus.NOT_CODED, reason.value
-        await deps.encoder.execute(stored, target_sheet, record_header)
+        await deps.encoder.execute(stored, target_sheet, record_header, flags)
         extra = {"invoice_id": stored.invoice_id, "line_count": len(stored.lines)}
         logger.info("invoice_encoded", extra=extra)
         return InvoiceStatus.ENCODED, None
 
+    async def _invoice_context(
+        self, invoice_id: str
+    ) -> tuple[EntityCheckResult | None, str | None]:
+        # A reviewer's resolution replaces the entity check, and is not limited by it: the
+        # lines follow the normal confidence rule (REQ-REV-006, D-3.15).
+        deps = self._collaborators
+        async with deps.engine.connect() as connection:
+            resolution = await deps.repository.entity_resolution(connection, invoice_id)
+            earlier = await deps.repository.earlier_invoice_with_same_number(connection, invoice_id)
+        resolved = EntityCheckResult(EntityVerdict(resolution)) if resolution else None
+        return resolved, earlier
+
     def _header_writer(
-        self, invoice_id: str, check: EntityCheckResult, target_sheet: TargetSheet | None
+        self,
+        invoice_id: str,
+        check: EntityCheckResult,
+        target_sheet: TargetSheet | None,
+        earlier_invoice_id: str | None,
     ) -> SameTransactionWrite:
         # Run inside the transaction that stores the lines, so the verdict is never kept
         # without the lines it produced, nor the reverse.
@@ -172,5 +195,23 @@ class EncodingWorker:
 
         async def write(connection: AsyncConnection) -> None:
             await repository.record_entity_check(connection, invoice_id, record)
+            if earlier_invoice_id is not None:
+                await repository.record_possible_duplicate(
+                    connection, invoice_id, earlier_invoice_id
+                )
+                await self._audit_duplicate(connection, invoice_id, earlier_invoice_id)
 
         return write
+
+    async def _audit_duplicate(
+        self, connection: AsyncConnection, invoice_id: str, earlier_invoice_id: str
+    ) -> None:
+        deps = self._collaborators
+        await deps.audit.append(
+            connection,
+            deps.identifiers.new_id(),
+            "possible_duplicate_detected",
+            ("invoice", invoice_id),
+            {"earlier_invoice_id": earlier_invoice_id},
+            deps.clock.now(),
+        )

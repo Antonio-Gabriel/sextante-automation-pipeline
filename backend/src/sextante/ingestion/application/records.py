@@ -1,6 +1,7 @@
 """Records exchanged between ingestion use cases and their repository port."""
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from sextante.ingestion.domain.statuses import InvoiceStatus
 
@@ -55,6 +56,8 @@ class JobLine:
     description: str
     billed_entity: str | None
     entity_verdict: str | None
+    # The invoice uploaded earlier with the same supplier and number (REQ-ING-011).
+    possible_duplicate_of: str | None = None
 
 
 class DuplicateContentError(Exception):
@@ -63,6 +66,16 @@ class DuplicateContentError(Exception):
     The unique constraint on the digest decides concurrent uploads (REQ-ING-007); this
     error carries that decision to the use case without a database type.
     """
+
+
+@dataclass(frozen=True, slots=True)
+class EntityResolutionRecord:
+    """A reviewer's decision on an ambiguous entity (REQ-REV-006). Plain text, as above."""
+
+    verdict: str
+    note: str
+    resolved_by: str
+    resolved_at: datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,7 +118,9 @@ class ExportLine:
 
 @dataclass(frozen=True, slots=True)
 class InvoiceState:
-    """Where an invoice is: its job and its status."""
+    """Where an invoice is: its job, its status, and its entity verdict once checked."""
 
     job_id: str
     status: InvoiceStatus
+    entity_verdict: str | None = None
+    entity_reason: str | None = None
