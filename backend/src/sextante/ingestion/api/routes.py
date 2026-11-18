@@ -16,7 +16,7 @@ from sextante.ingestion.application.upload_invoices import (
 )
 from sextante.platform.http_params import IdentifierPath
 from sextante.platform.idempotency import JsonBody
-from sextante.platform.idempotent_route import run_idempotently
+from sextante.platform.idempotent_route import IDEMPOTENCY_KEY_DECLARED, run_idempotently
 from sextante.platform.limits import MAX_RESOLUTION_NOTE_LENGTH, MAX_UPLOAD_BYTES
 from sextante.platform.structured_logging import correlation_id_var
 
@@ -68,7 +68,10 @@ async def upload_invoices(
 
 
 @ingestion_router.post(
-    "/invoices/{invoice_id}/reprocess", status_code=202, response_model=ReprocessResponse
+    "/invoices/{invoice_id}/reprocess",
+    status_code=202,
+    response_model=ReprocessResponse,
+    dependencies=[IDEMPOTENCY_KEY_DECLARED],
 )
 async def reprocess_invoice(
     request: Request,
@@ -109,7 +112,10 @@ class EntityResolutionRequest(BaseModel):
 
 
 @ingestion_router.post(
-    "/invoices/{invoice_id}/entity-resolution", status_code=202, response_model=ReprocessResponse
+    "/invoices/{invoice_id}/entity-resolution",
+    status_code=202,
+    response_model=ReprocessResponse,
+    dependencies=[IDEMPOTENCY_KEY_DECLARED],
 )
 async def resolve_entity(
     request: Request, response: Response, invoice_id: IdentifierPath, body: EntityResolutionRequest

@@ -52,6 +52,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                             └── CHG-0043  feat      Recodificação com histórico
                                                                                                                                                                 └── CHG-0044  fix       Correcções da revisão do ticket 14
                                                                                                                                                                     └── CHG-0045  docs      Pasta sources fora do .gitignore e regra dos pedidos repetidos confirmada
+                                                                                                                                                                        └── CHG-0046  fix       Idempotency-Key declarado na documentação da API
 ```
 
 ## Regras
@@ -116,6 +117,26 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0046 · Idempotency-Key declarado na documentação da API
+
+- **Data:** 2026-11-18
+- **Tipo:** fix
+- **Pai:** CHG-0045
+- **Estado:** activa
+- **Requisitos:** SEC-19, NFR-DOC-001
+- **Commit:** pendente
+- **Migração:** nenhuma (o esquema continua na revisão `0009`)
+- **Ficheiros:** `backend/src/sextante/platform/idempotent_route.py`, rotas de `ingestion` e `review`, `tests/api/test_upload_and_listing_contracts.py`, `config/.env.example`, `README.md`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 314 testes. O teste novo falha quando se retira a declaração das rotas. A aplicação arrancou localmente: `/docs` responde 200 e `/openapi.json` tem os 11 caminhos.
+
+**Defeito.** O cabeçalho `Idempotency-Key` é obrigatório nas escritas de revisão, no reprocessamento e na resolução de entidade, mas não estava declarado na descrição da API. No Swagger não havia onde o preencher, e esses pedidos falhavam todos com 422. Passa a estar declarado nas quatro rotas; a validação continua em `require_key`.
+
+**Configuração.** O comentário do NIF em `config/.env.example` dizia que o valor vinha das amostras; o valor é sintético desde CHG-0039. Passa a dizer que tem de ser substituído pelo NIF real da AMT, senão as facturas da AMT ficam ambíguas pelo veto do NIF.
+
+**README.** Diz onde está o Swagger e como preencher o cabeçalho.
 
 ### CHG-0045 · Pasta sources fora do .gitignore e regra dos pedidos repetidos confirmada
 

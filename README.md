@@ -38,6 +38,8 @@ curl http://127.0.0.1:8000/api/health
 
 The response gives the SHA-256 of the loaded catalog.
 
+The interactive API documentation (Swagger UI) is at `http://127.0.0.1:8000/docs`. Every `POST` and `PATCH` except the upload needs an `Idempotency-Key` header: in Swagger, fill the field with any new value, for example `test-1`, and change it for each new request. Without `SEXTANTE_ANTHROPIC_API_KEY` set to a valid key with credit, an invoice with service lines ends `failed`, and can be reprocessed later.
+
 | Endpoint | What it does |
 |---|---|
 | `POST /api/invoices` | Upload PDF or XLSX invoices (multipart field `files`). Answers at once with a job id |

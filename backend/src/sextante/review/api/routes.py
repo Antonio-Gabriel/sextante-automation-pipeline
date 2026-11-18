@@ -10,7 +10,7 @@ from sextante.catalog.contracts import ITEM_NUMBER_PATTERN, TargetSheet
 from sextante.matching.contracts import Confidence
 from sextante.platform.http_params import IdentifierPath
 from sextante.platform.idempotency import JsonBody
-from sextante.platform.idempotent_route import run_idempotently
+from sextante.platform.idempotent_route import IDEMPOTENCY_KEY_DECLARED, run_idempotently
 from sextante.platform.limits import (
     IDENTIFIER_MAX_LENGTH,
     IDENTIFIER_PATTERN,
@@ -210,7 +210,11 @@ class ReviewResponse(BaseModel):
     review_note: str | None
 
 
-@review_router.patch("/encoded-lines/{encoded_line_id}", response_model=ReviewResponse)
+@review_router.patch(
+    "/encoded-lines/{encoded_line_id}",
+    response_model=ReviewResponse,
+    dependencies=[IDEMPOTENCY_KEY_DECLARED],
+)
 async def correct_line(
     request: Request, response: Response, encoded_line_id: IdentifierPath, body: CorrectionRequest
 ) -> ReviewResponse:
@@ -229,7 +233,11 @@ async def correct_line(
     return ReviewResponse.model_validate(answer)
 
 
-@review_router.post("/encoded-lines/{encoded_line_id}/accept", response_model=ReviewResponse)
+@review_router.post(
+    "/encoded-lines/{encoded_line_id}/accept",
+    response_model=ReviewResponse,
+    dependencies=[IDEMPOTENCY_KEY_DECLARED],
+)
 async def accept_line(
     request: Request, response: Response, encoded_line_id: IdentifierPath, body: AcceptanceRequest
 ) -> ReviewResponse:

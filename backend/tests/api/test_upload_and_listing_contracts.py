@@ -141,3 +141,23 @@ def test_responses_carry_exactly_their_declared_fields(valid_environment: dict[s
         "review_note",
         "possible_duplicate_of",
     }
+
+
+@pytest.mark.requirement("SEC-19")
+def test_every_idempotent_write_declares_its_key_in_the_api_description(
+    valid_environment: dict[str, str],
+) -> None:
+    """Clients and the interactive docs can only send the header if it is declared."""
+    with running_application(valid_environment, [], FakeItemClassifier()) as app:
+        paths = app.client.get("/openapi.json").json()["paths"]
+
+    writes = [
+        paths["/api/invoices/{invoice_id}/reprocess"]["post"],
+        paths["/api/invoices/{invoice_id}/entity-resolution"]["post"],
+        paths["/api/encoded-lines/{encoded_line_id}"]["patch"],
+        paths["/api/encoded-lines/{encoded_line_id}/accept"]["post"],
+    ]
+    headers = [
+        {p["name"] for p in operation["parameters"] if p["in"] == "header"} for operation in writes
+    ]
+    assert headers == [{"Idempotency-Key"}] * 4

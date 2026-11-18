@@ -1,6 +1,8 @@
 """Run a POST or PATCH handler once per Idempotency-Key (SEC-19)."""
 
-from fastapi import Request, Response
+from typing import Annotated
+
+from fastapi import Depends, Header, Request, Response
 
 from sextante.platform.idempotency import (
     IdempotentExecutor,
@@ -36,3 +38,25 @@ async def run_idempotently(
     status, answer = await executor.run(scope, key, body_fingerprint(body), operation)
     response.status_code = status
     return answer
+
+
+def _declare_idempotency_key(
+    idempotency_key: Annotated[
+        str | None,
+        Header(
+            alias=IDEMPOTENCY_HEADER,
+            description=(
+                "Mandatory. A key you choose for this request, 1 to 128 characters of letters, "
+                "digits, '.', '_', ':' or '-'. Sending the same request again with the same key "
+                "returns the same answer and acts once (SEC-19)."
+            ),
+        ),
+    ] = None,
+) -> None:
+    # Declares the header in the API description, so clients and the interactive docs
+    # can send it; run_idempotently is what validates and uses it.
+    return None
+
+
+# Add to a route's dependencies to declare Idempotency-Key in its API description.
+IDEMPOTENCY_KEY_DECLARED = Depends(_declare_idempotency_key)
