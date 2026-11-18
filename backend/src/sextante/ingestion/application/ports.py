@@ -116,9 +116,15 @@ class JobLinesReader(Protocol):
     """Port, published to other modules: the invoice lines of a job, in document order."""
 
     async def read_job_lines(
-        self, connection: AsyncConnection, job_id: str, limit: int, offset: int
+        self, connection: AsyncConnection, job_id: str, invoice_id: str | None
     ) -> list[JobLine]:
-        """Return one page of the job's lines, by upload order then document position."""
+        """Return the job's lines, or one invoice's, by upload order then document position."""
+        ...
+
+    async def line_belongs_to_invoice(
+        self, connection: AsyncConnection, invoice_id: str, line_id: str
+    ) -> bool:
+        """True when the invoice line exists and is a line of this invoice."""
         ...
 
 

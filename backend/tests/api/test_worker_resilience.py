@@ -3,7 +3,7 @@
 import pytest
 
 from sextante.matching.contracts import ItemClassifierUnavailableError
-from tests.api.encoding_harness import running_application
+from tests.api.encoding_harness import idempotency_headers, running_application
 from tests.api.test_encoding_safeguards import _query
 from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fixtures.synthetic_invoices import billed_to, taag_air_ticket_to_amt
@@ -74,7 +74,9 @@ def test_a_failed_invoice_is_reprocessed_from_its_stored_text_without_new_extrac
         job_id = app.upload(invoice)["job_id"]
         app.wait_for_job(job_id)
         [(invoice_id,)] = _query(valid_environment, "SELECT id FROM invoice")
-        response = app.client.post(f"/api/invoices/{invoice_id}/reprocess")
+        response = app.client.post(
+            f"/api/invoices/{invoice_id}/reprocess", headers=idempotency_headers("r-1")
+        )
         job = app.wait_for_job(job_id)
         line = app.results(job_id)["lines"][0]  # type: ignore[index]
 
@@ -94,8 +96,12 @@ def test_only_a_failed_invoice_can_be_reprocessed(valid_environment: dict[str, s
     ) as app:
         app.wait_for_job(app.upload(invoice)["job_id"])
         [(invoice_id,)] = _query(valid_environment, "SELECT id FROM invoice")
-        coded = app.client.post(f"/api/invoices/{invoice_id}/reprocess")
-        unknown = app.client.post("/api/invoices/nope/reprocess")
+        coded = app.client.post(
+            f"/api/invoices/{invoice_id}/reprocess", headers=idempotency_headers("r-1")
+        )
+        unknown = app.client.post(
+            "/api/invoices/nope/reprocess", headers=idempotency_headers("r-2")
+        )
 
     assert (coded.status_code, unknown.status_code) == (409, 404)
     assert coded.json()["code"] == "errors.invoice.not_reprocessable"

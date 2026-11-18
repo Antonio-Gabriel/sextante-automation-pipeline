@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 from sextante.ingestion.application.ports import ReprocessingRepositoryPort
 from sextante.ingestion.domain.statuses import InvoiceStatus
@@ -35,49 +35,48 @@ class ReprocessInvoice:
     """Put a failed invoice back in its job's queue. Asking twice queues it once.
 
     Example:
-        receipt = await ReprocessInvoice(engine, repository, audit, clock, ids).execute(invoice_id)
+        receipt = await ReprocessInvoice(repository, audit, clock, ids).execute(conn, invoice_id)
     """
 
     def __init__(
         self,
-        engine: AsyncEngine,
         repository: ReprocessingRepositoryPort,
         audit: AuditEventRepository,
         clock: Clock,
         identifiers: IdentifierGenerator,
     ) -> None:
-        self._engine = engine
         self._repository = repository
         self._audit = audit
         self._clock = clock
         self._identifiers = identifiers
 
-    async def execute(self, invoice_id: str) -> ReprocessReceipt:
+    async def execute(self, connection: AsyncConnection, invoice_id: str) -> ReprocessReceipt:
         """Queue the invoice again; an invoice already queued is left as it is.
 
+        Runs in the caller's transaction, the one that records the Idempotency-Key (SEC-19).
+
         Example:
-            (await reprocess.execute("3f2a...")).job_id
+            (await reprocess.execute(connection, "3f2a...")).job_id
 
         Raises:
             InvoiceNotFoundError: when no invoice has this identifier.
             InvoiceNotReprocessableError: when the invoice did not fail.
         """
-        async with self._engine.begin() as connection:
-            state = await self._repository.invoice_state(connection, invoice_id)
-            if state is None:
-                raise InvoiceNotFoundError(f"Invoice {invoice_id!r} does not exist.")
-            if state.status is InvoiceStatus.FAILED:
-                await self._repository.requeue_invoice(connection, invoice_id, state.job_id)
-                await self._audit.append(
-                    connection,
-                    self._identifiers.new_id(),
-                    "invoice_reprocess_requested",
-                    ("invoice", invoice_id),
-                    {"job_id": state.job_id},
-                    self._clock.now(),
-                )
-            elif state.status is not InvoiceStatus.QUEUED:
-                raise InvoiceNotReprocessableError(
-                    f"Invoice {invoice_id!r} is {state.status.value}. Expected a failed invoice."
-                )
+        state = await self._repository.invoice_state(connection, invoice_id)
+        if state is None:
+            raise InvoiceNotFoundError(f"Invoice {invoice_id!r} does not exist.")
+        if state.status is InvoiceStatus.FAILED:
+            await self._repository.requeue_invoice(connection, invoice_id, state.job_id)
+            await self._audit.append(
+                connection,
+                self._identifiers.new_id(),
+                "invoice_reprocess_requested",
+                ("invoice", invoice_id),
+                {"job_id": state.job_id},
+                self._clock.now(),
+            )
+        elif state.status is not InvoiceStatus.QUEUED:
+            raise InvoiceNotReprocessableError(
+                f"Invoice {invoice_id!r} is {state.status.value}. Expected a failed invoice."
+            )
         return ReprocessReceipt(invoice_id, state.job_id)

@@ -11,7 +11,12 @@ from sextante.platform.errors import DomainError
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncConnection
 
-    from sextante.matching.application.records import EncodedLineRecord, LineCoding, ModelCallRecord
+    from sextante.matching.application.records import (
+        EncodedLineRecord,
+        LineCandidates,
+        LineCoding,
+        ModelCallRecord,
+    )
 
 
 class LexicalScorer(Protocol):
@@ -54,6 +59,18 @@ class ItemClassifier(Protocol):
 
 class CodingsReader(Protocol):
     """Port, published to other modules: the coding of given invoice lines."""
+
+    async def read_encoded_line(
+        self, connection: "AsyncConnection", encoded_line_id: str
+    ) -> "LineCoding | None":
+        """Return one coding by its own identifier, or None."""
+        ...
+
+    async def read_candidates(
+        self, connection: "AsyncConnection", invoice_line_id: str
+    ) -> "LineCandidates | None":
+        """Return the scored items of the line's sheet and the model's choice, or None."""
+        ...
 
     async def read_codings(
         self, connection: "AsyncConnection", line_ids: Sequence[str]

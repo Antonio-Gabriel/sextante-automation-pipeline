@@ -195,13 +195,14 @@ class IngestionRepository:
         return JobSummary(job_id, str(status), counts, invoice_ids)
 
     async def read_job_lines(
-        self, connection: AsyncConnection, job_id: str, limit: int, offset: int
+        self, connection: AsyncConnection, job_id: str, invoice_id: str | None
     ) -> list[JobLine]:
-        """Return one page of the job's lines, by upload order then document position."""
-        rows = (await connection.execute(_job_lines_query(job_id, limit, offset))).all()
+        """Return the job's lines, or one invoice's, by upload order then document position."""
+        rows = (await connection.execute(_job_lines_query(job_id, invoice_id))).all()
         return [
             JobLine(
                 line_id=str(r.id),
+                invoice_id=str(r.invoice_id),
                 invoice_number=r.invoice_number,
                 position=int(r.position),
                 description=str(r.description),
@@ -210,6 +211,14 @@ class IngestionRepository:
             )
             for r in rows
         ]
+
+    async def line_belongs_to_invoice(
+        self, connection: AsyncConnection, invoice_id: str, line_id: str
+    ) -> bool:
+        """True when the invoice line exists and is a line of this invoice."""
+        table = INVOICE_LINE_TABLE
+        query = select(table.c.id).where(table.c.id == line_id, table.c.invoice_id == invoice_id)
+        return (await connection.execute(query)).first() is not None
 
     async def invoice_state(
         self, connection: AsyncConnection, invoice_id: str
@@ -259,11 +268,12 @@ class IngestionRepository:
         return [_export_invoice(row, lines.get(str(row.id), ())) for row in invoices]
 
 
-def _job_lines_query(job_id: str, limit: int, offset: int) -> Select[tuple[object, ...]]:
+def _job_lines_query(job_id: str, invoice_id: str | None) -> Select[tuple[object, ...]]:
     lines, header = INVOICE_LINE_TABLE, INVOICE_HEADER_TABLE
-    return (
+    query = (
         select(
             lines.c.id,
+            lines.c.invoice_id,
             header.c.invoice_number,
             lines.c.position,
             lines.c.description,
@@ -274,9 +284,8 @@ def _job_lines_query(job_id: str, limit: int, offset: int) -> Select[tuple[objec
         .join(header, header.c.invoice_id == lines.c.invoice_id)
         .where(INVOICE_TABLE.c.job_id == job_id)
         .order_by(INVOICE_TABLE.c.created_at, INVOICE_TABLE.c.id, lines.c.position)
-        .limit(limit)
-        .offset(offset)
     )
+    return query if invoice_id is None else query.where(lines.c.invoice_id == invoice_id)
 
 
 def _stored_invoice(

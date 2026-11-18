@@ -20,8 +20,12 @@ def test_invoice_billed_to_amt_is_coded_against_outlays_and_read_back(
         job = app.wait_for_job(upload["job_id"])
         page = app.results(upload["job_id"])
 
+    identifiers = {"invoice_id", "invoice_line_id", "encoded_line_id"}
+    lines = page["lines"]
+    assert isinstance(lines, list)
     assert job["status"] == "completed"
-    assert page["lines"] == [
+    assert all(set(line) >= identifiers for line in lines)
+    assert [{k: v for k, v in line.items() if k not in identifiers} for line in lines] == [
         {
             "invoice_number": "SYN-2026-001",
             "billed_entity_detected": "Advanced Maritime Transports - Transitarios Limitada",
@@ -37,6 +41,7 @@ def test_invoice_billed_to_amt_is_coded_against_outlays_and_read_back(
             "review_status": "accepted",
             "flags": [],
             "notes": [],
+            "review_note": None,
         }
     ]
 

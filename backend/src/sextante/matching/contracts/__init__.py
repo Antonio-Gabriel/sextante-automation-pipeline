@@ -7,7 +7,7 @@ from sextante.matching.application.ports import (
     LexicalScorer,
     TokenUsageReader,
 )
-from sextante.matching.application.records import LineCoding
+from sextante.matching.application.records import LineCandidates, LineCoding, ScoredCandidate
 from sextante.matching.domain.entity_check import (
     EntityCheckResult,
     EntityDenylist,
@@ -44,8 +44,10 @@ __all__ = [
     "ItemClassifierUnavailableError",
     "LexicalScore",
     "LexicalScorer",
+    "LineCandidates",
     "LineCoding",
     "LineToCode",
+    "ScoredCandidate",
     "TargetEntity",
     "TokenUsageReader",
     "check_billed_entity",

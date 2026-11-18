@@ -18,13 +18,9 @@ from sextante.ingestion.contracts import (
     ReadJobStatus,
     RejectionReason,
 )
-from sextante.matching.contracts import (
-    CodingsReader,
-    Confidence,
-    LineCoding,
-    exact_entity_match_label,
-)
+from sextante.matching.contracts import Confidence, exact_entity_match_label
 from sextante.platform.user_messages import USER_MESSAGES_PT
+from sextante.review.contracts import CodingInForce, CodingsInForce
 
 LINELESS_STATUSES: Final = frozenset({InvoiceStatus.REJECTED, InvoiceStatus.FAILED})
 UNKNOWN_REJECTION_KEY: Final = "rejections.other"
@@ -56,12 +52,12 @@ class BuildJobExport:
         engine: AsyncEngine,
         job_status: ReadJobStatus,
         invoices_reader: InvoiceExportReader,
-        codings_reader: CodingsReader,
+        codings: CodingsInForce,
     ) -> None:
         self._engine = engine
         self._job_status = job_status
         self._invoices_reader = invoices_reader
-        self._codings_reader = codings_reader
+        self._codings = codings
 
     async def execute(self, job_id: str) -> list[ExportRow]:
         """Return the rows; reviewed values are those in force (REQ-EXP-004).
@@ -76,11 +72,11 @@ class BuildJobExport:
         async with self._engine.connect() as connection:
             invoices = await self._invoices_reader.read_job_invoices(connection, job_id)
             line_ids = [line.line_id for invoice in invoices for line in invoice.lines]
-            codings = await self._codings_reader.read_codings(connection, line_ids)
+            codings = await self._codings.read(connection, line_ids)
         return [row for invoice in invoices for row in _rows_for(invoice, codings)]
 
 
-def _rows_for(invoice: ExportInvoice, codings: dict[str, LineCoding]) -> list[ExportRow]:
+def _rows_for(invoice: ExportInvoice, codings: dict[str, CodingInForce]) -> list[ExportRow]:
     # A refused or failed document still gets one row, so the reviewer sees it existed
     # (REQ-EXP-007). An invoice still waiting has nothing to export yet.
     if invoice.status in LINELESS_STATUSES:
@@ -108,7 +104,7 @@ def _lineless_row(invoice: ExportInvoice) -> ExportRow:
     )
 
 
-def _line_row(invoice: ExportInvoice, line: ExportLine, coding: LineCoding | None) -> ExportRow:
+def _line_row(invoice: ExportInvoice, line: ExportLine, coding: CodingInForce | None) -> ExportRow:
     return ExportRow(
         invoice_id=_identifier(invoice),
         billed_entity_detected=invoice.billed_entity or "",
@@ -122,12 +118,14 @@ def _line_row(invoice: ExportInvoice, line: ExportLine, coding: LineCoding | Non
     )
 
 
-def _notes(invoice: ExportInvoice, coding: LineCoding | None) -> str:
+def _notes(invoice: ExportInvoice, coding: CodingInForce | None) -> str:
     if coding is None:
         return USER_MESSAGES_PT["export.line_not_coded"]
     texts = [USER_MESSAGES_PT[f"flags.{code}"] for code in coding.flags]
     texts += [USER_MESSAGES_PT[f"notes.{coding.note}"]] if coding.note else []
     texts += [USER_MESSAGES_PT["export.care_of"].format(text) for text in invoice.care_of]
+    if coding.review_note:
+        texts.append(USER_MESSAGES_PT["export.review_note"].format(coding.review_note))
     return NOTES_SEPARATOR.join(texts)
 
 

@@ -48,12 +48,25 @@ from sextante.platform.correlation import CorrelationIdMiddleware
 from sextante.platform.database import apply_migrations, create_database_engine
 from sextante.platform.health import health_router
 from sextante.platform.http_errors import install_error_handlers
+from sextante.platform.idempotency import IdempotentExecutor
 from sextante.platform.retry import RetryPolicy, Sleep
 from sextante.platform.settings import Settings, StartupConfigurationError
 from sextante.platform.structured_logging import configure_logging
 from sextante.review.api.routes import review_router
+from sextante.review.application.codings_in_force import CodingsInForce
 from sextante.review.application.list_job_results import ListJobResults
 from sextante.review.application.read_job_progress import ReadJobProgress
+from sextante.review.application.read_line_candidates import (
+    InvoiceLineNotFoundError,
+    ReadLineCandidates,
+)
+from sextante.review.application.review_line import (
+    EncodedLineNotFoundError,
+    ReviewCollaborators,
+    ReviewLine,
+)
+from sextante.review.domain.review_state import LineWithoutSheetError, ReviewNotPendingError
+from sextante.review.infrastructure.repository import ReviewRepository
 from sextante.worker import EncodingWorker, WorkerCollaborators
 
 # The first retry waits 1 s, the next 2 s, and so on (REQ-PLT-003).
@@ -73,6 +86,10 @@ HTTP_STATUS_BY_ERROR = {
     InvoiceNotFoundError: 404,
     InvoiceNotReprocessableError: 409,
     JobNotFoundError: 404,
+    EncodedLineNotFoundError: 404,
+    InvoiceLineNotFoundError: 404,
+    LineWithoutSheetError: 409,
+    ReviewNotPendingError: 409,
     UnsupportedFileTypeError: 415,
     FileTooLargeError: 413,
 }
@@ -164,16 +181,41 @@ def _wire_use_cases(
         engine, app.state.read_job_status, MatchingRepository()
     )
     app.state.reprocess_invoice = ReprocessInvoice(
-        engine, ingestion, AuditEventRepository(), adapters.clock, adapters.identifiers
+        ingestion, AuditEventRepository(), adapters.clock, adapters.identifiers
     )
+    codings_in_force = CodingsInForce(MatchingRepository(), ReviewRepository())
     app.state.list_job_results = ListJobResults(
-        engine, app.state.read_job_status, ingestion, MatchingRepository()
+        engine, app.state.read_job_status, ingestion, codings_in_force
     )
-    build_export = BuildJobExport(
-        engine, app.state.read_job_status, ingestion, MatchingRepository()
-    )
+    build_export = BuildJobExport(engine, app.state.read_job_status, ingestion, codings_in_force)
     app.state.export_job = ExportJob(build_export, SpreadsheetExportWriter(settings.csv_separator))
+    _wire_review(app, engine, settings, reference.catalog, adapters)
     app.state.worker = _build_worker(engine, settings, reference, adapters, store)
+
+
+def _wire_review(
+    app: FastAPI,
+    engine: AsyncEngine,
+    settings: Settings,
+    catalog: Catalog,
+    adapters: AppDependencies,
+) -> None:
+    app.state.reviewer_id = settings.reviewer_id
+    app.state.idempotency = IdempotentExecutor(engine, adapters.clock)
+    app.state.read_line_candidates = ReadLineCandidates(
+        engine, IngestionRepository(), MatchingRepository(), catalog
+    )
+    app.state.review_line = ReviewLine(
+        ReviewCollaborators(
+            codings=MatchingRepository(),
+            reviews=ReviewRepository(),
+            catalog=catalog,
+            audit=AuditEventRepository(),
+            clock=adapters.clock,
+            identifiers=adapters.identifiers,
+            reviewer_id=settings.reviewer_id,
+        )
+    )
 
 
 def _build_worker(

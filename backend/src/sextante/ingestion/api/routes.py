@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, Path, Request, UploadFile
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 from sextante.ingestion.application.reprocess_invoice import ReprocessInvoice
 from sextante.ingestion.application.upload_invoices import (
@@ -12,6 +13,8 @@ from sextante.ingestion.application.upload_invoices import (
     UploadInvoices,
     check_file_count,
 )
+from sextante.platform.idempotency import JsonBody
+from sextante.platform.idempotent_route import run_idempotently
 from sextante.platform.limits import IDENTIFIER_MAX_LENGTH, IDENTIFIER_PATTERN, MAX_UPLOAD_BYTES
 from sextante.platform.structured_logging import correlation_id_var
 
@@ -75,8 +78,13 @@ async def reprocess_invoice(
         POST /api/invoices/3f2a.../reprocess -> 202 {"invoice_id": "...", "job_id": "..."}
     """
     use_case: ReprocessInvoice = request.app.state.reprocess_invoice
-    receipt = await use_case.execute(invoice_id)
-    return ReprocessResponse(invoice_id=receipt.invoice_id, job_id=receipt.job_id)
+
+    async def operation(connection: AsyncConnection) -> tuple[int, JsonBody]:
+        receipt = await use_case.execute(connection, invoice_id)
+        return 202, {"invoice_id": receipt.invoice_id, "job_id": receipt.job_id}
+
+    answer = await run_idempotently(request, {}, operation)
+    return ReprocessResponse.model_validate(answer)
 
 
 async def _read_bounded(upload: UploadFile) -> IncomingFile:

@@ -96,3 +96,12 @@ def _recording_sleep(sleeps: list[float]) -> Callable[[float], Awaitable[None]]:
         sleeps.append(seconds)
 
     return sleep
+
+
+def idempotency_headers(key: str) -> dict[str, str]:
+    """The Idempotency-Key header every POST and PATCH of review needs (SEC-19).
+
+    Example:
+        app.client.post(url, headers=idempotency_headers("accept-1"))
+    """
+    return {"Idempotency-Key": key}

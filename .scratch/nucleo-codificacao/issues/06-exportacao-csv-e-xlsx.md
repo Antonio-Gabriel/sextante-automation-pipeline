@@ -22,7 +22,7 @@ O identificador da factura combina o fornecedor e o número da factura.
 - [x] `Matched_Catalog_Description` é a descrição PT do catálogo, sem espaços nas pontas
 - [x] `Notes_or_Flags` junta os motivos de sinalização em português, as notas de tipo de linha, as linhas "ao cuidado de" e a nota de revisão
 - [x] Uma recusa simulada pelo `FakeInvoiceExtractor` aparece na exportação com o motivo
-- [ ] Os testes pela API verificam as colunas, a ordem, o BOM, a neutralização e o reflexo de uma correcção *(parcial: tudo menos o reflexo de uma correcção, que precisa da acção de correcção do ticket 08)*
+- [x] Os testes pela API verificam as colunas, a ordem, o BOM, a neutralização e o reflexo de uma correcção *(o reflexo de uma correcção entrou com o ticket 08, CHG-0024)*
 
 ## Comments
 

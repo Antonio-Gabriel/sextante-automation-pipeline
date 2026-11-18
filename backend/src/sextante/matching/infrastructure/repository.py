@@ -3,10 +3,16 @@
 from collections import defaultdict
 from collections.abc import Sequence
 
-from sqlalchemy import func, select
+from sqlalchemy import Row, func, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from sextante.matching.application.records import EncodedLineRecord, LineCoding, ModelCallRecord
+from sextante.matching.application.records import (
+    EncodedLineRecord,
+    LineCandidates,
+    LineCoding,
+    ModelCallRecord,
+    ScoredCandidate,
+)
 from sextante.matching.infrastructure.tables import (
     ENCODED_LINE_TABLE,
     LEXICAL_SCORE_TABLE,
@@ -76,18 +82,58 @@ class MatchingRepository:
             )
         ).all()
         flags = await _flags_of(connection, [str(r.id) for r in rows])
-        return {
-            str(r.invoice_line_id): LineCoding(
-                target_sheet=r.target_sheet,
-                item_number=r.item_number,
-                catalog_description=r.catalog_description,
-                confidence=str(r.confidence),
-                review_status=str(r.review_status),
-                flags=tuple(flags[str(r.id)]),
-                note=r.note,
-            )
-            for r in rows
-        }
+        return {str(r.invoice_line_id): _line_coding(r, flags[str(r.id)]) for r in rows}
+
+    async def read_encoded_line(
+        self, connection: AsyncConnection, encoded_line_id: str
+    ) -> LineCoding | None:
+        """Return one coding by its own identifier, or None."""
+        table = ENCODED_LINE_TABLE
+        row = (await connection.execute(select(table).where(table.c.id == encoded_line_id))).first()
+        if row is None:
+            return None
+        flags = await _flags_of(connection, [encoded_line_id])
+        return _line_coding(row, flags[encoded_line_id])
+
+    async def read_candidates(
+        self, connection: AsyncConnection, invoice_line_id: str
+    ) -> LineCandidates | None:
+        """Return the scored items of the line's sheet, best first, and the model's choice."""
+        table = ENCODED_LINE_TABLE
+        query = select(table).where(table.c.invoice_line_id == invoice_line_id)
+        row = (await connection.execute(query)).first()
+        if row is None:
+            return None
+        scores = await _scores_of(connection, invoice_line_id)
+        chosen = row.item_number if row.choice_outcome == "chosen" else None
+        return LineCandidates(row.target_sheet, chosen, scores)
+
+
+def _line_coding(row: Row[tuple[object, ...]], flags: list[str]) -> LineCoding:
+    return LineCoding(
+        encoded_line_id=str(row.id),
+        invoice_line_id=str(row.invoice_line_id),
+        target_sheet=row.target_sheet,
+        item_number=row.item_number,
+        catalog_description=row.catalog_description,
+        confidence=str(row.confidence),
+        review_status=str(row.review_status),
+        flags=tuple(flags),
+        note=row.note,
+    )
+
+
+async def _scores_of(
+    connection: AsyncConnection, invoice_line_id: str
+) -> tuple[ScoredCandidate, ...]:
+    table = LEXICAL_SCORE_TABLE
+    query = (
+        select(table.c.item_number, table.c.score, table.c.rank)
+        .where(table.c.invoice_line_id == invoice_line_id)
+        .order_by(table.c.rank)
+    )
+    rows = (await connection.execute(query)).all()
+    return tuple(ScoredCandidate(str(r[0]), float(r[1]), int(r[2])) for r in rows)
 
 
 async def _token_usage(connection: AsyncConnection, invoice_ids: Sequence[str]) -> tuple[int, int]:

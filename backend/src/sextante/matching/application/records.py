@@ -43,6 +43,8 @@ class EncodedLineRecord:
 class LineCoding:
     """The coding of one invoice line, as read for listings."""
 
+    encoded_line_id: str
+    invoice_line_id: str
     target_sheet: str | None
     item_number: str | None
     catalog_description: str | None
@@ -50,3 +52,21 @@ class LineCoding:
     review_status: str
     flags: tuple[str, ...]
     note: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class ScoredCandidate:
+    """One item of the target sheet with its lexical score and rank for a line."""
+
+    item_number: str
+    score: float
+    rank: int
+
+
+@dataclass(frozen=True, slots=True)
+class LineCandidates:
+    """The scored items of a line's target sheet and the model's choice (REQ-REV-001)."""
+
+    target_sheet: str | None
+    chosen_item_number: str | None
+    candidates: tuple[ScoredCandidate, ...]

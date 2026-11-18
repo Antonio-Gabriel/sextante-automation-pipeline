@@ -40,4 +40,5 @@ def valid_environment(tmp_path: Path, catalog_path: Path) -> dict[str, str]:
         "SEXTANTE_TARGET_ENTITY_NIF": "5419990000",
         "SEXTANTE_UPLOAD_DIR": str(tmp_path / "uploads"),
         "SEXTANTE_ENTITY_DENYLIST_PATH": str(_write_denylist(tmp_path)),
+        "SEXTANTE_REVIEWER_ID": "synthetic-reviewer",
     }

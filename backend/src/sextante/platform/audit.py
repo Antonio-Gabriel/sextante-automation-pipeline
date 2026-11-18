@@ -40,6 +40,7 @@ class AuditEventRepository:
         subject: tuple[str, str],
         payload: Mapping[str, object],
         recorded_at: datetime,
+        author: str = SYSTEM_AUTHOR,
     ) -> None:
         """Insert one audit event inside the caller's transaction.
 
@@ -55,7 +56,7 @@ class AuditEventRepository:
                 subject_type=subject_type,
                 subject_id=subject_id,
                 payload=json.dumps(payload, ensure_ascii=False, default=str, sort_keys=True),
-                author=SYSTEM_AUTHOR,
+                author=author,
                 recorded_at=recorded_at.isoformat(),
             )
         )

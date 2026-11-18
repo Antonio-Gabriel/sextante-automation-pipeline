@@ -17,6 +17,17 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
         "errors.job.not_found": "Trabalho não encontrado.",
         "errors.invoice.not_found": "Factura não encontrada.",
         "errors.invoice.not_reprocessable": "Só uma factura com falha pode ser reprocessada.",
+        "errors.invoice_line.not_found": "Linha de factura não encontrada.",
+        "errors.review.line_not_found": "Linha codificada não encontrada.",
+        "errors.review.line_without_sheet": (
+            "Linha sem aba de destino: resolva primeiro a entidade da factura."
+        ),
+        "errors.review.item_not_in_sheet": (
+            "O item escolhido não pertence à aba de destino da linha."
+        ),
+        "errors.review.not_pending": "Só uma linha pendente pode ser aceite.",
+        "errors.idempotency.key_required": "Falta o cabeçalho Idempotency-Key, ou é inválido.",
+        "errors.idempotency.key_reused": "A chave Idempotency-Key já foi usada noutro pedido.",
         "flags.entity_label_not_found": "Não foi encontrada a entidade facturada na factura.",
         "flags.multiple_billed_entities": "A factura indica mais do que uma entidade facturada.",
         "flags.entity_similar_not_equal": "Entidade parecida com a AMT, mas não igual: confirmar.",
@@ -38,6 +49,7 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
         "export.invoice_failed": "Falha no processamento: a factura pode ser reprocessada.",
         "export.line_not_coded": "Linha ainda por codificar.",
         "export.care_of": "Ao cuidado de: {}",
+        "export.review_note": "Nota de revisão: {}",
         "notes.line_type_tax": "Linha de IVA: sem código de item.",
         "notes.line_type_discount": "Linha de desconto: sem código de item.",
     }

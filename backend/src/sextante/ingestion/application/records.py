@@ -49,6 +49,7 @@ class JobLine:
     """One invoice line of a job, as read for listings (REQ-REV-001)."""
 
     line_id: str
+    invoice_id: str
     invoice_number: str | None
     position: int
     description: str

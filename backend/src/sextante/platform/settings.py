@@ -12,6 +12,8 @@ SETTING_TEXT_MAX_LENGTH: Final = 512
 # PostgreSQL migration path of 00-decisoes-e-lacunas.md §6 is taken.
 DATABASE_URL_PREFIX: Final = "sqlite+aiosqlite:///"
 CSV_SEPARATORS: Final = frozenset({",", ";", "|"})
+REVIEWER_ID_MAX_LENGTH: Final = 128
+REVIEWER_ID_PATTERN: Final = r"^[A-Za-z0-9._@-]+$"
 
 
 class StartupConfigurationError(RuntimeError):
@@ -32,6 +34,9 @@ class Settings(BaseModel):
     target_entity_nif: str = Field(max_length=SETTING_TEXT_MAX_LENGTH)
     upload_dir: Path
     entity_denylist_path: Path
+    # Author of every review action in the audit trail: there is no login in this
+    # version (L-07), so the identity comes from configuration (REQ-REV-004).
+    reviewer_id: str = Field(max_length=REVIEWER_ID_MAX_LENGTH, pattern=REVIEWER_ID_PATTERN)
     # Items that fit any expense; choosing one is always LOW and flagged (D-3.16).
     # Comma-separated item numbers; tuning, not a secret, so it has a default.
     generic_items: tuple[str, ...] = ("O00052",)

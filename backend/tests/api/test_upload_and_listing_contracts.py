@@ -122,6 +122,9 @@ def test_responses_carry_exactly_their_declared_fields(valid_environment: dict[s
     lines = page["lines"]
     assert isinstance(lines, list)
     assert set(lines[0]) == {
+        "invoice_id",
+        "invoice_line_id",
+        "encoded_line_id",
         "invoice_number",
         "billed_entity_detected",
         "exact_entity_match",
@@ -134,4 +137,5 @@ def test_responses_carry_exactly_their_declared_fields(valid_environment: dict[s
         "review_status",
         "flags",
         "notes",
+        "review_note",
     }

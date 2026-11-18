@@ -30,6 +30,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                     └── CHG-0021  feat      Exportação em CSV e XLSX
                                                                         └── CHG-0022  fix       Correcções da revisão dos tickets 05 e 06
                                                                             └── CHG-0023  feat      Trabalhador robusto e reprocessamento
+                                                                                └── CHG-0024  feat      Revisão de linhas
 ```
 
 ## Regras
@@ -94,6 +95,35 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0024 · Revisão de linhas
+
+- **Data:** 2026-11-18
+- **Tipo:** feat
+- **Pai:** CHG-0023
+- **Estado:** activa
+- **Requisitos:** REQ-REV-001, REQ-REV-002, REQ-REV-003, REQ-REV-004, REQ-REV-005, REQ-REV-007, REQ-EXP-004, SEC-08, SEC-18, SEC-19
+- **Commit:** pendente
+- **Migração:** `0006_review_and_idempotency` (tabelas `line_review` e `idempotency_record`)
+- **Ficheiros:**
+  - `backend/src/sextante/review/` (domínio, casos de uso, repositório, rotas e contratos)
+  - `backend/src/sextante/platform/idempotency.py`, `idempotent_route.py`, `audit.py`, `settings.py`, `user_messages.py`
+  - `backend/src/sextante/matching/` (leitura de uma linha codificada e dos candidatos)
+  - `backend/src/sextante/ingestion/` (linhas por factura, pertença de uma linha, reprocessamento na transacção da chave)
+  - `backend/src/sextante/export/application/build_job_export.py`, `main.py`
+  - `backend/migrations/versions/0006_review_and_idempotency.py`
+  - `README.md`, `config/.env.example`, tickets 06 e 08
+- **Reversibilidade:** parcial
+- **Reversão:** reverter o commit e descer a migração para `0005`. As revisões gravadas em `line_review` perdem-se com a tabela; os eventos `line_accepted` e `line_corrected` ficam em `audit_event`, que é só de inserção.
+- **Verificação:** 240 testes, incluindo correcção na aba, recusas (outra aba, código mal formado, campos de controlo, nota longa, linha sem aba), aceitação só de linha pendente, repetição e reutilização da chave, filtros, candidatos e reflexo na exportação; `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+**Revisão.** `PATCH /api/encoded-lines/{id}` corrige o código com um item da aba de destino da linha, validado no servidor. `POST /api/encoded-lines/{id}/accept` passa uma linha `pending` a `accepted`. As duas aceitam uma nota de 500 caracteres no máximo, recusam campos extra e são recusadas para uma linha sem aba de destino.
+
+**Registo.** O estado de revisão fica em `line_review`, à parte de `encoded_line`, que nunca é sobrescrito. Cada acção gera `line_accepted` ou `line_corrected` em `audit_event`, com o valor anterior, o novo, o autor (`SEXTANTE_REVIEWER_ID`, nova variável obrigatória) e o momento.
+
+**Idempotência.** `POST` e `PATCH` de revisão e o reprocessamento exigem `Idempotency-Key`. A chave é registada na mesma transacção da acção; a mesma chave repete a resposta, e com outro corpo é recusada. As respostas guardadas duram 24 horas. O carregamento fica isento: o digest do conteúdo já o torna idempotente.
+
+**Resultados e exportação.** Os resultados mostram os valores em vigor e filtram por confiança, aba, sinalização e factura, antes da paginação. A exportação usa os mesmos valores, e a nota de revisão entra em `Notes_or_Flags`.
 
 ### CHG-0023 · Trabalhador robusto e reprocessamento
 

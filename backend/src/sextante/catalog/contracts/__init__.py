@@ -2,6 +2,7 @@
 
 from sextante.catalog.domain.model import (
     FALLBACK_ITEM_NUMBER,
+    ITEM_NUMBER_PATTERN,
     Catalog,
     CatalogDigest,
     CatalogItem,
@@ -11,6 +12,7 @@ from sextante.catalog.domain.model import (
 
 __all__ = [
     "FALLBACK_ITEM_NUMBER",
+    "ITEM_NUMBER_PATTERN",
     "Catalog",
     "CatalogDigest",
     "CatalogItem",
