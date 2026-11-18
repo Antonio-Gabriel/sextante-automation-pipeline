@@ -45,6 +45,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                 └── CHG-0036  feat      Medição manual dos códigos com o modelo real
                                                                                                                                     └── CHG-0037  fix       Correcções da revisão dos tickets 11 e 13
                                                                                                                                         └── CHG-0038  docs      Fornecedor e moeda no pedido ao modelo (REQ-MAP-005)
+                                                                                                                                            └── CHG-0039  security  Repositório e histórico sem dados das amostras
 ```
 
 ## Regras
@@ -109,6 +110,26 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0039 · Repositório e histórico sem dados das amostras
+
+- **Data:** 2026-11-18
+- **Tipo:** security
+- **Pai:** CHG-0038
+- **Estado:** activa
+- **Requisitos:** D-3.18, SEC-03
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** 22 ficheiros versionados: tickets 02, 03, 12 e 13, `OPEN-ITEMS.md`, `CHANGELOG.md`, `docs/00` a `docs/02`, `config/.env.example`, testes e fixtures, e duas docstrings de exemplo do código
+- **Reversibilidade:** não
+- **Reversão:** a reescrita do histórico não se desfaz por um commit, e não deve: o objectivo é que nenhum commit publicado traga os dados.
+- **Verificação:** 306 testes; nenhum dos valores das amostras em nenhum ficheiro versionado, nem em nenhum commit do ramo depois da reescrita. Os valores foram extraídos localmente das 12 amostras, para os procurar, e nenhum foi escrito no repositório.
+
+**Motivo.** O repositório vai ser público. D-3.18 diz que nenhuma amostra, nem excerto de amostra, entra no repositório. Os documentos e o histórico citavam valores das amostras: nomes de fornecedores e clientes, NIFs, números de documento, moradas, descrições de linhas e observações, e os valores da nota da AGT.
+
+**O que mudou.** Esses valores passam a valores sintéticos com a mesma estrutura, pelo mesmo mapa, na versão actual e em todos os commits do ramo, ficheiros e mensagens. O nome da AMT fica, porque é o cliente do enunciado. Os nomes dos itens do catálogo também ficam, porque o catálogo não é amostra. O NIF da AMT no repositório passa a sintético; o real fica só na configuração local.
+
+**Hashes.** A reescrita muda os hashes de todos os commits. Os campos `Commit` e os hashes citados são actualizados no commit seguinte, como permite a regra 4.
 
 ### CHG-0038 · Fornecedor e moeda no pedido ao modelo (REQ-MAP-005)
 

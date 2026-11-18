@@ -214,7 +214,7 @@ Here the name differs enough to be caught. A sister company named "Advanced Mari
 **Provisional decision.**
 
 - The denylist lives in `config/entity_denylist.yaml` and is checked **before** any approximate comparison. Its contents are not invented, so it stays empty until there is an answer.
-- AMT's tax number is set in configuration, as `5419990000` from the samples.
+- AMT's tax number is set in configuration (`SEXTANTE_TARGET_ENTITY_NIF`), with the value shown on the samples. The repository holds only a synthetic value.
 - The tax number is used as follows:
 
 | Situation | Result |
@@ -230,7 +230,7 @@ Here the name differs enough to be caught. A sister company named "Advanced Mari
 **Requests.**
 
 - The exact names of the sister companies, shipping lines and recurring clients, as they appear on invoices.
-- Confirmation that `5419990000` is AMT's tax number.
+- Confirmation that the tax number shown on the samples is AMT's.
 
 ### 8. L-05 · Catalog descriptions that differ between Portuguese and English
 
