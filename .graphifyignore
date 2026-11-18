@@ -1,0 +1,18 @@
+# Never feed invoice data, the real catalog, databases or secrets into the graph
+# (CLAUDE.md rule 5, SEC-02, SEC-03, D-3.18).
+sources/
+uploads/
+exports/
+*.db
+*.db-wal
+*.db-shm
+.env*
+*.xlsx
+*.pdf
+
+# Tooling and installed skills, not project knowledge.
+backend/.venv/
+.agents/
+.claude/skills/
+graphify-out/
+*.egg-info/

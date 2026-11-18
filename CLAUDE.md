@@ -100,6 +100,7 @@ Uma lacuna com decisão por omissão aplicada não é uma lacuna fechada: a deci
 3. Percorrer a lista de verificação de `docs/04-padroes-de-codigo.md` §10.
 4. Confirmar que os testes novos têm `@pytest.mark.requirement`.
 5. Correr `make test`, `make golden` e `make traceability-matrix`.
+6. Registar a alteração em `CHANGELOG.md`, nos termos da secção «Registo de alterações» abaixo.
 
 **Nunca declarar concluído com itens aplicáveis por verificar.** Listar os pendentes e o motivo.
 
@@ -124,6 +125,19 @@ Uma lacuna com decisão por omissão aplicada não é uma lacuna fechada: a deci
 - **Não escrever `0.0.0.0` como anfitrião de escuta** enquanto L-07 estiver aberta.
 - **Não ler um ficheiro carregado com `pandas.read_excel`.** A leitura passa por `openpyxl` em `read_only` e `data_only`, depois da validação de tipo de SEC-16. O `pandas` entra depois.
 - **Não acrescentar `dangerouslySetInnerHTML`.** Não há nenhum caso neste projecto que o justifique.
+
+---
+
+## Registo de alterações
+
+Toda a alteração a código, testes, migrações, dependências, configuração ou documentos que definem o comportamento da aplicação tem uma entrada `CHG-nnnn` em `CHANGELOG.md`. A entrada entra no mesmo commit, e a mensagem do commit leva `Changelog: CHG-nnnn`. As regras completas (pai, imutabilidade, reversão e reversibilidade) estão no próprio ficheiro.
+
+Antes de começar uma tarefa:
+
+- ler a árvore de `CHANGELOG.md`, para saber de que alteração se parte;
+- consultar o grafo do graphify (secção «graphify» abaixo). É a memória do projecto entre sessões.
+
+Uma alteração sem entrada no registo não está concluída.
 
 ---
 
@@ -166,3 +180,14 @@ Uses the five default roles (`needs-triage`, `needs-info`, `ready-for-agent`, `r
 ### Domain docs
 
 Single-context (`GLOSSARY.md` and `docs/adr/` at the root). See `docs/agents/domain.md`.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. When the answer is under a Markdown heading, `graphify section "<heading>"` prints that section's text, so the .md need not be opened. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.
