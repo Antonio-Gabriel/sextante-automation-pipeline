@@ -104,7 +104,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0024
 - **Estado:** activa
 - **Requisitos:** SEC-19, REQ-REV-003, REQ-REV-004, REQ-AUD-004
-- **Commit:** pendente
+- **Commit:** `05d5881`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/platform/idempotency.py`, `idempotent_route.py`, `http_params.py` (novo), `limits.py`
@@ -131,7 +131,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0023
 - **Estado:** activa
 - **Requisitos:** REQ-REV-001, REQ-REV-002, REQ-REV-003, REQ-REV-004, REQ-REV-005, REQ-REV-007, REQ-EXP-004, SEC-08, SEC-18, SEC-19
-- **Commit:** pendente
+- **Commit:** `4033a41`
 - **Migração:** `0006_review_and_idempotency` (tabelas `line_review` e `idempotency_record`)
 - **Ficheiros:**
   - `backend/src/sextante/review/` (domínio, casos de uso, repositório, rotas e contratos)
@@ -160,7 +160,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0022
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-001, REQ-PLT-002, REQ-PLT-003, REQ-AUD-004, NFR-REL-001, NFR-REL-002, L-12
-- **Commit:** pendente
+- **Commit:** `70d97fc`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/platform/retry.py`
