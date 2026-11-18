@@ -21,6 +21,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                     └── CHG-0012  fix       Correcções da revisão do ticket 02
                                         ├── CHG-0013  docs      Registo de alterações e a sua regra
                                         └── CHG-0014  infra     Graphify como memória do projecto
+                                            └── CHG-0015  infra     Skill do graphify no projecto e correcção da CHG-0014
 ```
 
 ## Regras
@@ -85,6 +86,31 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0015 · Skill do graphify no projecto e correcção da CHG-0014
+
+- **Data:** 2026-11-18
+- **Tipo:** infra
+- **Pai:** CHG-0014
+- **Estado:** activa
+- **Requisitos:** nenhum
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `.claude/skills/graphify/`
+  - `.claude/settings.json`
+  - `.claude/CLAUDE.md`
+  - `.gitattributes`, que a CHG-0014 criou mas não listou
+- **Reversibilidade:** total
+- **Reversão:**
+  1. Correr `graphify claude uninstall`, que retira os hooks e a secção do `CLAUDE.md`.
+  2. Apagar `.claude/skills/graphify/` e `.claude/CLAUDE.md`.
+  3. Reverter o commit.
+- **Verificação:**
+  - Feito: `/graphify . --update` corrido sobre os documentos e as duas imagens de `assets/`, com o resultado em `graphify-out/` (fora do repositório).
+  - Não verificado: os hooks não foram exercitados noutra máquina.
+
+Corrige a CHG-0014 por adição, como manda a regra 4. Primeiro, a lista de ficheiros da CHG-0014 omitia o `.gitattributes` criado por `graphify hook install`, que regista o driver de fusão de `graph.json`. Segundo, os hooks do Claude Code passam de `.claude/settings.local.json` para `.claude/settings.json`, agora com o comando `graphify` sem caminho absoluto, e por isso partilháveis. O skill `/graphify` passa a viver no projecto.
 
 ### CHG-0014 · Graphify como memória do projecto
 
