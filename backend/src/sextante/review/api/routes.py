@@ -22,7 +22,9 @@ from sextante.review.application.codings_in_force import CodingInForce
 from sextante.review.application.list_job_results import ListJobResults, ResultFilters, ResultLine
 from sextante.review.application.read_job_progress import ReadJobProgress
 from sextante.review.application.read_line_candidates import ReadLineCandidates
+from sextante.review.application.read_line_history import LineHistoryEntry, ReadLineHistory
 from sextante.review.application.review_line import ReviewLine
+from sextante.review.domain.review_state import LineReview
 
 ReviewNote = Annotated[str | None, Field(max_length=MAX_REVIEW_NOTE_LENGTH)]
 ITEM_NUMBER_MAX_LENGTH = 32
@@ -306,4 +308,74 @@ async def read_candidates(
             )
             for c in view.candidates
         ],
+    )
+
+
+class ReviewView(BaseModel):
+    """The review a person made of one coding."""
+
+    model_config = ConfigDict(frozen=True)
+
+    review_status: str
+    item_number: str | None
+    note: str | None
+
+
+class CodingHistoryResponse(BaseModel):
+    """One coding of a line, in force or superseded, with what produced it."""
+
+    model_config = ConfigDict(frozen=True)
+
+    encoded_line_id: str
+    in_force: bool
+    item_number: str | None
+    catalog_description: str | None
+    confidence: str
+    prompt_version: str | None
+    model_id: str | None
+    catalog_digest: str
+    encoded_at: str
+    superseded_at: str | None
+    review: ReviewView | None
+
+
+@review_router.get(
+    "/invoices/{invoice_id}/lines/{invoice_line_id}/history",
+    response_model=list[CodingHistoryResponse],
+)
+async def read_line_history(
+    request: Request, invoice_id: IdentifierPath, invoice_line_id: IdentifierPath
+) -> list[CodingHistoryResponse]:
+    """Return every coding of the line, newest first, each with its review (ticket 14).
+
+    Example:
+        GET /api/invoices/3f2a.../lines/9b1c.../history -> [{"in_force": true, ...}, ...]
+    """
+    history: ReadLineHistory = request.app.state.read_line_history
+    entries = await history.execute(invoice_id, invoice_line_id)
+    return [_history_response(entry) for entry in entries]
+
+
+def _history_response(entry: LineHistoryEntry) -> CodingHistoryResponse:
+    coding, review = entry.coding, entry.review
+    return CodingHistoryResponse(
+        encoded_line_id=coding.encoded_line_id,
+        in_force=coding.superseded_at is None,
+        item_number=coding.item_number,
+        catalog_description=coding.catalog_description,
+        confidence=coding.confidence,
+        prompt_version=coding.prompt_version,
+        model_id=coding.model_id,
+        catalog_digest=coding.catalog_digest,
+        encoded_at=coding.encoded_at,
+        superseded_at=coding.superseded_at,
+        review=_review_view(review),
+    )
+
+
+def _review_view(review: LineReview | None) -> ReviewView | None:
+    if review is None:
+        return None
+    return ReviewView(
+        review_status=review.review_status.value, item_number=review.item_number, note=review.note
     )

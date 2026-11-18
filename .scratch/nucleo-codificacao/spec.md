@@ -467,8 +467,8 @@ Não há código nem testes no repositório. Seguem-se as convenções do docume
 - A calibração dos limiares e a publicação de métricas de precisão (L-02).
 - O encaminhamento por linha em facturas com várias entidades facturadas (L-09).
 - O tratamento próprio de notas de crédito, além da sinalização de duplicado provável.
-- Cache de prompt e outras optimizações de custo (L-12).
-- A recarga do catálogo em tempo de execução e a recodificação de resultados antigos.
+- Outras optimizações de custo (L-12). *A cache de prompt entrou em 18-11-2026, CHG-0042.*
+- A recarga do catálogo em tempo de execução. *A recodificação de resultados antigos entrou em 18-11-2026, com o ticket 14 (CHG-0043).*
 - A integração com o Business Central e a ingestão por correio electrónico.
 - A retenção e purga de dados (L-11).
 

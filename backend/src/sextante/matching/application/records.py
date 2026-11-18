@@ -79,3 +79,18 @@ class CodingsSummary:
     prompt_versions: tuple[str, ...]
     catalog_digests: tuple[str, ...]
     line_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class CodingHistoryEntry:
+    """One coding of a line, in force or superseded, with what produced it (NFR-REL-002)."""
+
+    encoded_line_id: str
+    item_number: str | None
+    catalog_description: str | None
+    confidence: str
+    prompt_version: str | None
+    model_id: str | None
+    catalog_digest: str
+    encoded_at: str
+    superseded_at: str | None

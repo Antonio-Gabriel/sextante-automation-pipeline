@@ -4,6 +4,7 @@ The values in force are the reviewer's when a review exists, the system's otherw
 Results and export both read through here, so the two never disagree.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -56,6 +57,17 @@ class CodingsInForce:
             line_id: in_force(coding, reviews.get(coding.encoded_line_id))
             for line_id, coding in codings.items()
         }
+
+    async def reviewed_lines(
+        self, connection: AsyncConnection, invoice_line_ids: Sequence[str]
+    ) -> frozenset[str]:
+        """Return the given lines that a reviewer accepted or corrected (D-3.23).
+
+        Example:
+            await codings.reviewed_lines(connection, ["9b1c..."])  # frozenset({"9b1c..."})
+        """
+        codings = await self.read(connection, list(invoice_line_ids))
+        return frozenset(line_id for line_id, coding in codings.items() if coding.reviewed)
 
 
 def in_force(coding: LineCoding, review: LineReview | None) -> CodingInForce:

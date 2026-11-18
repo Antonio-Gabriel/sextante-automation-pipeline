@@ -7,7 +7,12 @@ from sextante.matching.application.ports import (
     LexicalScorer,
     TokenUsageReader,
 )
-from sextante.matching.application.records import LineCandidates, LineCoding, ScoredCandidate
+from sextante.matching.application.records import (
+    CodingHistoryEntry,
+    LineCandidates,
+    LineCoding,
+    ScoredCandidate,
+)
 from sextante.matching.domain.entity_check import (
     REVIEWER_RESOLUTION_REASON,
     EntityCheckResult,
@@ -33,6 +38,7 @@ from sextante.matching.domain.scoring import LexicalScore
 __all__ = [
     "REVIEWER_RESOLUTION_REASON",
     "CandidateItem",
+    "CodingHistoryEntry",
     "CodingsReader",
     "Confidence",
     "EntityCheckResult",

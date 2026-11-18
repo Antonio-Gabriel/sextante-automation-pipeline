@@ -3,6 +3,7 @@
 import json
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Any
 
 import pytest
 
@@ -29,6 +30,13 @@ def _coded_hotel_invoice(
         yield app, job_id, str(app.lines(job_id)[0]["invoice_id"])
 
 
+def _history(app: EncodingHarness, invoice_id: str, line: dict[str, Any]) -> list[dict[str, Any]]:
+    response = app.client.get(f"/api/invoices/{invoice_id}/lines/{line['invoice_line_id']}/history")
+    assert response.status_code == 200, response.text
+    history: list[dict[str, Any]] = response.json()
+    return history
+
+
 def _recode(app: EncodingHarness, invoice_id: str, job_id: str, key: str = "recode-1") -> int:
     response = app.client.post(
         f"/api/invoices/{invoice_id}/reprocess", headers=idempotency_headers(key)
@@ -43,16 +51,20 @@ def test_a_coded_invoice_is_coded_again_and_the_earlier_coding_is_kept(
 ) -> None:
     """New result lines take over; the earlier ones stay, superseded, never overwritten."""
     with _coded_hotel_invoice(valid_environment) as (app, job_id, invoice_id):
+        tokens_before = app.client.get(f"/api/jobs/{job_id}").json()["input_tokens"]
         status = _recode(app, invoice_id, job_id)
         lines = app.lines(job_id)
+        histories = [_history(app, invoice_id, line) for line in lines]
+        tokens_after = app.client.get(f"/api/jobs/{job_id}").json()["input_tokens"]
 
     assert status == 202
     assert [line["item_number"] for line in lines] == ["O00004", "O00051"]
-    assert _query(
-        valid_environment,
-        "SELECT superseded_at IS NOT NULL, count(*) FROM encoded_line GROUP BY 1 ORDER BY 1",
-    ) == [(0, 2), (1, 2)]
-    assert _query(valid_environment, "SELECT count(*) FROM model_call") == [(2,)]
+    assert [[entry["in_force"] for entry in history] for history in histories] == [
+        [True, False],
+        [True, False],
+    ]
+    assert lines[0]["encoded_line_id"] == histories[0][0]["encoded_line_id"]
+    assert tokens_after == 2 * tokens_before
     assert len(app.extractor.calls) == 1
 
 
@@ -70,7 +82,8 @@ def test_results_candidates_and_export_show_only_the_coding_in_force(
         rows = export_bytes(app, job_id, "csv").decode("utf-8-sig").splitlines()
 
     assert len(lines) == 2
-    assert [c["rank"] for c in candidates] == list(range(1, len(candidates) + 1))
+    # The synthetic OUTLAYS sheet has 7 items: the scores of one coding, never of both.
+    assert [c["rank"] for c in candidates] == list(range(1, 8))
     assert len(rows) == 1 + 2
 
 
@@ -92,11 +105,36 @@ def test_a_reviewed_line_coded_again_is_flagged_for_review_again(
     assert [flag["code"] for flag in reviewed["flags"]] == ["review_superseded"]
     assert (reviewed["review_status"], reviewed["item_number"]) == ("pending", "O00004")
     assert [flag["code"] for flag in untouched["flags"]] == []
-    assert _query(
-        valid_environment,
-        "SELECT r.item_number, e.superseded_at IS NOT NULL FROM line_review r "
-        "JOIN encoded_line e ON e.id = r.encoded_line_id",
-    ) == [("O00051", 1)]
+
+
+@pytest.mark.requirement("NFR-REL-002", "REQ-REV-004", "D-3.23")
+def test_the_earlier_coding_and_its_review_stay_consultable(
+    valid_environment: dict[str, str],
+) -> None:
+    """The history shows each coding with its prompt, catalog and the review made of it."""
+    with _coded_hotel_invoice(valid_environment) as (app, job_id, invoice_id):
+        line = app.lines(job_id)[0]
+        app.client.patch(
+            f"/api/encoded-lines/{line['encoded_line_id']}",
+            json={"item_number": "O00051", "note": "Revisto."},
+            headers=idempotency_headers("correct-history"),
+        )
+        _recode(app, invoice_id, job_id)
+        current, earlier = _history(app, invoice_id, line)
+        foreign = app.client.get(
+            f"/api/invoices/someone-else/lines/{line['invoice_line_id']}/history"
+        )
+
+    assert (current["in_force"], current["review"]) == (True, None)
+    assert (earlier["in_force"], earlier["encoded_line_id"]) == (False, line["encoded_line_id"])
+    assert earlier["review"] == {
+        "review_status": "corrected",
+        "item_number": "O00051",
+        "note": "Revisto.",
+    }
+    assert earlier["prompt_version"] == current["prompt_version"] == FAKE_PROMPT_VERSION
+    assert earlier["catalog_digest"] == current["catalog_digest"]
+    assert foreign.status_code == 404
 
 
 @pytest.mark.requirement("REQ-AUD-003", "NFR-REL-002")
@@ -128,5 +166,6 @@ def test_the_same_recoding_request_twice_codes_once(valid_environment: dict[str,
     with _coded_hotel_invoice(valid_environment) as (app, job_id, invoice_id):
         _recode(app, invoice_id, job_id, key="same")
         _recode(app, invoice_id, job_id, key="same")
+        history = _history(app, invoice_id, app.lines(job_id)[0])
 
-    assert _query(valid_environment, "SELECT count(*) FROM model_call") == [(2,)]
+    assert len(history) == 2

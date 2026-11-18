@@ -45,6 +45,7 @@ The response gives the SHA-256 of the loaded catalog.
 | `POST /api/invoices/{invoice_id}/reprocess` | Code a failed or an already coded invoice again, from its stored text, without a new upload. The earlier coding is kept as superseded, and a line a reviewer had decided goes back to review. Needs `Idempotency-Key` |
 | `GET /api/jobs/{job_id}/results` | Coded lines in document order, with the reviewed values in force, paginated (`limit` up to 100, `offset`). Filters: `confidence`, `target_sheet`, `flagged`, `invoice_id` |
 | `POST /api/invoices/{invoice_id}/entity-resolution` | Resolve an ambiguous entity as `MATCH` or `NO_MATCH`, with a mandatory note; the invoice is coded again from its stored text. Needs `Idempotency-Key` |
+| `GET /api/invoices/{invoice_id}/lines/{line_id}/history` | Every coding of the line, newest first, in force or superseded, with its prompt version, model, catalog digest and the review a person made of it |
 | `GET /api/invoices/{invoice_id}/lines/{line_id}/candidates` | Every item of the line's target sheet, best lexical score first, with the model's choice marked |
 | `PATCH /api/encoded-lines/{encoded_line_id}` | Correct the code with an item of the line's target sheet, with an optional note. Needs `Idempotency-Key` |
 | `POST /api/encoded-lines/{encoded_line_id}/accept` | Accept a pending line without changing its code. Needs `Idempotency-Key` |

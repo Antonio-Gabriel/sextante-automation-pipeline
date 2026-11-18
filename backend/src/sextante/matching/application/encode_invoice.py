@@ -4,16 +4,15 @@ LineCoder decides; this use case stores the decisions, the model call and the au
 events in one transaction.
 """
 
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from types import MappingProxyType
 
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from sextante.catalog.contracts import Catalog, TargetSheet
 from sextante.ingestion.contracts import StoredInvoice, StoredLine
 from sextante.matching.application.line_coding import LineCoder, LineOutcome, with_flags
-from sextante.matching.application.ports import MatchingRepositoryPort
+from sextante.matching.application.ports import MatchingRepositoryPort, ReviewedLinesReader
 from sextante.matching.application.records import (
     CodingsSummary,
     EncodedLineRecord,
@@ -40,6 +39,7 @@ class EncodingCollaborators:
     audit: AuditEventRepository
     clock: Clock
     identifiers: IdentifierGenerator
+    reviews: ReviewedLinesReader
 
 
 class EncodeInvoice:
@@ -58,19 +58,17 @@ class EncodeInvoice:
         target_sheet: TargetSheet,
         also_write: SameTransactionWrite,
         invoice_flags: tuple[FlagReason, ...] = (),
-        line_flags: Mapping[str, tuple[FlagReason, ...]] = MappingProxyType({}),
     ) -> None:
         """Code the service lines with one model call; record VAT and discount lines as such.
 
         ``invoice_flags`` concern the whole invoice, such as a possible duplicate, and are
-        added to every line, sending it to review (REQ-ING-011). ``line_flags`` go on the
-        lines they name, such as a review the new coding supersedes (D-3.23).
+        added to every line, sending it to review (REQ-ING-011).
 
         Example:
             await encoder.execute(stored_invoice, TargetSheet.OUTLAYS, record_header)
         """
         deps = self._collaborators
-        coded = await deps.coder.code(invoice, target_sheet, invoice_flags, line_flags)
+        coded = await deps.coder.code(invoice, target_sheet, invoice_flags)
         call = (
             ModelCallRecord(
                 deps.identifiers.new_id(), invoice.invoice_id, coded.response, deps.clock.now()
@@ -118,7 +116,8 @@ class EncodeInvoice:
             # A line coded again, after an entity resolution, keeps its earlier coding as
             # superseded: the new one takes over without overwriting it (REQ-REV-004).
             line_ids = [outcome.line.line_id for outcome in outcomes]
-            earlier = await deps.repository.codings_in_force(connection, line_ids)
+            outcomes = await self._flag_reviewed(connection, outcomes, line_ids)
+            earlier = await deps.repository.summary_in_force(connection, line_ids)
             await deps.repository.supersede_codings(connection, line_ids, deps.clock.now())
             if call is not None:
                 await deps.repository.record_model_call(connection, call)
@@ -126,6 +125,15 @@ class EncodeInvoice:
                 await self._persist_line(connection, outcome, target_sheet, call)
             if earlier.line_count:
                 await self._audit_recoding(connection, invoice_id, earlier, outcomes, call)
+
+    async def _flag_reviewed(
+        self, connection: AsyncConnection, outcomes: list[LineOutcome], line_ids: list[str]
+    ) -> list[LineOutcome]:
+        # Read in the transaction that supersedes the codings: a review saved while the
+        # model answered is seen, and its line goes back to review, never dropped (D-3.23).
+        reviewed = await self._collaborators.reviews.reviewed_lines(connection, line_ids)
+        again = (FlagReason.REVIEW_SUPERSEDED,)
+        return [with_flags(o, again) if o.line.line_id in reviewed else o for o in outcomes]
 
     async def _audit_recoding(
         self,

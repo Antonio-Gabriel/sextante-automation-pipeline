@@ -8,6 +8,7 @@ from sqlalchemy import Row, func, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from sextante.matching.application.records import (
+    CodingHistoryEntry,
     CodingsSummary,
     EncodedLineRecord,
     LineCandidates,
@@ -46,7 +47,7 @@ class MatchingRepository:
             )
         )
 
-    async def codings_in_force(
+    async def summary_in_force(
         self, connection: AsyncConnection, invoice_line_ids: Sequence[str]
     ) -> CodingsSummary:
         """What coded these lines until now: prompt versions, catalog digests, line count."""
@@ -136,6 +137,21 @@ class MatchingRepository:
         flags = await _flags_of(connection, [encoded_line_id])
         return _line_coding(row, flags[encoded_line_id])
 
+    async def read_line_history(
+        self, connection: AsyncConnection, invoice_line_id: str
+    ) -> list[CodingHistoryEntry]:
+        """Return every coding of the line, newest first, with its prompt and catalog."""
+        line, call = ENCODED_LINE_TABLE, MODEL_CALL_TABLE
+        query = (
+            select(line, call.c.prompt_version, call.c.model_id)
+            .select_from(line)
+            .outerjoin(call, call.c.id == line.c.model_call_id)
+            .where(line.c.invoice_line_id == invoice_line_id)
+            .order_by(line.c.encoded_at.desc(), line.c.id.desc())
+        )
+        rows = (await connection.execute(query)).all()
+        return [_history_entry(row) for row in rows]
+
     async def read_candidates(
         self, connection: AsyncConnection, invoice_line_id: str
     ) -> LineCandidates | None:
@@ -150,6 +166,20 @@ class MatchingRepository:
         scores = await _scores_of(connection, str(row.id))
         chosen = row.item_number if row.choice_outcome == "chosen" else None
         return LineCandidates(row.target_sheet, chosen, scores)
+
+
+def _history_entry(row: Row[tuple[object, ...]]) -> CodingHistoryEntry:
+    return CodingHistoryEntry(
+        encoded_line_id=str(row.id),
+        item_number=row.item_number,
+        catalog_description=row.catalog_description,
+        confidence=str(row.confidence),
+        prompt_version=row.prompt_version,
+        model_id=row.model_id,
+        catalog_digest=str(row.catalog_digest),
+        encoded_at=str(row.encoded_at),
+        superseded_at=row.superseded_at,
+    )
 
 
 def _line_coding(row: Row[tuple[object, ...]], flags: list[str]) -> LineCoding:

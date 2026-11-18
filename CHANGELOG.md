@@ -50,6 +50,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                     └── CHG-0041  improve   Modelo por omissão passa a Sonnet
                                                                                                                                                         └── CHG-0042  improve   Prompt v2 com cache de prompt
                                                                                                                                                             └── CHG-0043  feat      Recodificação com histórico
+                                                                                                                                                                └── CHG-0044  fix       Correcções da revisão do ticket 14
 ```
 
 ## Regras
@@ -114,6 +115,30 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0044 · Correcções da revisão do ticket 14
+
+- **Data:** 2026-11-18
+- **Tipo:** fix
+- **Pai:** CHG-0043
+- **Estado:** activa
+- **Requisitos:** NFR-REL-002, REQ-REV-004, D-3.23, SEC-19
+- **Commit:** pendente
+- **Migração:** nenhuma (o esquema continua na revisão `0009`)
+- **Ficheiros:**
+  - `backend/src/sextante/matching/` (porta `ReviewedLinesReader`, sinalização das linhas revistas dentro da transacção, `read_line_history`, `summary_in_force` em vez de `codings_in_force`)
+  - `backend/src/sextante/review/` (`ReadLineHistory`, rota de histórico, `CodingsInForce.reviewed_lines`), `worker.py`, `main.py`
+  - testes: `tests/api/test_recoding.py`
+  - `docs/00-decisoes-e-lacunas.md` (§3.23), `docs/02-arquitectura.md` (`lexical_score`), spec, `README.md`, ticket 14
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 313 testes; os da recodificação verificam pela API (histórico e tokens do trabalho) o que antes verificavam com SQL directo. `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+**Histórico consultável.** `GET /api/invoices/{id}/lines/{line_id}/history` mostra todas as codificações da linha, em vigor ou substituídas, cada uma com a versão do prompt, o modelo, o digest do catálogo e a revisão que uma pessoa fez dela. Antes, a codificação anterior e a sua revisão só se viam na base de dados.
+
+**Revisões lidas na transacção.** Saber se uma linha foi revista passa a correr na transacção que substitui a codificação, através de uma porta do módulo de codificação que o módulo de revisão implementa. Fecha a janela em que uma revisão gravada enquanto o modelo respondia se perdia sem sinalização. Cobre também a recodificação que dá entidade ambígua. As sinalizações por linha deixam de passar pelo trabalhador.
+
+**Documentos.** `docs/02` descreve `lexical_score` por codificação. A spec deixa de pôr a cache de prompt e a recodificação fora do âmbito. §3.23 regista a regra dos pedidos repetidos com chaves diferentes, a confirmar pelo responsável.
 
 ### CHG-0043 · Recodificação com histórico
 

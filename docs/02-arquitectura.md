@@ -299,7 +299,7 @@ SQLite com WAL. Datas em UTC, texto ISO 8601, porque o SQLite não tem tipo de d
 | `invoice_header` | Entidade extraída e o seu NIF, linhas "ao cuidado de", número, data, fornecedor e o seu NIF, moeda, total, resultado da verificação de entidade e motivo de ambiguidade, aba de destino (pode ficar vazia), identificador do fornecedor, `Invoice_ID` | Um para um com `invoice`. Índice não único sobre (fornecedor, número), para o duplicado provável |
 | `invoice_line` | Descrição original e normalizada, tipo de linha, quantidade, preço unitário, percentagem de IVA, valor, ordem no documento | A ordem na saída é a ordem aqui |
 | `encoded_line` | Código atribuído, descrição do catálogo, confiança, estado de revisão, digest do catálogo | O que a exportação lê |
-| `lexical_score` | Um registo por linha e por item da aba de destino, com o score e a posição lexical | É o que permite explicar uma decisão. Substitui `retrieval_candidate` |
+| `lexical_score` | Um registo por codificação e por item da aba de destino, com o score e a posição lexical. *Revisto em 18-11-2026 (migração 0009):* a chave passa de linha a codificação, para que uma linha recodificada guarde as pontuações de cada codificação | É o que permite explicar uma decisão. Substitui `retrieval_candidate` |
 | `model_call` | Identificador do modelo, versão do prompt, tokens de entrada e de saída, latência, resultado | Alimenta REQ-AUD-004 |
 | `flag` | Motivo de um conjunto fechado, por linha | |
 | `audit_event` | Apenas inserções. Tipo, entidade, valor anterior, valor novo, autor, momento. Tipos incluem `entity_resolved`, `line_accepted`, `line_corrected` e `summary_rows_extracted` | Sem `UPDATE` nem `DELETE` pela aplicação |

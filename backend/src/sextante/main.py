@@ -76,6 +76,7 @@ from sextante.review.application.read_line_candidates import (
     InvoiceLineNotFoundError,
     ReadLineCandidates,
 )
+from sextante.review.application.read_line_history import ReadLineHistory
 from sextante.review.application.review_line import (
     EncodedLineNotFoundError,
     ReviewCollaborators,
@@ -250,6 +251,9 @@ def _wire_review(
     app.state.reviewer_id = settings.reviewer_id
     app.state.resolve_entity = _build_entity_resolution(settings, adapters)
     app.state.idempotency = IdempotentExecutor(engine, adapters.clock)
+    app.state.read_line_history = ReadLineHistory(
+        engine, IngestionRepository(), MatchingRepository(), ReviewRepository()
+    )
     app.state.read_line_candidates = ReadLineCandidates(
         engine, IngestionRepository(), MatchingRepository(), catalog
     )
@@ -298,7 +302,6 @@ def _build_worker(
             identifiers=adapters.identifiers,
             target_entity=reference.target_entity,
             denylist=reference.denylist,
-            codings=CodingsInForce(MatchingRepository(), ReviewRepository()),
             poll_seconds=adapters.worker_poll_seconds,
         )
     )
@@ -323,6 +326,7 @@ def _build_encoder(
             audit=AuditEventRepository(),
             clock=adapters.clock,
             identifiers=adapters.identifiers,
+            reviews=CodingsInForce(MatchingRepository(), ReviewRepository()),
         )
     )
 

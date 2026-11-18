@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncConnection
 
     from sextante.matching.application.records import (
+        CodingHistoryEntry,
         CodingsSummary,
         EncodedLineRecord,
         LineCandidates,
@@ -72,6 +73,12 @@ class CodingsReader(Protocol):
         """Return one coding by its own identifier, or None."""
         ...
 
+    async def read_line_history(
+        self, connection: "AsyncConnection", invoice_line_id: str
+    ) -> "list[CodingHistoryEntry]":
+        """Return every coding of the line, the one in force first, then the superseded."""
+        ...
+
     async def read_candidates(
         self, connection: "AsyncConnection", invoice_line_id: str
     ) -> "LineCandidates | None":
@@ -82,6 +89,16 @@ class CodingsReader(Protocol):
         self, connection: "AsyncConnection", line_ids: Sequence[str]
     ) -> dict[str, "LineCoding"]:
         """Return the coding of each line that has one, keyed by invoice line id."""
+        ...
+
+
+class ReviewedLinesReader(Protocol):
+    """Port, implemented by the review module: lines whose coding in force was reviewed."""
+
+    async def reviewed_lines(
+        self, connection: "AsyncConnection", invoice_line_ids: Sequence[str]
+    ) -> frozenset[str]:
+        """Return the given lines that a reviewer accepted or corrected (REQ-REV-004)."""
         ...
 
 
@@ -100,7 +117,7 @@ class MatchingRepositoryPort(Protocol):
         """Insert the encoded line and the lexical scores of every item of its sheet."""
         ...
 
-    async def codings_in_force(
+    async def summary_in_force(
         self, connection: "AsyncConnection", invoice_line_ids: Sequence[str]
     ) -> "CodingsSummary":
         """What coded these lines until now: prompt versions, catalog digests, line count."""
