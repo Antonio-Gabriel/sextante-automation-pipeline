@@ -33,6 +33,9 @@ def test_invoice_billed_to_amt_is_coded_against_outlays_and_read_back(
             "target_sheet": "OUTLAYS",
             "item_number": "O00004",
             "catalog_description": "Bilhete Avião",
+            "confidence": "MEDIUM",
+            "review_status": "accepted",
+            "flags": [],
         }
     ]
 

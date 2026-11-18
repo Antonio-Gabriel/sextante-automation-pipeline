@@ -6,9 +6,19 @@ from fastapi import APIRouter, Path, Query, Request
 from pydantic import BaseModel, ConfigDict
 
 from sextante.platform.limits import IDENTIFIER_MAX_LENGTH, MAX_PAGE_SIZE
-from sextante.review.application.list_job_results import ListJobResults
+from sextante.platform.user_messages import USER_MESSAGES_PT
+from sextante.review.application.list_job_results import ListJobResults, ResultLine
 
 review_router = APIRouter(prefix="/api")
+
+
+class FlagResponse(BaseModel):
+    """One flag: the stable code and the Portuguese text shown to the reviewer (REQ-CNF-004)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    code: str
+    message: str
 
 
 class ResultLineResponse(BaseModel):
@@ -24,6 +34,9 @@ class ResultLineResponse(BaseModel):
     target_sheet: str | None
     item_number: str | None
     catalog_description: str | None
+    confidence: str | None
+    review_status: str | None
+    flags: list[FlagResponse]
 
 
 class ResultsPageResponse(BaseModel):
@@ -53,8 +66,18 @@ async def read_results(
     list_results: ListJobResults = request.app.state.list_job_results
     lines = await list_results.execute(job_id, page_size, offset)
     return ResultsPageResponse(
-        lines=[ResultLineResponse.model_validate(line, from_attributes=True) for line in lines],
+        lines=[_line_response(line) for line in lines],
         limit=page_size,
         offset=offset,
         limit_truncated=limit > MAX_PAGE_SIZE,
     )
+
+
+def _line_response(line: ResultLine) -> ResultLineResponse:
+    fields = {
+        name: getattr(line, name) for name in ResultLine.__dataclass_fields__ if name != "flags"
+    }
+    flags = [
+        FlagResponse(code=code, message=USER_MESSAGES_PT[f"flags.{code}"]) for code in line.flags
+    ]
+    return ResultLineResponse(**fields, flags=flags)

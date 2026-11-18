@@ -24,6 +24,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                             └── CHG-0015  infra     Skill do graphify no projecto e correcção da CHG-0014
                                                 └── CHG-0016  docs      Diagramas regenerados com o desenho actual
                                                     └── CHG-0017  feat      Verificação de entidade e encaminhamento para OUTLAYSP
+                                                        └── CHG-0018  feat      Confiança, recurso e sinalização
 ```
 
 ## Regras
@@ -88,6 +89,43 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0018 · Confiança, recurso e sinalização
+
+- **Data:** 2026-11-18
+- **Tipo:** feat
+- **Pai:** CHG-0017
+- **Estado:** activa
+- **Requisitos:** REQ-CNF-001 a REQ-CNF-005, REQ-MAP-007 a REQ-MAP-009, REQ-MAP-013, REQ-REV-005, D-3.8, D-3.16, L-08, L-13
+- **Commit:** pendente
+- **Migração:** `0004`, a partir de `0003`
+- **Ficheiros:**
+  - `backend/src/sextante/matching/domain/line_decision.py`, `scoring.py`
+  - `backend/src/sextante/matching/application/encode_invoice.py`, `records.py`
+  - `backend/src/sextante/matching/infrastructure/` (tabelas e repositório)
+  - `backend/src/sextante/review/`, `worker.py`, `main.py`
+  - `backend/src/sextante/platform/settings.py`, `user_messages.py`
+  - `backend/migrations/versions/0004_confidence_and_flags.py`
+  - `README.md`, `config/.env.example`
+- **Reversibilidade:** parcial
+- **Reversão:**
+  1. Salvaguardar `sextante.db`.
+  2. Apagar as linhas de `encoded_line` sem aba de destino: `DELETE FROM encoded_line WHERE target_sheet IS NULL`, depois de apagar as suas linhas de `line_flag`.
+  3. Correr `alembic downgrade 0003`.
+  4. Reverter o commit.
+
+  Os eventos de auditoria `line_not_coded` ficam: a auditoria é só de inserção.
+- **Verificação:**
+  - Feito: 146 testes, incluindo 13 casos de tabela da regra de confiança com os limites exactos dos limiares; `mypy`, `ruff`, 7 contratos do `import-linter`, funções com 20 linhas ou menos.
+  - Não verificado: calibração dos limiares, que espera pelo conjunto dourado (L-02).
+
+A confiança é calculada pela regra de D-3.8:
+
+- `HIGH` só quando o item escolhido é o topo lexical, com score de pelo menos 85 e pelo menos 10 de distância ao segundo;
+- `MEDIUM` para os restantes itens válidos;
+- `LOW` para o recurso, para a ausência de item, para uma resposta inválida e para um item genérico.
+
+O `O00999` é atribuído em código, só em OUTLAYSP. Em OUTLAYS a linha fica vazia e sinalizada. Cada sinalização traz um motivo de um conjunto fechado, com texto em português. As linhas de facturas ambíguas ficam registadas com `LOW`, sem aba de destino e com o motivo da entidade, o que fecha o critério que a CHG-0017 deixou pendente. A auditoria regista a confiança, a regra que a produziu e as sinalizações.
 
 ### CHG-0017 · Verificação de entidade e encaminhamento para OUTLAYSP
 

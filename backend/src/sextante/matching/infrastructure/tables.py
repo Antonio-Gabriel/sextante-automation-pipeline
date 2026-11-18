@@ -21,13 +21,16 @@ ENCODED_LINE_TABLE = Table(
     SCHEMA_METADATA,
     Column("id", String(64), primary_key=True),
     Column("invoice_line_id", String(64), ForeignKey("invoice_line.id"), nullable=False),
-    Column("target_sheet", String(16), nullable=False),
+    Column("target_sheet", String(16), nullable=True),
     Column("item_number", String(32), nullable=True),
     Column("catalog_description", Text, nullable=True),
     Column("choice_outcome", String(24), nullable=False),
     Column("candidate_index", Integer, nullable=True),
     Column("catalog_digest", String(64), nullable=False),
-    Column("model_call_id", String(64), ForeignKey("model_call.id"), nullable=False),
+    Column("model_call_id", String(64), ForeignKey("model_call.id"), nullable=True),
+    Column("confidence", String(8), nullable=False),
+    Column("confidence_rule", String(32), nullable=False),
+    Column("review_status", String(16), nullable=False),
     Column("encoded_at", String(40), nullable=False),
     UniqueConstraint("invoice_line_id", name="uq_encoded_line_invoice_line"),
 )
@@ -39,4 +42,11 @@ LEXICAL_SCORE_TABLE = Table(
     Column("item_number", String(32), primary_key=True),
     Column("score", Float, nullable=False),
     Column("rank", Integer, nullable=False),
+)
+
+LINE_FLAG_TABLE = Table(
+    "line_flag",
+    SCHEMA_METADATA,
+    Column("encoded_line_id", String(64), ForeignKey("encoded_line.id"), primary_key=True),
+    Column("reason", String(40), primary_key=True),
 )

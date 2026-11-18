@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from rapidfuzz import fuzz, utils
 
 from sextante.catalog.contracts import CatalogItem
-from sextante.matching.application.ports import LexicalScore
+from sextante.matching.domain.scoring import LexicalScore
 from sextante.platform.text_normalization import normalize_for_comparison
 
 

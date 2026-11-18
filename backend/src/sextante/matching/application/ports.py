@@ -1,25 +1,16 @@
 """Ports of the matching use cases (02-arquitectura.md §2.3)."""
 
 from collections.abc import Sequence
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 from sextante.catalog.contracts import CatalogItem
 from sextante.matching.domain.item_choice import ItemChoiceRequest, ItemChoiceResponse
+from sextante.matching.domain.scoring import LexicalScore
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncConnection
 
     from sextante.matching.application.records import EncodedLineRecord, LineCoding, ModelCallRecord
-
-
-@dataclass(frozen=True, slots=True)
-class LexicalScore:
-    """Similarity of one line to one catalog item, and the item's rank for that line."""
-
-    item_number: str
-    score: float
-    rank: int
 
 
 class LexicalScorer(Protocol):

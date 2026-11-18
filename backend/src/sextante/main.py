@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from sextante.catalog.application.load_catalog import CatalogFileError, load_catalog
-from sextante.catalog.contracts import Catalog
+from sextante.catalog.contracts import FALLBACK_ITEM_NUMBER, Catalog, CatalogItem, ItemNumber
 from sextante.catalog.domain.catalog_builder import BuiltCatalog
 from sextante.catalog.domain.errors import CatalogValidationError
 from sextante.catalog.infrastructure.xlsx_catalog_reader import XlsxCatalogWorkbookReader
@@ -84,6 +84,7 @@ def create_app(
     settings = Settings.from_environment(os.environ if environ is None else environ)
     catalog = _load_catalog_or_refuse(settings).catalog
     denylist = _load_denylist_or_refuse(settings)
+    _require_generic_items_in_catalog(settings, catalog)
     apply_migrations(settings.database_url.get_secret_value())
     adapters = dependencies or AppDependencies()
     app = FastAPI(title="Sextante", lifespan=_lifespan(settings, catalog, denylist, adapters))
@@ -148,7 +149,7 @@ def _build_worker(
             repository=IngestionRepository(),
             store=store,
             extractor=adapters.extractor,
-            encoder=_build_encoder(engine, catalog, adapters),
+            encoder=_build_encoder(engine, catalog, settings, adapters),
             clock=adapters.clock,
             identifiers=adapters.identifiers,
             target_entity=TargetEntity(settings.target_entity_name, settings.target_entity_nif),
@@ -159,7 +160,7 @@ def _build_worker(
 
 
 def _build_encoder(
-    engine: AsyncEngine, catalog: Catalog, adapters: AppDependencies
+    engine: AsyncEngine, catalog: Catalog, settings: Settings, adapters: AppDependencies
 ) -> EncodeInvoice:
     return EncodeInvoice(
         EncodingCollaborators(
@@ -171,8 +172,27 @@ def _build_encoder(
             audit=AuditEventRepository(),
             clock=adapters.clock,
             identifiers=adapters.identifiers,
+            fallback_item=_fallback_item(catalog),
+            generic_items=frozenset(ItemNumber(n) for n in settings.generic_items),
         )
     )
+
+
+def _require_generic_items_in_catalog(settings: Settings, catalog: Catalog) -> None:
+    unknown = [n for n in settings.generic_items if catalog.find(ItemNumber(n)) is None]
+    if unknown:
+        raise StartupConfigurationError(
+            f"SEXTANTE_GENERIC_ITEMS: items {unknown} are not in the catalog. "
+            "Expected item numbers of column No., for example O00052."
+        )
+
+
+def _fallback_item(catalog: Catalog) -> CatalogItem:
+    # Startup validation already refused a catalog without O00999 (REQ-MAP-012).
+    fallback = catalog.find(FALLBACK_ITEM_NUMBER)
+    if fallback is None:
+        raise StartupConfigurationError(f"Invalid catalog. No item {FALLBACK_ITEM_NUMBER}.")
+    return fallback
 
 
 def _load_denylist_or_refuse(settings: Settings) -> frozenset[str]:

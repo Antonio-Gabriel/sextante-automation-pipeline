@@ -127,6 +127,8 @@ def test_non_breaking_space_at_the_end_of_a_description_still_warns(
     """The invisible-character check runs on the raw cell, before trimming hides it."""
     catalog = SyntheticCatalog(outlays=(("O00070", "Taxa\xa0", "Fee"),))
     valid_environment["SEXTANTE_CATALOG_PATH"] = str(catalog.write(tmp_path / "nbsp.xlsx"))
+    # This minimal catalog has no O00052, the default generic item.
+    valid_environment["SEXTANTE_GENERIC_ITEMS"] = "O00070"
 
     create_app(valid_environment)
 

@@ -15,5 +15,15 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
         "errors.upload.invalid_file_name": "O nome do ficheiro é inválido.",
         "errors.upload.no_files": "Nenhum ficheiro foi enviado.",
         "errors.job.not_found": "Trabalho não encontrado.",
+        "flags.entity_label_not_found": "Não foi encontrada a entidade facturada na factura.",
+        "flags.multiple_billed_entities": "A factura indica mais do que uma entidade facturada.",
+        "flags.entity_similar_not_equal": "Entidade parecida com a AMT, mas não igual: confirmar.",
+        "flags.entity_nif_mismatch": "Nome igual ao da AMT, mas com NIF diferente.",
+        "flags.no_match_in_outlays": "Nenhum item de OUTLAYS serve: código por atribuir.",
+        "flags.fallback_applied": "Nenhum item serve: atribuído o recurso O00999 (OUTLAYSP).",
+        "flags.generic_catalog_item": "Atribuído um item genérico: confirmar se não há outro.",
+        "flags.conflicting_candidates": "Dois itens do catálogo estão muito próximos.",
+        "flags.model_response_invalid": "A resposta do modelo foi inválida: código por atribuir.",
+        "flags.possible_duplicate": "Possível duplicado de uma factura já carregada.",
     }
 )

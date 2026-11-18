@@ -123,4 +123,7 @@ def test_responses_carry_exactly_their_declared_fields(valid_environment: dict[s
         "target_sheet",
         "item_number",
         "catalog_description",
+        "confidence",
+        "review_status",
+        "flags",
     }

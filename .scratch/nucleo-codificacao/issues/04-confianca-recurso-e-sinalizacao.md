@@ -13,18 +13,22 @@ O ticket aplica a regra de recurso:
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] A confiança é uma função de domínio pura, com os limiares em constantes num só lugar e marcados como provisórios
-- [ ] `HIGH` só quando o item escolhido é o topo lexical, o score dele está acima do limiar alto e a distância ao segundo está acima do mínimo
-- [ ] `MEDIUM` quando o item é válido e não se cumpre o resto da condição `HIGH`
-- [ ] `LOW` quando há recurso, `none`, resposta inválida ou item genérico
-- [ ] `conflicting_candidates` só quando o item escolhido é um dos dois primeiros lexicais e os dois estão a menos da distância mínima
-- [ ] `O00999` só é aplicado quando a aba de destino é OUTLAYSP, e essa verificação está em código
-- [ ] Em OUTLAYS com `none`, o código fica vazio, e nunca é preenchido com `O00999` nem com o melhor candidato
-- [ ] Os itens genéricos são uma lista de configuração, inicialmente com `O00052`
-- [ ] Um índice fora dos limites, um código fora da aba ou uma linha sem resposta dá `model_response_invalid`, e nunca um código improvisado
-- [ ] Os motivos são um conjunto fechado, com texto em português num catálogo de tradução
-- [ ] As linhas sinalizadas começam em `pending` e as restantes em `accepted`
-- [ ] A auditoria regista a regra que produziu a confiança
-- [ ] Os testes de tabela da confiança ficam nos limites de cada limiar, e os testes pela API cobrem cada linha da tabela de recurso
+- [x] A confiança é uma função de domínio pura, com os limiares em constantes num só lugar e marcados como provisórios
+- [x] `HIGH` só quando o item escolhido é o topo lexical, o score dele está acima do limiar alto e a distância ao segundo está acima do mínimo
+- [x] `MEDIUM` quando o item é válido e não se cumpre o resto da condição `HIGH`
+- [x] `LOW` quando há recurso, `none`, resposta inválida ou item genérico
+- [x] `conflicting_candidates` só quando o item escolhido é um dos dois primeiros lexicais e os dois estão a menos da distância mínima
+- [x] `O00999` só é aplicado quando a aba de destino é OUTLAYSP, e essa verificação está em código
+- [x] Em OUTLAYS com `none`, o código fica vazio, e nunca é preenchido com `O00999` nem com o melhor candidato
+- [x] Os itens genéricos são uma lista de configuração, inicialmente com `O00052`
+- [x] Um índice fora dos limites, um código fora da aba ou uma linha sem resposta dá `model_response_invalid`, e nunca um código improvisado
+- [x] Os motivos são um conjunto fechado, com texto em português num catálogo de tradução
+- [x] As linhas sinalizadas começam em `pending` e as restantes em `accepted`
+- [x] A auditoria regista a regra que produziu a confiança
+- [x] Os testes de tabela da confiança ficam nos limites de cada limiar, e os testes pela API cobrem cada linha da tabela de recurso
+
+## Comments
+
+Resolved on 2026-11-18 (CHG-0018). Thresholds: HIGH score 85, margin 10, both provisional and declared in README.md (REQ-CNF-005). Also delivers the pending criterion of ticket 03: lines of an ambiguous invoice are recorded LOW, without target sheet, flagged with the entity reason.

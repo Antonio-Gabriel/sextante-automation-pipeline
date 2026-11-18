@@ -1,4 +1,4 @@
-"""Code the service lines of one routed invoice (REQ-MAP-004 to REQ-MAP-007, SEC-14)."""
+"""Code the service lines of one routed invoice (REQ-MAP-004 to REQ-MAP-009, SEC-14)."""
 
 import logging
 from collections.abc import Sequence
@@ -7,11 +7,10 @@ from dataclasses import dataclass
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from sextante.catalog.contracts import Catalog, CatalogItem, TargetSheet
+from sextante.catalog.contracts import Catalog, CatalogItem, ItemNumber, TargetSheet
 from sextante.ingestion.contracts import StoredInvoice, StoredLine
 from sextante.matching.application.ports import (
     ItemClassifier,
-    LexicalScore,
     LexicalScorer,
     MatchingRepositoryPort,
 )
@@ -22,9 +21,15 @@ from sextante.matching.domain.item_choice import (
     InvoiceContext,
     ItemChoiceFromModel,
     ItemChoiceRequest,
-    ItemChoiceResponse,
     LineToCode,
 )
+from sextante.matching.domain.line_decision import (
+    Confidence,
+    FlagReason,
+    LineDecision,
+    decide_line,
+)
+from sextante.matching.domain.scoring import LexicalScore
 from sextante.platform.audit import AuditEventRepository
 from sextante.platform.clock import Clock, IdentifierGenerator
 from sextante.platform.text_normalization import normalize_for_comparison
@@ -44,18 +49,22 @@ class EncodingCollaborators:
     audit: AuditEventRepository
     clock: Clock
     identifiers: IdentifierGenerator
+    fallback_item: CatalogItem
+    generic_items: frozenset[ItemNumber]
 
 
 @dataclass(frozen=True, slots=True)
-class _InvoiceCoding:
-    """What every line of one invoice shares: its routing and its single model call."""
+class _LineOutcome:
+    """What one line ends up with, before it gets its identifiers and timestamp."""
 
-    target_sheet: TargetSheet
-    call: ModelCallRecord
+    line: StoredLine
+    choice: LineChoice | None
+    decision: LineDecision
+    scores: tuple[LexicalScore, ...]
 
 
 class EncodeInvoice:
-    """One model call per invoice, then every answer validated and recorded with its audit.
+    """One model call per invoice, then every answer validated, decided and audited.
 
     Example:
         await EncodeInvoice(collaborators).execute(stored_invoice, TargetSheet.OUTLAYS)
@@ -65,7 +74,7 @@ class EncodeInvoice:
         self._collaborators = collaborators
 
     async def execute(self, invoice: StoredInvoice, target_sheet: TargetSheet) -> None:
-        """Score, ask the model once, resolve answers against the sheet, and persist.
+        """Score, ask the model once, resolve answers against the sheet, decide and persist.
 
         Example:
             await encoder.execute(stored_invoice, TargetSheet.OUTLAYS)
@@ -84,48 +93,71 @@ class EncodeInvoice:
         call = ModelCallRecord(
             deps.identifiers.new_id(), invoice.invoice_id, response, deps.clock.now()
         )
-        await self._persist(invoice, _InvoiceCoding(target_sheet, call), choices, scores)
+        outcomes = [
+            self._decide(line, choices[line.position], scores[line.line_id], target_sheet)
+            for line in invoice.lines
+        ]
+        await self._persist(outcomes, target_sheet, call)
 
-    async def _persist(
-        self,
-        invoice: StoredInvoice,
-        coding: _InvoiceCoding,
-        choices: dict[int, LineChoice],
-        scores: dict[str, tuple[LexicalScore, ...]],
-    ) -> None:
-        deps = self._collaborators
-        async with deps.engine.begin() as connection:
-            await deps.repository.record_model_call(connection, coding.call)
-            for line in invoice.lines:
-                record = self._encoded_record(
-                    line, choices[line.position], scores[line.line_id], coding
-                )
-                await deps.repository.record_encoded_line(connection, record)
-                await deps.audit.append(
-                    connection,
-                    deps.identifiers.new_id(),
-                    "line_encoded",
-                    ("invoice_line", line.line_id),
-                    _audit_payload(line, record, coding.call.response),
-                    record.encoded_at,
-                )
+    async def record_uncoded(self, invoice: StoredInvoice, reason: FlagReason) -> None:
+        """Record every line of an ambiguous invoice: no sheet, no code, LOW, flagged (D-3.15).
 
-    def _encoded_record(
+        Example:
+            await encoder.record_uncoded(stored_invoice, FlagReason.ENTITY_NIF_MISMATCH)
+        """
+        decision = LineDecision(None, Confidence.LOW, (reason,), "entity_ambiguous")
+        outcomes = [_LineOutcome(line, None, decision, ()) for line in invoice.lines]
+        await self._persist(outcomes, None, None)
+
+    def _decide(
         self,
         line: StoredLine,
         choice: LineChoice,
         scores: tuple[LexicalScore, ...],
-        coding: _InvoiceCoding,
+        target_sheet: TargetSheet,
+    ) -> _LineOutcome:
+        deps = self._collaborators
+        decision = decide_line(choice, target_sheet, scores, deps.fallback_item, deps.generic_items)
+        return _LineOutcome(line, choice, decision, scores)
+
+    async def _persist(
+        self,
+        outcomes: list[_LineOutcome],
+        target_sheet: TargetSheet | None,
+        call: ModelCallRecord | None,
+    ) -> None:
+        deps = self._collaborators
+        async with deps.engine.begin() as connection:
+            if call is not None:
+                await deps.repository.record_model_call(connection, call)
+            for outcome in outcomes:
+                record = self._record_for(outcome, target_sheet, call)
+                await deps.repository.record_encoded_line(connection, record)
+                event = "line_encoded" if target_sheet else "line_not_coded"
+                subject = ("invoice_line", outcome.line.line_id)
+                payload = _audit_payload(outcome.line, record, call)
+                await deps.audit.append(
+                    connection,
+                    deps.identifiers.new_id(),
+                    event,
+                    subject,
+                    payload,
+                    record.encoded_at,
+                )
+
+    def _record_for(
+        self, outcome: _LineOutcome, target_sheet: TargetSheet | None, call: ModelCallRecord | None
     ) -> EncodedLineRecord:
         deps = self._collaborators
         return EncodedLineRecord(
             encoded_line_id=deps.identifiers.new_id(),
-            invoice_line_id=line.line_id,
-            target_sheet=coding.target_sheet,
-            choice=choice,
-            scores=scores,
+            invoice_line_id=outcome.line.line_id,
+            target_sheet=target_sheet,
+            choice=outcome.choice,
+            decision=outcome.decision,
+            scores=outcome.scores,
             catalog_digest=str(deps.catalog.digest),
-            model_call_id=coding.call.call_id,
+            model_call_id=call.call_id if call else None,
             encoded_at=deps.clock.now(),
         )
 
@@ -161,21 +193,24 @@ def _request_for(invoice: StoredInvoice, sheet_items: tuple[CatalogItem, ...]) -
 
 
 def _audit_payload(
-    line: StoredLine, record: EncodedLineRecord, response: ItemChoiceResponse
+    line: StoredLine, record: EncodedLineRecord, call: ModelCallRecord | None
 ) -> dict[str, object]:
     # The audit trail lives in the database, with its own access and retention, so it
     # keeps the description that fed the decision; the log does not (REQ-AUD-001, SEC-15).
-    catalog_item = record.choice.catalog_item
+    catalog_item = record.decision.catalog_item
     return {
         "description": line.description,
         "normalized_description": normalize_for_comparison(line.description),
-        "target_sheet": record.target_sheet.value,
-        "choice_outcome": record.choice.outcome.value,
-        "candidate_index": record.choice.candidate_index,
+        "target_sheet": record.target_sheet.value if record.target_sheet else None,
+        "choice_outcome": record.choice.outcome.value if record.choice else "not_coded",
+        "candidate_index": record.choice.candidate_index if record.choice else None,
         "item_number": catalog_item.item_number.value if catalog_item else None,
+        "confidence": record.decision.confidence.value,
+        "confidence_rule": record.decision.rule,
+        "flags": [flag.value for flag in record.decision.flags],
         "scores": [[score.item_number, score.score] for score in record.scores],
-        "model_id": response.model_id,
-        "prompt_version": response.prompt_version,
+        "model_id": call.response.model_id if call else None,
+        "prompt_version": call.response.prompt_version if call else None,
         "catalog_digest": record.catalog_digest,
         "encoded_at": record.encoded_at.isoformat(),
     }

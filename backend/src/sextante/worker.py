@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from sextante.catalog.contracts import TargetSheet
 from sextante.ingestion.application.ports import IngestionRepositoryPort
 from sextante.ingestion.application.records import ClaimedJob, QueuedInvoice
 from sextante.ingestion.contracts import (
@@ -17,7 +18,13 @@ from sextante.ingestion.contracts import (
 from sextante.ingestion.domain.ports import InvoiceFileStore
 from sextante.ingestion.domain.statuses import InvoiceStatus, JobStatus
 from sextante.matching.application.encode_invoice import EncodeInvoice
-from sextante.matching.contracts import TargetEntity, check_billed_entity, target_sheet_for
+from sextante.matching.contracts import (
+    EntityCheckResult,
+    FlagReason,
+    TargetEntity,
+    check_billed_entity,
+    target_sheet_for,
+)
 from sextante.platform.clock import Clock, IdentifierGenerator
 from sextante.platform.structured_logging import correlation_id_var
 
@@ -114,19 +121,34 @@ class EncodingWorker:
         deps = self._collaborators
         check = check_billed_entity(stored.billed_entities, deps.target_entity, deps.denylist)
         target_sheet = target_sheet_for(check.verdict)
-        async with deps.engine.begin() as connection:
-            await deps.repository.record_entity_check(
-                connection,
-                stored.invoice_id,
-                (check.verdict.value, check.reason.value if check.reason else None),
-                target_sheet.value if target_sheet else None,
-            )
+        await self._record_entity_check(stored.invoice_id, check, target_sheet)
         if target_sheet is None:
-            # An ambiguous entity is never coded by guess: a reviewer resolves it (D-3.15).
-            return InvoiceStatus.NOT_CODED, check.reason.value if check.reason else None
+            # An ambiguous entity is never coded by guess: its lines are recorded LOW and
+            # flagged with the reason, and a reviewer resolves the entity (D-3.15).
+            reason = _ambiguity_flag(check)
+            await deps.encoder.record_uncoded(stored, reason)
+            return InvoiceStatus.NOT_CODED, reason.value
         await deps.encoder.execute(stored, target_sheet)
-        logger.info(
-            "invoice_encoded",
-            extra={"invoice_id": stored.invoice_id, "line_count": len(stored.lines)},
-        )
+        extra = {"invoice_id": stored.invoice_id, "line_count": len(stored.lines)}
+        logger.info("invoice_encoded", extra=extra)
         return InvoiceStatus.ENCODED, None
+
+    async def _record_entity_check(
+        self, invoice_id: str, check: EntityCheckResult, target_sheet: TargetSheet | None
+    ) -> None:
+        reason = check.reason.value if check.reason else None
+        sheet = target_sheet.value if target_sheet else None
+        async with self._collaborators.engine.begin() as connection:
+            await self._collaborators.repository.record_entity_check(
+                connection, invoice_id, (check.verdict.value, reason), sheet
+            )
+
+
+def _ambiguity_flag(check: EntityCheckResult) -> FlagReason:
+    # Every AMBIGUOUS verdict carries its reason by construction; a missing one is a
+    # defect to surface, not a gap to fill with a guessed reason.
+    if check.reason is None:
+        raise ValueError(
+            f"Entity verdict {check.verdict} has no reason. Expected one for AMBIGUOUS."
+        )
+    return FlagReason(check.reason.value)

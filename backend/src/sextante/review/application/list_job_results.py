@@ -24,6 +24,9 @@ class ResultLine:
     target_sheet: str | None
     item_number: str | None
     catalog_description: str | None
+    confidence: str | None
+    review_status: str | None
+    flags: tuple[str, ...]
 
 
 class ListJobResults:
@@ -73,4 +76,7 @@ def _result_line(line: JobLine, coding: LineCoding | None) -> ResultLine:
         target_sheet=coding.target_sheet if coding else None,
         item_number=coding.item_number if coding else None,
         catalog_description=coding.catalog_description if coding else None,
+        confidence=coding.confidence if coding else None,
+        review_status=coding.review_status if coding else None,
+        flags=coding.flags if coding else (),
     )

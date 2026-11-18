@@ -4,10 +4,12 @@ Automatic coding of supplier invoice lines for AMT, Advanced Maritime Transports
 
 For each line of a supplier invoice, Sextante assigns the exact item number from the catalog, computes a confidence rating, and flags for human review any line where the decision is not safe.
 
-**Status:** under construction. This version delivers tickets 01 and 02 of `.scratch/nucleo-codificacao/`:
+**Status:** under construction. This version delivers tickets 01 to 04 of `.scratch/nucleo-codificacao/`:
 
 - application startup with a validated catalog;
-- upload of invoices into a background job, with coding against OUTLAYS;
+- upload of invoices into a background job;
+- an entity check with no language model: MATCH codes against OUTLAYS, NO_MATCH against OUTLAYSP, and an ambiguous entity is left for a reviewer;
+- a computed confidence (`HIGH`, `MEDIUM`, `LOW`), the `O00999` fallback in OUTLAYSP only, and review flags;
 - the coded results, read back through the API.
 
 Two parts are not wired yet. Until they are, an uploaded invoice is refused with the reason `extractor_not_configured` and is never coded.
@@ -47,6 +49,18 @@ The application refuses to start, with a message naming the problem, in either o
 
 - a variable in `config/.env` is missing;
 - the catalog is invalid. A missing sheet, a duplicate or empty item number, a missing `O00999`, or a sheet with more than 100 items all count.
+
+## Provisional thresholds
+
+There is no confirmed golden set yet (gap L-02), so every threshold below is provisional and no accuracy figure is published (REQ-CNF-005).
+
+| Threshold | Value | Where | Effect |
+|---|---|---|---|
+| Entity similarity, low | 60 | `matching/domain/entity_check.py` | Below it, a name that is not AMT's is `NO_MATCH`; at or above it, `AMBIGUOUS` |
+| Item score for `HIGH` | 85 | `matching/domain/line_decision.py` | The chosen item must be the lexical top with at least this score |
+| Margin to the second item | 10 | `matching/domain/line_decision.py` | Minimum gap for `HIGH`; below it, the two leaders are flagged as conflicting |
+
+The entity threshold was measured on the 12 samples: third parties score below 40, names close to AMT's score above 70.
 
 ## Development commands
 

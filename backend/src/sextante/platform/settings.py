@@ -31,6 +31,9 @@ class Settings(BaseModel):
     target_entity_nif: str = Field(max_length=SETTING_TEXT_MAX_LENGTH)
     upload_dir: Path
     entity_denylist_path: Path
+    # Items that fit any expense; choosing one is always LOW and flagged (D-3.16).
+    # Comma-separated item numbers; tuning, not a secret, so it has a default.
+    generic_items: tuple[str, ...] = ("O00052",)
 
     # A plain model, not pydantic-settings: the environment is always passed in explicitly,
     # so a stray variable in the process cannot silently fill a missing setting.
@@ -43,6 +46,13 @@ class Settings(BaseModel):
         if isinstance(value, str) and not value.strip():
             raise ValueError("value is blank. Expected a non-empty value")
         return value.strip() if isinstance(value, str) else value
+
+    @field_validator("generic_items", mode="before")
+    @classmethod
+    def _split_items(cls, value: object) -> object:
+        if isinstance(value, str):
+            return tuple(part.strip() for part in value.split(",") if part.strip())
+        return value
 
     @field_validator("database_url")
     @classmethod

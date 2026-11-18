@@ -96,6 +96,14 @@ class Catalog:
     outlays: tuple[CatalogItem, ...]
     outlaysp: tuple[CatalogItem, ...]
 
+    def find(self, item_number: ItemNumber) -> CatalogItem | None:
+        """Return the item with this number, in either sheet, or None.
+
+        Example:
+            catalog.find(FALLBACK_ITEM_NUMBER)  # the O00999 item of OUTLAYSP
+        """
+        return next((c for c in self.outlays + self.outlaysp if c.item_number == item_number), None)
+
     def items_of(self, sheet: TargetSheet) -> tuple[CatalogItem, ...]:
         """Return the items of one sheet, in catalog order. Sheets never mix (REQ-MAP-002).
 

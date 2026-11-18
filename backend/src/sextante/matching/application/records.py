@@ -4,9 +4,10 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from sextante.catalog.contracts import TargetSheet
-from sextante.matching.application.ports import LexicalScore
 from sextante.matching.domain.choice_resolution import LineChoice
 from sextante.matching.domain.item_choice import ItemChoiceResponse
+from sextante.matching.domain.line_decision import LineDecision
+from sextante.matching.domain.scoring import LexicalScore
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,15 +22,20 @@ class ModelCallRecord:
 
 @dataclass(frozen=True, slots=True)
 class EncodedLineRecord:
-    """The decision for one line, with what produced it (REQ-AUD-001)."""
+    """The decision for one line, with what produced it (REQ-AUD-001).
+
+    ``target_sheet`` and ``model_call_id`` are None for the lines of an ambiguous invoice,
+    which are recorded uncoded (D-3.15).
+    """
 
     encoded_line_id: str
     invoice_line_id: str
-    target_sheet: TargetSheet
-    choice: LineChoice
+    target_sheet: TargetSheet | None
+    choice: LineChoice | None
+    decision: LineDecision
     scores: tuple[LexicalScore, ...]
     catalog_digest: str
-    model_call_id: str
+    model_call_id: str | None
     encoded_at: datetime
 
 
@@ -37,6 +43,9 @@ class EncodedLineRecord:
 class LineCoding:
     """The coding of one invoice line, as read for listings."""
 
-    target_sheet: str
+    target_sheet: str | None
     item_number: str | None
     catalog_description: str | None
+    confidence: str
+    review_status: str
+    flags: tuple[str, ...]
