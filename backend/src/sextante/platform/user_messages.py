@@ -16,7 +16,9 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
         "errors.upload.no_files": "Nenhum ficheiro foi enviado.",
         "errors.job.not_found": "Trabalho não encontrado.",
         "errors.invoice.not_found": "Factura não encontrada.",
-        "errors.invoice.not_reprocessable": "Só uma factura com falha pode ser reprocessada.",
+        "errors.invoice.not_reprocessable": (
+            "Só uma factura com falha ou já codificada pode ser reprocessada."
+        ),
         "errors.invoice_line.not_found": "Linha de factura não encontrada.",
         "errors.review.line_not_found": "Linha codificada não encontrada.",
         "errors.review.line_without_sheet": (
@@ -41,6 +43,7 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
         "flags.conflicting_candidates": "Dois itens do catálogo estão muito próximos.",
         "flags.model_response_invalid": "A resposta do modelo foi inválida: código por atribuir.",
         "flags.possible_duplicate": "Possível duplicado de uma factura já carregada.",
+        "flags.review_superseded": "Linha revista antes da recodificação: rever de novo.",
         "rejections.pdf_without_text_layer": "Documento recusado: PDF digitalizado, sem texto.",
         "rejections.unsupported_document_type": (
             "Documento recusado: não é uma factura no modelo suportado."

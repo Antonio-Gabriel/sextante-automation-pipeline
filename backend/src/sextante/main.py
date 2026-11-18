@@ -298,6 +298,7 @@ def _build_worker(
             identifiers=adapters.identifiers,
             target_entity=reference.target_entity,
             denylist=reference.denylist,
+            codings=CodingsInForce(MatchingRepository(), ReviewRepository()),
             poll_seconds=adapters.worker_poll_seconds,
         )
     )

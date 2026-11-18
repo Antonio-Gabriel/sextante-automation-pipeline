@@ -329,10 +329,21 @@ Decisão: o carregamento (`POST /api/invoices`) é o único `POST` isento de `Id
 
 ### 3.20 Reprocessamento só de facturas com falha
 
+*Revista em 18-11-2026 por 3.23: o reprocessamento passa a aceitar também facturas codificadas.*
+
 Decisão: nesta versão, o reprocessamento aceita só facturas `failed`. Uma factura codificada ou recusada é recusada com 409; uma já na fila fica como está. *Decidido em 18-11-2026.*
 
 - **O que fica por fazer.** NFR-REL-002 dá como motivo recalibrar limiares ou corrigir um prompt, e SEC-19 pede que um reprocessamento escreva uma nova linha de resultado, sem alterar a anterior. Recodificar uma factura já codificada, com o histórico guardado, fica para um ticket próprio, depois do adaptador e do prompt (ticket 11), porque é a mudança de prompt que o justifica.
 - **Até lá,** NFR-REL-002 está cumprido para facturas com falha: a codificação parte do texto guardado, sem nova extracção nem novo carregamento.
+
+### 3.23 Recodificação de uma factura já codificada
+
+Decisão tomada pelo responsável em 18-11-2026 (ticket 14). Revê 3.20, que limitava o reprocessamento às facturas com falha.
+
+- **O que se aceita.** O reprocessamento aceita facturas com falha e facturas codificadas, com `Idempotency-Key`. Uma factura recusada não tem texto para codificar; uma ambígua espera pela resolução da entidade (REQ-REV-006).
+- **Nada se sobrescreve.** A recodificação parte do texto guardado, sem nova extracção. Escreve novas linhas de resultado e marca as anteriores como substituídas. As pontuações lexicais passam a pertencer a cada codificação, para que as duas fiquem consultáveis. Resultados, candidatos e exportação mostram só a codificação em vigor.
+- **Revisões humanas.** Uma linha que um revisor aceitou ou corrigiu volta à revisão: a nova codificação leva a sinalização `review_superseded` e fica `pending`. A revisão anterior fica com a codificação anterior, intacta, e na auditoria. Nunca é aplicada em silêncio ao novo código, nem descartada.
+- **Auditoria.** Cada recodificação gera `invoice_recoded`, com as versões do prompt e os digests do catálogo anteriores e novos, o número de linhas substituídas e o de revisões sinalizadas de novo.
 
 ### 3.22 Configuração da chamada ao modelo e prompt v1
 

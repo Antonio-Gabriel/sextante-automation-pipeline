@@ -70,3 +70,12 @@ class LineCandidates:
     target_sheet: str | None
     chosen_item_number: str | None
     candidates: tuple[ScoredCandidate, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class CodingsSummary:
+    """What coded some lines until now, before a new coding takes over (NFR-REL-002)."""
+
+    prompt_versions: tuple[str, ...]
+    catalog_digests: tuple[str, ...]
+    line_count: int

@@ -45,6 +45,8 @@ class FlagReason(StrEnum):
     CONFLICTING_CANDIDATES = "conflicting_candidates"
     MODEL_RESPONSE_INVALID = "model_response_invalid"
     POSSIBLE_DUPLICATE = "possible_duplicate"
+    # A reviewer had decided this line; the new coding needs a new look (D-3.23).
+    REVIEW_SUPERSEDED = "review_superseded"
 
 
 ReviewStatus = Literal["pending", "accepted"]

@@ -50,8 +50,10 @@ ENCODED_LINE_TABLE = Table(
 LEXICAL_SCORE_TABLE = Table(
     "lexical_score",
     SCHEMA_METADATA,
-    Column("invoice_line_id", String(64), ForeignKey("invoice_line.id"), primary_key=True),
+    # Scores belong to one coding: a line coded again keeps both sets (migration 0009).
+    Column("encoded_line_id", String(64), ForeignKey("encoded_line.id"), primary_key=True),
     Column("item_number", String(32), primary_key=True),
+    Column("invoice_line_id", String(64), ForeignKey("invoice_line.id"), nullable=False),
     Column("score", Float, nullable=False),
     Column("rank", Integer, nullable=False),
 )

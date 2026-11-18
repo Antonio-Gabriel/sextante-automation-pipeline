@@ -8,8 +8,9 @@ code, so they cannot drift apart.
 
 import dataclasses
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from types import MappingProxyType
 
 from pydantic import ValidationError
 
@@ -88,8 +89,10 @@ class LineCoder:
         invoice: StoredInvoice,
         target_sheet: TargetSheet,
         invoice_flags: tuple[FlagReason, ...] = (),
+        line_flags: Mapping[str, tuple[FlagReason, ...]] = MappingProxyType({}),
     ) -> CodedInvoice:
-        """Decide every line. ``invoice_flags`` go on every line, such as a duplicate.
+        """Decide every line. ``invoice_flags`` go on every line, such as a duplicate;
+        ``line_flags`` on the lines they name, such as a superseded review.
 
         Example:
             (await coder.code(stored, TargetSheet.OUTLAYSP)).outcomes[0].decision.confidence
@@ -101,7 +104,10 @@ class LineCoder:
         others = [_non_service_outcome(line) for line in invoice.lines if line not in services]
         response, coded = await self._code_services(invoice, services, target_sheet)
         outcomes = sorted(coded + others, key=lambda outcome: outcome.line.position)
-        return CodedInvoice(response, tuple(with_flags(o, invoice_flags) for o in outcomes))
+        flagged = (
+            with_flags(o, invoice_flags + line_flags.get(o.line.line_id, ())) for o in outcomes
+        )
+        return CodedInvoice(response, tuple(flagged))
 
     async def _code_services(
         self, invoice: StoredInvoice, services: list[StoredLine], target_sheet: TargetSheet

@@ -49,6 +49,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                 └── CHG-0040  infra     Catálogo no repositório, sem metadados pessoais
                                                                                                                                                     └── CHG-0041  improve   Modelo por omissão passa a Sonnet
                                                                                                                                                         └── CHG-0042  improve   Prompt v2 com cache de prompt
+                                                                                                                                                            └── CHG-0043  feat      Recodificação com histórico
 ```
 
 ## Regras
@@ -113,6 +114,32 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0043 · Recodificação com histórico
+
+- **Data:** 2026-11-18
+- **Tipo:** feat
+- **Pai:** CHG-0042
+- **Estado:** activa
+- **Requisitos:** NFR-REL-002, REQ-REV-004, REQ-AUD-002, REQ-AUD-003, SEC-19, D-3.23
+- **Commit:** pendente
+- **Migração:** `0009_scores_per_coding` (`lexical_score` passa a ter chave `(encoded_line_id, item_number)`; as pontuações existentes passam para a codificação em vigor da sua linha)
+- **Ficheiros:**
+  - `backend/src/sextante/ingestion/application/reprocess_invoice.py`, `worker.py`, `main.py`
+  - `backend/src/sextante/matching/` (`LineCoder` com sinalizações por linha, `EncodeInvoice` com o evento `invoice_recoded`, pontuações por codificação, `codings_in_force`, sinalização `review_superseded`)
+  - `backend/src/sextante/review/application/codings_in_force.py` (`reviewed`), `platform/user_messages.py`
+  - `backend/migrations/versions/0009_scores_per_coding.py`
+  - testes: `tests/api/test_recoding.py` (novo), `tests/api/test_worker_resilience.py`, `tests/api/test_startup_database.py`
+  - `docs/00-decisoes-e-lacunas.md` (§3.23, nota em §3.20), `README.md`, ticket 14
+- **Reversibilidade:** parcial
+- **Reversão:** reverter o commit e descer a migração para `0008`. As pontuações das codificações substituídas perdem-se na descida; as codificações e a auditoria ficam.
+- **Verificação:** 312 testes, incluindo a recodificação com a anterior guardada como substituída, uma chamada nova ao modelo e nenhuma extracção nova, resultados, candidatos e exportação só com a codificação em vigor, a linha revista de volta à revisão com a revisão anterior intacta, o evento `invoice_recoded`, e o mesmo pedido duas vezes a codificar uma só vez. A descida das migrações é exercida pelo teste da 0007. `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+**Decisão do responsável.** Uma revisão humana feita sobre a codificação anterior não se perde nem vale em silêncio para o código novo: a linha volta à revisão com `review_superseded`, e a revisão anterior fica com a codificação anterior e na auditoria.
+
+**Recodificação.** O reprocessamento aceita facturas com falha e codificadas. A codificação parte do texto guardado; as linhas anteriores ficam marcadas como substituídas e as suas pontuações ficam com elas. Uma factura recusada ou ambígua continua recusada com 409.
+
+**Auditoria.** `invoice_recoded` regista as versões do prompt e os digests do catálogo anteriores e novos, o número de linhas substituídas e o de revisões sinalizadas de novo.
 
 ### CHG-0042 · Prompt v2 com cache de prompt
 

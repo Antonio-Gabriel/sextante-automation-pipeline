@@ -26,6 +26,8 @@ class CodingInForce:
     flags: tuple[str, ...]
     note: str | None
     review_note: str | None
+    # A reviewer accepted or corrected this coding (REQ-REV-004).
+    reviewed: bool = False
 
 
 class CodingsInForce:
@@ -72,4 +74,5 @@ def in_force(coding: LineCoding, review: LineReview | None) -> CodingInForce:
         flags=coding.flags,
         note=coding.note,
         review_note=review.note if review else None,
+        reviewed=review is not None,
     )

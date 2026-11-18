@@ -8,6 +8,7 @@ from sqlalchemy import Row, func, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from sextante.matching.application.records import (
+    CodingsSummary,
     EncodedLineRecord,
     LineCandidates,
     LineCoding,
@@ -45,6 +46,26 @@ class MatchingRepository:
             )
         )
 
+    async def codings_in_force(
+        self, connection: AsyncConnection, invoice_line_ids: Sequence[str]
+    ) -> CodingsSummary:
+        """What coded these lines until now: prompt versions, catalog digests, line count."""
+        line, call = ENCODED_LINE_TABLE, MODEL_CALL_TABLE
+        query = (
+            select(line.c.catalog_digest, call.c.prompt_version)
+            .select_from(line)
+            .outerjoin(call, call.c.id == line.c.model_call_id)
+            .where(
+                line.c.invoice_line_id.in_(list(invoice_line_ids)), line.c.superseded_at.is_(None)
+            )
+        )
+        rows = (await connection.execute(query)).all()
+        return CodingsSummary(
+            prompt_versions=tuple(sorted({str(r[1]) for r in rows if r[1] is not None})),
+            catalog_digests=tuple(sorted({str(r[0]) for r in rows})),
+            line_count=len(rows),
+        )
+
     async def supersede_codings(
         self, connection: AsyncConnection, invoice_line_ids: Sequence[str], at: datetime
     ) -> None:
@@ -71,6 +92,7 @@ class MatchingRepository:
             await connection.execute(LINE_FLAG_TABLE.insert(), flags)
         scores = [
             {
+                "encoded_line_id": record.encoded_line_id,
                 "invoice_line_id": record.invoice_line_id,
                 "item_number": s.item_number,
                 "score": s.score,
@@ -125,7 +147,7 @@ class MatchingRepository:
         row = (await connection.execute(query)).first()
         if row is None:
             return None
-        scores = await _scores_of(connection, invoice_line_id)
+        scores = await _scores_of(connection, str(row.id))
         chosen = row.item_number if row.choice_outcome == "chosen" else None
         return LineCandidates(row.target_sheet, chosen, scores)
 
@@ -145,12 +167,12 @@ def _line_coding(row: Row[tuple[object, ...]], flags: list[str]) -> LineCoding:
 
 
 async def _scores_of(
-    connection: AsyncConnection, invoice_line_id: str
+    connection: AsyncConnection, encoded_line_id: str
 ) -> tuple[ScoredCandidate, ...]:
     table = LEXICAL_SCORE_TABLE
     query = (
         select(table.c.item_number, table.c.score, table.c.rank)
-        .where(table.c.invoice_line_id == invoice_line_id)
+        .where(table.c.encoded_line_id == encoded_line_id)
         .order_by(table.c.rank)
     )
     rows = (await connection.execute(query)).all()

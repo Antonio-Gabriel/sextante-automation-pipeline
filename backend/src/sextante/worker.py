@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
@@ -33,6 +34,7 @@ from sextante.matching.contracts import (
 from sextante.platform.audit import AuditEventRepository
 from sextante.platform.clock import Clock, IdentifierGenerator
 from sextante.platform.structured_logging import correlation_id_var
+from sextante.review.contracts import CodingsInForce
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,7 @@ class WorkerCollaborators:
     identifiers: IdentifierGenerator
     target_entity: TargetEntity
     denylist: EntityDenylist
+    codings: CodingsInForce
     poll_seconds: float
 
 
@@ -179,10 +182,24 @@ class EncodingWorker:
             reason = check.ambiguity_flag()
             await deps.encoder.record_uncoded(stored, reason, record_header, flags)
             return InvoiceStatus.NOT_CODED, reason.value
-        await deps.encoder.execute(stored, target_sheet, record_header, flags)
+        reviewed = await self._reviewed_lines(stored)
+        await deps.encoder.execute(stored, target_sheet, record_header, flags, reviewed)
         extra = {"invoice_id": stored.invoice_id, "line_count": len(stored.lines)}
         logger.info("invoice_encoded", extra=extra)
         return InvoiceStatus.ENCODED, None
+
+    async def _reviewed_lines(self, stored: StoredInvoice) -> Mapping[str, tuple[FlagReason, ...]]:
+        # A line a reviewer decided on goes back to review when it is coded again: the
+        # earlier review stays with the earlier coding, never silently applied (D-3.23).
+        deps = self._collaborators
+        line_ids = [line.line_id for line in stored.lines]
+        async with deps.engine.connect() as connection:
+            codings = await deps.codings.read(connection, line_ids)
+        return {
+            line_id: (FlagReason.REVIEW_SUPERSEDED,)
+            for line_id, coding in codings.items()
+            if coding.reviewed
+        }
 
     async def _invoice_context(
         self, stored: StoredInvoice

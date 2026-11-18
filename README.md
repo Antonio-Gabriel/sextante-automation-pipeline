@@ -4,7 +4,7 @@ Automatic coding of supplier invoice lines for AMT, Advanced Maritime Transports
 
 For each line of a supplier invoice, Sextante assigns the exact item number from the catalog, computes a confidence rating, and flags for human review any line where the decision is not safe.
 
-**Status:** under construction. This version delivers tickets 01 to 13 of `.scratch/nucleo-codificacao/`:
+**Status:** under construction. This version delivers tickets 01 to 14 of `.scratch/nucleo-codificacao/`:
 
 - application startup with a validated catalog;
 - upload of invoices into a background job;
@@ -42,7 +42,7 @@ The response gives the SHA-256 of the loaded catalog.
 |---|---|
 | `POST /api/invoices` | Upload PDF or XLSX invoices (multipart field `files`). Answers at once with a job id |
 | `GET /api/jobs/{job_id}` | Job status, invoices counted by status and in total, and the tokens spent, per invoice and in total |
-| `POST /api/invoices/{invoice_id}/reprocess` | Queue a failed invoice again; it is coded from its stored text, without a new upload. Needs `Idempotency-Key` |
+| `POST /api/invoices/{invoice_id}/reprocess` | Code a failed or an already coded invoice again, from its stored text, without a new upload. The earlier coding is kept as superseded, and a line a reviewer had decided goes back to review. Needs `Idempotency-Key` |
 | `GET /api/jobs/{job_id}/results` | Coded lines in document order, with the reviewed values in force, paginated (`limit` up to 100, `offset`). Filters: `confidence`, `target_sheet`, `flagged`, `invoice_id` |
 | `POST /api/invoices/{invoice_id}/entity-resolution` | Resolve an ambiguous entity as `MATCH` or `NO_MATCH`, with a mandatory note; the invoice is coded again from its stored text. Needs `Idempotency-Key` |
 | `GET /api/invoices/{invoice_id}/lines/{line_id}/candidates` | Every item of the line's target sheet, best lexical score first, with the model's choice marked |

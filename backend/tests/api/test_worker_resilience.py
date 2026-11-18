@@ -10,7 +10,10 @@ from tests.fixtures.synthetic_invoices import (
     air_ticket_to_amt,
     billed_to,
     hotel_stay_to_amt,
+    scanned_pdf_without_text,
 )
+
+AMBIGUOUS_NAME = "Advanced Maritime Transports Moçambique Limitada"
 
 
 def _unavailable() -> ItemClassifierUnavailableError:
@@ -98,25 +101,32 @@ def test_a_failed_invoice_is_reprocessed_from_its_stored_text_without_new_extrac
     assert len(app.extractor.calls) == 1
 
 
-@pytest.mark.requirement("NFR-REL-001")
-def test_only_a_failed_invoice_can_be_reprocessed(valid_environment: dict[str, str]) -> None:
-    """A coded invoice is not coded twice; an unknown invoice is not found."""
-    invoice = air_ticket_to_amt()
+@pytest.mark.requirement("NFR-REL-001", "NFR-REL-002")
+def test_only_a_failed_or_coded_invoice_can_be_reprocessed(
+    valid_environment: dict[str, str],
+) -> None:
+    """A refused document has no text to code; an ambiguous one waits for its entity."""
+    refused, ambiguous = scanned_pdf_without_text(), billed_to("AMBIG", AMBIGUOUS_NAME)
 
     with running_application(
-        valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
+        valid_environment, [refused, ambiguous], FakeItemClassifier({1: "O00004"})
     ) as app:
-        app.wait_for_job(app.upload(invoice)["job_id"])
-        [(invoice_id,)] = _query(valid_environment, "SELECT id FROM invoice")
-        coded = app.client.post(
-            f"/api/invoices/{invoice_id}/reprocess", headers=idempotency_headers("r-1")
-        )
+        app.wait_for_job(app.upload(refused, ambiguous)["job_id"])
+        rows = _query(valid_environment, "SELECT status, id FROM invoice")
+        statuses = {str(status): str(invoice_id) for status, invoice_id in rows}
+        answers = [
+            app.client.post(
+                f"/api/invoices/{statuses[status]}/reprocess", headers=idempotency_headers(status)
+            )
+            for status in ("rejected", "not_coded")
+        ]
         unknown = app.client.post(
-            "/api/invoices/nope/reprocess", headers=idempotency_headers("r-2")
+            "/api/invoices/nope/reprocess", headers=idempotency_headers("r-unknown")
         )
 
-    assert (coded.status_code, unknown.status_code) == (409, 404)
-    assert coded.json()["code"] == "errors.invoice.not_reprocessable"
+    assert [a.status_code for a in answers] == [409, 409]
+    assert {a.json()["code"] for a in answers} == {"errors.invoice.not_reprocessable"}
+    assert unknown.status_code == 404
 
 
 @pytest.mark.requirement("REQ-AUD-004", "L-12")

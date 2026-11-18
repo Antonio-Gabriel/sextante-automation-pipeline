@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncConnection
 
     from sextante.matching.application.records import (
+        CodingsSummary,
         EncodedLineRecord,
         LineCandidates,
         LineCoding,
@@ -97,6 +98,12 @@ class MatchingRepositoryPort(Protocol):
         self, connection: "AsyncConnection", record: "EncodedLineRecord"
     ) -> None:
         """Insert the encoded line and the lexical scores of every item of its sheet."""
+        ...
+
+    async def codings_in_force(
+        self, connection: "AsyncConnection", invoice_line_ids: Sequence[str]
+    ) -> "CodingsSummary":
+        """What coded these lines until now: prompt versions, catalog digests, line count."""
         ...
 
     async def supersede_codings(

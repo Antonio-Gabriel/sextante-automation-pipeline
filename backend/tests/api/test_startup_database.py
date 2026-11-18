@@ -18,7 +18,7 @@ async def test_startup_applies_migrations_up_to_the_latest_revision(
             await connection.execute(text("SELECT version_num FROM alembic_version"))
         ).scalar_one()
 
-    assert revision == "0008"
+    assert revision == "0009"
 
 
 @pytest.mark.requirement("D-3.5")
