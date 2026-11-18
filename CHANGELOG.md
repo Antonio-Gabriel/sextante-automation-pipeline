@@ -101,7 +101,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0021
 - **Estado:** activa
 - **Requisitos:** REQ-ING-006, REQ-EXP-003, REQ-EXP-006, REQ-EXP-007, SEC-17, D-3.17
-- **Commit:** pendente
+- **Commit:** 53f6da6
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/ingestion/domain/line_type.py`
@@ -143,7 +143,7 @@ Resolve os achados da revisão dos tickets 05 e 06.
 - **Pai:** CHG-0020
 - **Estado:** activa
 - **Requisitos:** REQ-EXP-001 a REQ-EXP-007, SEC-16, SEC-17, R6, L-13
-- **Commit:** pendente
+- **Commit:** 5b1d485
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/export/` (módulo novo)
@@ -176,7 +176,7 @@ Resolve os achados da revisão dos tickets 05 e 06.
 - **Pai:** CHG-0019
 - **Estado:** activa
 - **Requisitos:** REQ-ING-004, REQ-ING-006, D-3.17, L-06, L-16
-- **Commit:** pendente
+- **Commit:** 4dcba18
 - **Migração:** `0005`, a partir de `0004`
 - **Ficheiros:**
   - `backend/src/sextante/ingestion/domain/line_type.py`
