@@ -11,6 +11,8 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0,<3",
     "aiosqlite>=0.20,<1",
     "alembic>=1.14,<2",
+    "rapidfuzz>=3.10,<4",
+    "python-multipart>=0.0.18,<1",
 ]
 
 [project.optional-dependencies]
@@ -69,6 +71,28 @@ max-complexity = 8
 [tool.importlinter]
 root_package = "sextante"
 include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "ingestion layers point inwards"
+type = "layers"
+layers = [
+    "sextante.ingestion.api",
+    "sextante.ingestion.infrastructure",
+    "sextante.ingestion.application",
+    "sextante.ingestion.domain",
+]
+containers = []
+
+[[tool.importlinter.contracts]]
+name = "matching layers point inwards"
+type = "layers"
+layers = [
+    "sextante.matching.api",
+    "sextante.matching.infrastructure",
+    "sextante.matching.application",
+    "sextante.matching.domain",
+]
+containers = []
 
 [[tool.importlinter.contracts]]
 name = "catalog layers point inwards"

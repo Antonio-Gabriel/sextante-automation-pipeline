@@ -18,14 +18,18 @@ O catálogo fica em memória, com os valores de apresentação e os de comparaç
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Um comando documentado arranca a aplicação, e `/api/health` responde
-- [ ] Cada configuração obrigatória em falta impede o arranque, com uma mensagem própria
-- [ ] Cada condição inválida do catálogo impede o arranque, com uma mensagem que nomeia a aba e a condição
-- [ ] Os caracteres invisíveis e as descrições EN vazias geram um aviso, não uma falha
-- [ ] Os valores de comparação estão em NFKC, sem caracteres invisíveis e com os espaços colapsados; os valores de apresentação conservam o código exacto e a descrição PT sem espaços nas pontas
-- [ ] O digest do catálogo fica disponível para os módulos seguintes
-- [ ] A base de dados é criada pelas migrações, com os três pragmas activos
-- [ ] Os testes usam um catálogo sintético com a estrutura real das colunas, incluindo `O00999`, um item genérico, um par PT/EN divergente, um item sem EN e um caracter invisível
-- [ ] Os testes têm a marca de requisito (REQ-MAP-012, REQ-PLT-007, REQ-PLT-008)
+- [x] Um comando documentado arranca a aplicação, e `/api/health` responde
+- [x] Cada configuração obrigatória em falta impede o arranque, com uma mensagem própria
+- [x] Cada condição inválida do catálogo impede o arranque, com uma mensagem que nomeia a aba e a condição
+- [x] Os caracteres invisíveis e as descrições EN vazias geram um aviso, não uma falha
+- [x] Os valores de comparação estão em NFKC, sem caracteres invisíveis e com os espaços colapsados; os valores de apresentação conservam o código exacto e a descrição PT sem espaços nas pontas
+- [x] O digest do catálogo fica disponível para os módulos seguintes
+- [x] A base de dados é criada pelas migrações, com os três pragmas activos
+- [x] Os testes usam um catálogo sintético com a estrutura real das colunas, incluindo `O00999`, um item genérico, um par PT/EN divergente, um item sem EN e um caracter invisível
+- [x] Os testes têm a marca de requisito (REQ-MAP-012, REQ-PLT-007, REQ-PLT-008)
+
+## Comments
+
+Resolved on 2026-11-18 in commits 03b579b (implementation) and fd1a823 (code review fixes), on branch feature/REQ-PLT-007-startup-catalog-validation. Header and item-number format checks are stricter than the ticket wording, on purpose: D-3.9 and L-05 forbid reading moved columns in silence, and SEC-09.2 defines the item number format.

@@ -25,4 +25,5 @@ def valid_environment(tmp_path: Path, catalog_path: Path) -> dict[str, str]:
         "SEXTANTE_DATABASE_URL": f"sqlite+aiosqlite:///{tmp_path / 'test-sextante.db'}",
         "SEXTANTE_TARGET_ENTITY_NAME": "Advanced Maritime Transports - Transitarios Limitada",
         "SEXTANTE_TARGET_ENTITY_NIF": "5419990000",
+        "SEXTANTE_UPLOAD_DIR": str(tmp_path / "uploads"),
     }

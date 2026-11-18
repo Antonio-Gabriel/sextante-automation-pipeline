@@ -1,8 +1,9 @@
 """The single home of text normalization (04-padroes-de-codigo.md §1.5).
 
-Comparison normalization is applied to text that is scored or compared, never displayed.
-Input normalization of external text (SEC-09.3) joins this module with the first ticket
-that persists invoice text.
+Two normalizations live here, and only here:
+- input normalization (SEC-09.3, REQ-ING-008), applied to external text before it is
+  validated, persisted or compared;
+- comparison normalization, applied to text that is scored or compared, never displayed.
 """
 
 import re
@@ -12,6 +13,19 @@ from typing import Final
 _WHITESPACE_RUN: Final = re.compile(r"\s+")
 _INVISIBLE_CATEGORIES: Final = frozenset({"Cc", "Cf"})
 _NON_BREAKING_SPACE: Final = "\xa0"
+
+
+def normalize_text_input(value: str) -> str:
+    """Normalize to NFC and strip control and format characters, keeping tabs and newlines.
+
+    Example:
+        normalize_text_input("Taxa\\u0000 de movimentação")  # "Taxa de movimentação"
+    """
+    return "".join(
+        character
+        for character in unicodedata.normalize("NFC", value)
+        if not _is_invisible(character) or character in "\n\t"
+    )
 
 
 def normalize_for_comparison(value: str) -> str:

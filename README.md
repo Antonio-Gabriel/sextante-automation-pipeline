@@ -4,7 +4,16 @@ Automatic coding of supplier invoice lines for AMT, Advanced Maritime Transports
 
 For each line of a supplier invoice, Sextante assigns the exact item number from the catalog, computes a confidence rating, and flags for human review any line where the decision is not safe.
 
-**Status:** under construction. This version delivers application startup with a validated catalog (ticket 01 of `.scratch/nucleo-codificacao/`). Invoice coding is not available yet.
+**Status:** under construction. This version delivers tickets 01 and 02 of `.scratch/nucleo-codificacao/`:
+
+- application startup with a validated catalog;
+- upload of invoices into a background job, with coding against OUTLAYS;
+- the coded results, read back through the API.
+
+Two parts are not wired yet. Until they are, an uploaded invoice is refused with the reason `extractor_not_configured` and is never coded.
+
+- **Reading real PDF invoices:** ticket 12.
+- **Calling the Claude model:** ticket 11.
 
 ## Requirements
 
@@ -27,6 +36,12 @@ curl http://127.0.0.1:8000/api/health
 ```
 
 The response gives the SHA-256 of the loaded catalog.
+
+| Endpoint | What it does |
+|---|---|
+| `POST /api/invoices` | Upload PDF or XLSX invoices (multipart field `files`). Answers at once with a job id |
+| `GET /api/jobs/{job_id}` | Job status, with its invoices counted by status |
+| `GET /api/jobs/{job_id}/results` | Coded lines in document order, paginated (`limit` up to 100, `offset`) |
 
 The application refuses to start, with a message naming the problem, in either of these cases:
 
