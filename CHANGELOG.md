@@ -117,7 +117,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0037
 - **Estado:** activa
 - **Requisitos:** REQ-MAP-005, SEC-14
-- **Commit:** pendente
+- **Commit:** `49c9a1b`
 - **Migração:** nenhuma
 - **Ficheiros:** `docs/01-requisitos.md`
 - **Reversibilidade:** total
