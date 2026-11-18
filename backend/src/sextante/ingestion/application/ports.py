@@ -73,10 +73,14 @@ class IngestionRepositoryPort(Protocol):
         """Persist header and lines."""
         ...
 
-    async def set_target_sheet(
-        self, connection: AsyncConnection, invoice_id: str, target_sheet: str
+    async def record_entity_check(
+        self,
+        connection: AsyncConnection,
+        invoice_id: str,
+        check: tuple[str, str | None],
+        target_sheet: str | None,
     ) -> None:
-        """Record the routing decision."""
+        """Record the entity verdict, its reason, and the routing decision."""
         ...
 
     async def job_summary(self, connection: AsyncConnection, job_id: str) -> JobSummary | None:

@@ -7,6 +7,13 @@ from sextante.matching.application.ports import (
     LexicalScorer,
 )
 from sextante.matching.application.records import LineCoding
+from sextante.matching.domain.entity_check import (
+    AmbiguityReason,
+    EntityCheckResult,
+    EntityVerdict,
+    TargetEntity,
+    check_billed_entity,
+)
 from sextante.matching.domain.item_choice import (
     CandidateItem,
     InvoiceContext,
@@ -15,10 +22,14 @@ from sextante.matching.domain.item_choice import (
     ItemChoiceResponse,
     LineToCode,
 )
+from sextante.matching.domain.routing import target_sheet_for
 
 __all__ = [
+    "AmbiguityReason",
     "CandidateItem",
     "CodingsReader",
+    "EntityCheckResult",
+    "EntityVerdict",
     "InvoiceContext",
     "ItemChoiceFromModel",
     "ItemChoiceRequest",
@@ -28,4 +39,7 @@ __all__ = [
     "LexicalScorer",
     "LineCoding",
     "LineToCode",
+    "TargetEntity",
+    "check_billed_entity",
+    "target_sheet_for",
 ]

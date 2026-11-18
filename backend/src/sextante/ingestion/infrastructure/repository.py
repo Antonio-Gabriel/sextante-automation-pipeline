@@ -4,7 +4,7 @@ import json
 from dataclasses import asdict
 from datetime import datetime
 
-from sqlalchemy import func, select, update
+from sqlalchemy import Select, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -164,14 +164,19 @@ class IngestionRepository:
             ),
         )
 
-    async def set_target_sheet(
-        self, connection: AsyncConnection, invoice_id: str, target_sheet: str
+    async def record_entity_check(
+        self,
+        connection: AsyncConnection,
+        invoice_id: str,
+        check: tuple[str, str | None],
+        target_sheet: str | None,
     ) -> None:
-        """Record the routing decision of the invoice."""
+        """Record the entity verdict, its reason, and the routing decision (D-3.15)."""
+        verdict, reason = check
         await connection.execute(
             update(INVOICE_HEADER_TABLE)
             .where(INVOICE_HEADER_TABLE.c.invoice_id == invoice_id)
-            .values(target_sheet=target_sheet)
+            .values(entity_verdict=verdict, entity_reason=reason, target_sheet=target_sheet)
         )
 
     async def job_summary(self, connection: AsyncConnection, job_id: str) -> JobSummary | None:
@@ -194,25 +199,45 @@ class IngestionRepository:
         self, connection: AsyncConnection, job_id: str, limit: int, offset: int
     ) -> list[JobLine]:
         """Return one page of the job's lines, by upload order then document position."""
-        lines = INVOICE_LINE_TABLE
-        query = (
-            select(
-                lines.c.id,
-                INVOICE_HEADER_TABLE.c.invoice_number,
-                lines.c.position,
-                lines.c.description,
-            )
-            .join(INVOICE_TABLE, INVOICE_TABLE.c.id == lines.c.invoice_id)
-            .join(INVOICE_HEADER_TABLE, INVOICE_HEADER_TABLE.c.invoice_id == lines.c.invoice_id)
-            .where(INVOICE_TABLE.c.job_id == job_id)
-            .order_by(INVOICE_TABLE.c.created_at, INVOICE_TABLE.c.id, lines.c.position)
-            .limit(limit)
-            .offset(offset)
-        )
-        rows = (await connection.execute(query)).all()
+        rows = (await connection.execute(_job_lines_query(job_id, limit, offset))).all()
         return [
-            JobLine(str(r.id), r.invoice_number, int(r.position), str(r.description)) for r in rows
+            JobLine(
+                line_id=str(r.id),
+                invoice_number=r.invoice_number,
+                position=int(r.position),
+                description=str(r.description),
+                billed_entity=_detected_entity(str(r.billed_entities)),
+                entity_verdict=r.entity_verdict,
+            )
+            for r in rows
         ]
+
+
+def _job_lines_query(job_id: str, limit: int, offset: int) -> Select[tuple[object, ...]]:
+    lines, header = INVOICE_LINE_TABLE, INVOICE_HEADER_TABLE
+    return (
+        select(
+            lines.c.id,
+            header.c.invoice_number,
+            lines.c.position,
+            lines.c.description,
+            header.c.billed_entities,
+            header.c.entity_verdict,
+        )
+        .join(INVOICE_TABLE, INVOICE_TABLE.c.id == lines.c.invoice_id)
+        .join(header, header.c.invoice_id == lines.c.invoice_id)
+        .where(INVOICE_TABLE.c.job_id == job_id)
+        .order_by(INVOICE_TABLE.c.created_at, INVOICE_TABLE.c.id, lines.c.position)
+        .limit(limit)
+        .offset(offset)
+    )
+
+
+def _detected_entity(billed_entities_json: str) -> str | None:
+    # The billed entity as extracted, never normalized for comparison (REQ-ENT-006).
+    # Several blocks are shown together, so a reviewer sees why the entity is ambiguous.
+    names = [block["name"] for block in json.loads(billed_entities_json)]
+    return " | ".join(names) if names else None
 
 
 def _header_row(invoice_id: str, extraction: ExtractedInvoice) -> dict[str, object]:

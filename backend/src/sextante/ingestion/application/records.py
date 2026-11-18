@@ -49,6 +49,8 @@ class JobLine:
     invoice_number: str | None
     position: int
     description: str
+    billed_entity: str | None
+    entity_verdict: str | None
 
 
 class DuplicateContentError(Exception):

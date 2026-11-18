@@ -28,7 +28,8 @@ from sextante.ingestion.infrastructure.local_file_store import LocalInvoiceFileS
 from sextante.ingestion.infrastructure.repository import IngestionRepository
 from sextante.ingestion.infrastructure.unconfigured_extractor import UnconfiguredInvoiceExtractor
 from sextante.matching.application.encode_invoice import EncodeInvoice, EncodingCollaborators
-from sextante.matching.contracts import ItemClassifier
+from sextante.matching.contracts import ItemClassifier, TargetEntity
+from sextante.matching.infrastructure.denylist_file import DenylistFileError, read_entity_denylist
 from sextante.matching.infrastructure.rapidfuzz_scorer import RapidfuzzLexicalScorer
 from sextante.matching.infrastructure.repository import MatchingRepository
 from sextante.matching.infrastructure.unconfigured_classifier import UnconfiguredItemClassifier
@@ -82,10 +83,10 @@ def create_app(
     configure_logging()
     settings = Settings.from_environment(os.environ if environ is None else environ)
     catalog = _load_catalog_or_refuse(settings).catalog
+    denylist = _load_denylist_or_refuse(settings)
     apply_migrations(settings.database_url.get_secret_value())
-    app = FastAPI(
-        title="Sextante", lifespan=_lifespan(settings, catalog, dependencies or AppDependencies())
-    )
+    adapters = dependencies or AppDependencies()
+    app = FastAPI(title="Sextante", lifespan=_lifespan(settings, catalog, denylist, adapters))
     app.state.catalog = catalog
     app.add_middleware(CorrelationIdMiddleware)
     install_error_handlers(app, HTTP_STATUS_BY_ERROR)
@@ -95,13 +96,13 @@ def create_app(
 
 
 def _lifespan(
-    settings: Settings, catalog: Catalog, adapters: AppDependencies
+    settings: Settings, catalog: Catalog, denylist: frozenset[str], adapters: AppDependencies
 ) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = create_database_engine(settings.database_url.get_secret_value())
         app.state.database_engine = engine
-        _wire_use_cases(app, engine, settings, catalog, adapters)
+        _wire_use_cases(app, engine, settings, (catalog, denylist), adapters)
         worker_task = asyncio.create_task(app.state.worker.run_forever())
         try:
             yield
@@ -118,7 +119,7 @@ def _wire_use_cases(
     app: FastAPI,
     engine: AsyncEngine,
     settings: Settings,
-    catalog: Catalog,
+    reference_data: tuple[Catalog, frozenset[str]],
     adapters: AppDependencies,
 ) -> None:
     store = LocalInvoiceFileStore(Path(settings.upload_dir))
@@ -130,16 +131,17 @@ def _wire_use_cases(
     app.state.list_job_results = ListJobResults(
         engine, app.state.read_job_status, ingestion, MatchingRepository()
     )
-    app.state.worker = _build_worker(engine, settings, catalog, adapters, store)
+    app.state.worker = _build_worker(engine, settings, reference_data, adapters, store)
 
 
 def _build_worker(
     engine: AsyncEngine,
     settings: Settings,
-    catalog: Catalog,
+    reference_data: tuple[Catalog, frozenset[str]],
     adapters: AppDependencies,
     store: LocalInvoiceFileStore,
 ) -> EncodingWorker:
+    catalog, denylist = reference_data
     return EncodingWorker(
         WorkerCollaborators(
             engine=engine,
@@ -149,7 +151,8 @@ def _build_worker(
             encoder=_build_encoder(engine, catalog, adapters),
             clock=adapters.clock,
             identifiers=adapters.identifiers,
-            target_entity_name=settings.target_entity_name,
+            target_entity=TargetEntity(settings.target_entity_name, settings.target_entity_nif),
+            denylist=denylist,
             poll_seconds=adapters.worker_poll_seconds,
         )
     )
@@ -170,6 +173,13 @@ def _build_encoder(
             identifiers=adapters.identifiers,
         )
     )
+
+
+def _load_denylist_or_refuse(settings: Settings) -> frozenset[str]:
+    try:
+        return read_entity_denylist(settings.entity_denylist_path)
+    except DenylistFileError as error:
+        raise StartupConfigurationError(f"SEXTANTE_ENTITY_DENYLIST_PATH: {error}") from None
 
 
 def _load_catalog_or_refuse(settings: Settings) -> BuiltCatalog:

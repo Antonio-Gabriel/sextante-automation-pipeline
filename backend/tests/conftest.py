@@ -16,6 +16,19 @@ def catalog_path(tmp_path: Path) -> Path:
     return SyntheticCatalog().write(tmp_path / "synthetic-catalog.xlsx")
 
 
+SYNTHETIC_DENYLISTED_SISTER: Final = "Sextante Sintética Irmã Lda"
+
+
+def _write_denylist(tmp_path: Path) -> Path:
+    path = tmp_path / "entity_denylist.yaml"
+    path.write_text(
+        "version: 1\nentities:\n"
+        f'  - name: "{SYNTHETIC_DENYLISTED_SISTER}"\n    kind: sister_company\n',
+        encoding="utf-8",
+    )
+    return path
+
+
 @pytest.fixture
 def valid_environment(tmp_path: Path, catalog_path: Path) -> dict[str, str]:
     """Every mandatory SEXTANTE_ variable, with fictitious values (SEC-02)."""
@@ -26,4 +39,5 @@ def valid_environment(tmp_path: Path, catalog_path: Path) -> dict[str, str]:
         "SEXTANTE_TARGET_ENTITY_NAME": "Advanced Maritime Transports - Transitarios Limitada",
         "SEXTANTE_TARGET_ENTITY_NIF": "5419990000",
         "SEXTANTE_UPLOAD_DIR": str(tmp_path / "uploads"),
+        "SEXTANTE_ENTITY_DENYLIST_PATH": str(_write_denylist(tmp_path)),
     }

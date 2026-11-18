@@ -1,0 +1,14 @@
+# Entity denylist (REQ-ENT-003, D-3.15).
+#
+# Every entity listed here is a definite NO_MATCH, however close its name is to AMT's:
+# sister companies, shipping lines and known clients. It is checked before any
+# similarity comparison. Names are compared after normalization (case, accents,
+# punctuation and corporate suffix do not matter).
+#
+# The content awaits AMT (gap L-04). Never add a name that AMT has not confirmed.
+#
+# Each entry:
+#   - name: "Exact name as it appears on invoices"
+#     kind: sister_company | shipping_line | client
+version: 1
+entities: []

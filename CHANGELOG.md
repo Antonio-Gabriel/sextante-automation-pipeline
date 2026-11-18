@@ -23,6 +23,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                         └── CHG-0014  infra     Graphify como memória do projecto
                                             └── CHG-0015  infra     Skill do graphify no projecto e correcção da CHG-0014
                                                 └── CHG-0016  docs      Diagramas regenerados com o desenho actual
+                                                    └── CHG-0017  feat      Verificação de entidade e encaminhamento para OUTLAYSP
 ```
 
 ## Regras
@@ -87,6 +88,41 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0017 · Verificação de entidade e encaminhamento para OUTLAYSP
+
+- **Data:** 2026-11-18
+- **Tipo:** feat
+- **Pai:** CHG-0016
+- **Estado:** activa
+- **Requisitos:** REQ-ENT-001 a REQ-ENT-008, REQ-MAP-001, D-3.15, L-04, L-13
+- **Commit:** pendente
+- **Migração:** `0003`, a partir de `0002`
+- **Ficheiros:**
+  - `backend/src/sextante/matching/domain/entity_check.py`, `routing.py`
+  - `backend/src/sextante/matching/infrastructure/denylist_file.py`
+  - `backend/src/sextante/platform/text_normalization.py` (`fold_for_matching`)
+  - `backend/src/sextante/worker.py`, `main.py`, `review/`
+  - `backend/migrations/versions/0003_entity_check.py`
+  - `config/entity_denylist.yaml`, novo e vazio; `config/.env.example`
+  - dependência nova: PyYAML (MIT)
+- **Reversibilidade:** total
+- **Reversão:**
+  1. Correr `alembic downgrade 0002`, que apaga as colunas `entity_verdict` e `entity_reason` e o seu conteúdo.
+  2. Reverter o commit.
+  3. Retirar `SEXTANTE_ENTITY_DENYLIST_PATH` do `.env`.
+- **Verificação:**
+  - Feito: 124 testes, incluindo 18 casos de tabela da regra de entidade; `mypy`, `ruff`, 7 contratos do `import-linter`, funções com 20 linhas ou menos.
+  - Pendente: o critério "linhas de factura ambígua com `LOW` e sinalizadas" depende da confiança e das sinalizações do ticket 04 (CHG-0018).
+
+A verificação de entidade aplica as sete regras de D-3.15, pela ordem, sem modelo:
+
+- a lista de exclusão primeiro;
+- o veto pelo NIF;
+- a igualdade do nome normalizado;
+- o limiar baixo de `token_sort_ratio`, a 60 e provisório.
+
+Uma não correspondência é codificada contra OUTLAYSP. Uma entidade ambígua fica por codificar, com o motivo registado no cabeçalho, e nunca chega ao modelo. Os resultados mostram a entidade detectada e o `Exact_Entity_Match`. A lista de exclusão vem de configuração, com a estrutura definida e sem conteúdo (L-04).
 
 ### CHG-0016 · Diagramas regenerados com o desenho actual
 

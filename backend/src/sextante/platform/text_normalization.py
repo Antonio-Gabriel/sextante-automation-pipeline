@@ -11,6 +11,7 @@ import unicodedata
 from typing import Final
 
 _WHITESPACE_RUN: Final = re.compile(r"\s+")
+_NON_WORD_RUN: Final = re.compile(r"[^\w]+")
 _INVISIBLE_CATEGORIES: Final = frozenset({"Cc", "Cf"})
 _NON_BREAKING_SPACE: Final = "\xa0"
 
@@ -40,6 +41,20 @@ def normalize_for_comparison(value: str) -> str:
     folded = unicodedata.normalize("NFKC", value)
     visible = "".join(character for character in folded if not _is_invisible(character))
     return _WHITESPACE_RUN.sub(" ", visible).strip()
+
+
+def fold_for_matching(value: str) -> str:
+    """Comparison text without accents, punctuation or case, as words separated by one space.
+
+    Used where minor spelling differences must not count, such as the billed entity
+    (R5, REQ-ENT-002).
+
+    Example:
+        fold_for_matching("Transitários, Lda.")  # "transitarios lda"
+    """
+    decomposed = unicodedata.normalize("NFKD", normalize_for_comparison(value))
+    unaccented = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return _WHITESPACE_RUN.sub(" ", _NON_WORD_RUN.sub(" ", unaccented.casefold())).strip()
 
 
 def has_invisible_characters(value: str) -> bool:

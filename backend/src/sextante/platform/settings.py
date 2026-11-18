@@ -30,6 +30,7 @@ class Settings(BaseModel):
     target_entity_name: str = Field(max_length=SETTING_TEXT_MAX_LENGTH)
     target_entity_nif: str = Field(max_length=SETTING_TEXT_MAX_LENGTH)
     upload_dir: Path
+    entity_denylist_path: Path
 
     # A plain model, not pydantic-settings: the environment is always passed in explicitly,
     # so a stray variable in the process cannot silently fill a missing setting.

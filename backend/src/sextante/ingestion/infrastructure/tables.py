@@ -45,6 +45,8 @@ INVOICE_HEADER_TABLE = Table(
     Column("summary_rows", Text, nullable=False),
     Column("notes", Text, nullable=False),
     Column("target_sheet", String(16), nullable=True),
+    Column("entity_verdict", String(16), nullable=True),
+    Column("entity_reason", String(40), nullable=True),
 )
 
 INVOICE_LINE_TABLE = Table(

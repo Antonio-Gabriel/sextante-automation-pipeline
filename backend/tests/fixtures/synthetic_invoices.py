@@ -4,6 +4,7 @@ Not real invoices (D-3.18, NFR-TST-001). Each one has the file bytes uploaded an
 extraction that FakeInvoiceExtractor returns for those bytes.
 """
 
+import dataclasses
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Final
@@ -118,3 +119,23 @@ def hotel_stay_to_amt() -> SyntheticInvoice:
             notes="",
         ),
     )
+
+
+def billed_to(
+    label: str, name: str | None, nif: str | None = None, care_of: tuple[str, ...] = ()
+) -> SyntheticInvoice:
+    """The INV-001 replica, billed to another entity (or to none, when ``name`` is None).
+
+    Example:
+        invoice = billed_to("INV-004", "Petrolífera Sintética de Cabinda Lda", "5419990003")
+    """
+    base = taag_air_ticket_to_amt()
+    blocks = (
+        ()
+        if name is None
+        else (BilledEntityBlock(name=name, nif=nif, care_of=care_of, address_lines=()),)
+    )
+    extraction = dataclasses.replace(
+        base.extraction, billed_entities=blocks, invoice_number=f"{label}-SYN"
+    )
+    return SyntheticInvoice(f"{label}_synthetic.pdf", synthetic_pdf_bytes(label), extraction)

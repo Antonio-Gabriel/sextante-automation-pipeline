@@ -17,6 +17,8 @@ class ResultLineResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     invoice_number: str | None
+    billed_entity_detected: str | None
+    exact_entity_match: str
     line_position: int
     line_description: str
     target_sheet: str | None

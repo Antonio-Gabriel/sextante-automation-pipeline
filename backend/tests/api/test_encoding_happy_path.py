@@ -24,6 +24,8 @@ def test_invoice_billed_to_amt_is_coded_against_outlays_and_read_back(
     assert page["lines"] == [
         {
             "invoice_number": "SYN-2026-001",
+            "billed_entity_detected": "Advanced Maritime Transports - Transitarios Limitada",
+            "exact_entity_match": "YES",
             "line_position": 1,
             "line_description": (
                 "Passagem aérea Sintética - Rota Teste (Rotação equipa - Ref #SYN-0000001)"

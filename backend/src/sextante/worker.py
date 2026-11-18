@@ -17,7 +17,7 @@ from sextante.ingestion.contracts import (
 from sextante.ingestion.domain.ports import InvoiceFileStore
 from sextante.ingestion.domain.statuses import InvoiceStatus, JobStatus
 from sextante.matching.application.encode_invoice import EncodeInvoice
-from sextante.matching.domain.routing import route_invoice
+from sextante.matching.contracts import TargetEntity, check_billed_entity, target_sheet_for
 from sextante.platform.clock import Clock, IdentifierGenerator
 from sextante.platform.structured_logging import correlation_id_var
 
@@ -35,7 +35,8 @@ class WorkerCollaborators:
     encoder: EncodeInvoice
     clock: Clock
     identifiers: IdentifierGenerator
-    target_entity_name: str
+    target_entity: TargetEntity
+    denylist: frozenset[str]
     poll_seconds: float
 
 
@@ -110,14 +111,20 @@ class EncodingWorker:
         return await self._encode(stored)
 
     async def _encode(self, stored: StoredInvoice) -> tuple[InvoiceStatus, str | None]:
-        target_sheet = route_invoice(stored.billed_entities, self._collaborators.target_entity_name)
-        if target_sheet is None:
-            return InvoiceStatus.NOT_CODED, "entity_not_resolved"
-        async with self._collaborators.engine.begin() as connection:
-            await self._collaborators.repository.set_target_sheet(
-                connection, stored.invoice_id, target_sheet.value
+        deps = self._collaborators
+        check = check_billed_entity(stored.billed_entities, deps.target_entity, deps.denylist)
+        target_sheet = target_sheet_for(check.verdict)
+        async with deps.engine.begin() as connection:
+            await deps.repository.record_entity_check(
+                connection,
+                stored.invoice_id,
+                (check.verdict.value, check.reason.value if check.reason else None),
+                target_sheet.value if target_sheet else None,
             )
-        await self._collaborators.encoder.execute(stored, target_sheet)
+        if target_sheet is None:
+            # An ambiguous entity is never coded by guess: a reviewer resolves it (D-3.15).
+            return InvoiceStatus.NOT_CODED, check.reason.value if check.reason else None
+        await deps.encoder.execute(stored, target_sheet)
         logger.info(
             "invoice_encoded",
             extra={"invoice_id": stored.invoice_id, "line_count": len(stored.lines)},

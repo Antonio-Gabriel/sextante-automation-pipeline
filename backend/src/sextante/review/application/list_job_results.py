@@ -8,8 +8,8 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from sextante.ingestion.contracts import JobLinesReader, ReadJobStatus
-from sextante.matching.contracts import CodingsReader
+from sextante.ingestion.contracts import JobLine, JobLinesReader, ReadJobStatus
+from sextante.matching.contracts import CodingsReader, LineCoding
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,6 +17,8 @@ class ResultLine:
     """One invoice line with its coding, as listed to the client."""
 
     invoice_number: str | None
+    billed_entity_detected: str | None
+    exact_entity_match: str
     line_position: int
     line_description: str
     target_sheet: str | None
@@ -55,18 +57,20 @@ class ListJobResults:
         await self._job_status.execute(job_id)
         async with self._engine.connect() as connection:
             lines = await self._lines_reader.read_job_lines(connection, job_id, limit, offset)
-            codings = await self._codings_reader.read_codings(
-                connection, [line.line_id for line in lines]
-            )
-        return [
-            ResultLine(
-                invoice_number=line.invoice_number,
-                line_position=line.position,
-                line_description=line.description,
-                target_sheet=coding.target_sheet if coding else None,
-                item_number=coding.item_number if coding else None,
-                catalog_description=coding.catalog_description if coding else None,
-            )
-            for line in lines
-            for coding in [codings.get(line.line_id)]
-        ]
+            line_ids = [line.line_id for line in lines]
+            codings = await self._codings_reader.read_codings(connection, line_ids)
+        return [_result_line(line, codings.get(line.line_id)) for line in lines]
+
+
+def _result_line(line: JobLine, coding: LineCoding | None) -> ResultLine:
+    return ResultLine(
+        invoice_number=line.invoice_number,
+        billed_entity_detected=line.billed_entity,
+        # YES only for MATCH: NO_MATCH and AMBIGUOUS are both "not AMT" (REQ-ENT-006).
+        exact_entity_match="YES" if line.entity_verdict == "MATCH" else "NO",
+        line_position=line.position,
+        line_description=line.description,
+        target_sheet=coding.target_sheet if coding else None,
+        item_number=coding.item_number if coding else None,
+        catalog_description=coding.catalog_description if coding else None,
+    )
