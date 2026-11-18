@@ -46,7 +46,7 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
             "Documento recusado: não é uma factura no modelo suportado."
         ),
         "rejections.extractor_not_configured": (
-            "Documento recusado: a leitura de facturas não está configurada."
+            "Documento recusado: a leitura deste formato não está disponível nesta versão."
         ),
         "rejections.other": "Documento recusado.",
         "export.invoice_failed": "Falha no processamento: a factura pode ser reprocessada.",

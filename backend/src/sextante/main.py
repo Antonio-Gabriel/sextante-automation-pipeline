@@ -39,8 +39,8 @@ from sextante.ingestion.application.upload_invoices import (
 )
 from sextante.ingestion.contracts import InvoiceExtractor
 from sextante.ingestion.infrastructure.local_file_store import LocalInvoiceFileStore
+from sextante.ingestion.infrastructure.pdf_invoice_extractor import PdfInvoiceExtractor
 from sextante.ingestion.infrastructure.repository import IngestionRepository
-from sextante.ingestion.infrastructure.unconfigured_extractor import UnconfiguredInvoiceExtractor
 from sextante.matching.application.encode_invoice import EncodeInvoice, EncodingCollaborators
 from sextante.matching.contracts import EntityDenylist, ItemClassifier, TargetEntity
 from sextante.matching.infrastructure.denylist_file import DenylistFileError, read_entity_denylist
@@ -118,11 +118,12 @@ HTTP_STATUS_BY_ERROR = {
 class AppDependencies:
     """The adapters behind the ports. Tests replace the extractor and the classifier.
 
-    The defaults refuse to extract or classify with an explicit reason, until the PDF
-    extractor (ticket 12) and the Claude adapter (ticket 11) are wired.
+    Without an extractor, the native PDF extractor is built from the settings. The
+    default classifier refuses with an explicit reason until the Claude adapter
+    (ticket 11) is wired.
     """
 
-    extractor: InvoiceExtractor = field(default_factory=UnconfiguredInvoiceExtractor)
+    extractor: InvoiceExtractor | None = None
     classifier: ItemClassifier = field(default_factory=UnconfiguredItemClassifier)
     clock: Clock = field(default_factory=SystemClock)
     identifiers: IdentifierGenerator = field(default_factory=UuidIdentifierGenerator)
@@ -266,7 +267,7 @@ def _build_worker(
             engine=engine,
             repository=IngestionRepository(),
             store=store,
-            extractor=adapters.extractor,
+            extractor=adapters.extractor or PdfInvoiceExtractor(settings.pdf_min_chars_per_page),
             encoder=_build_encoder(engine, reference.catalog, settings, adapters),
             audit=AuditEventRepository(),
             clock=adapters.clock,

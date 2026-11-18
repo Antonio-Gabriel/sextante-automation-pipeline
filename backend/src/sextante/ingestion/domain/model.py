@@ -19,6 +19,7 @@ class RejectionReason(StrEnum):
 
     PDF_WITHOUT_TEXT_LAYER = "pdf_without_text_layer"
     UNSUPPORTED_DOCUMENT_TYPE = "unsupported_document_type"
+    # No extractor reads this format in this version, such as XLSX (D-3.6).
     EXTRACTOR_NOT_CONFIGURED = "extractor_not_configured"
 
 

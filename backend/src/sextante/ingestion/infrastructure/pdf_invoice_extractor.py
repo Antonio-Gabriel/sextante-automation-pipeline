@@ -1,0 +1,114 @@
+"""Native PDF extraction for invoices in the sample model (D-3.6, REQ-ING-002/003, L-01).
+
+A scanned PDF has no text layer and is refused with ``pdf_without_text_layer``; a PDF
+that is not an invoice of the model, such as a customs assessment notice, is refused
+with ``unsupported_document_type`` (L-14). Neither is ever coded. XLSX extraction is not
+implemented in this version (D-3.6), so an XLSX upload is refused with its own reason.
+"""
+
+import io
+import logging
+from dataclasses import fields
+from typing import Final
+
+import pdfplumber
+from pdfminer.pdfparser import PDFSyntaxError
+from pdfplumber.page import Page
+from pdfplumber.utils.exceptions import PdfminerException
+
+from sextante.ingestion.domain.model import (
+    ExtractedInvoice,
+    ExtractionRejection,
+    FileFormat,
+    RejectionReason,
+)
+from sextante.ingestion.infrastructure.model_invoice_layout import Glyph, Word, read_model_invoice
+from sextante.platform.limits import MAX_PDF_PAGES
+
+logger = logging.getLogger(__name__)
+
+# Pages are stacked one under the other, so a table that runs over a page break keeps
+# its rows in order.
+PAGE_GAP: Final = 50.0
+OPTIONAL_FIELDS: Final = ("invoice_number", "invoice_date", "currency")
+
+
+class PdfInvoiceExtractor:
+    """InvoiceExtractor for PDF invoices with a text layer, in the layout of the samples.
+
+    Example:
+        PdfInvoiceExtractor(min_chars_per_page=100).extract(content, FileFormat.PDF)
+    """
+
+    def __init__(self, min_chars_per_page: int) -> None:
+        self._min_chars_per_page = min_chars_per_page
+
+    def extract(
+        self, content: bytes, file_format: FileFormat
+    ) -> ExtractedInvoice | ExtractionRejection:
+        """Extract the invoice, or refuse it with a reason. Never guesses a field.
+
+        Example:
+            extractor.extract(pdf_bytes, FileFormat.PDF).invoice_number
+        """
+        if file_format is not FileFormat.PDF:
+            return ExtractionRejection(RejectionReason.EXTRACTOR_NOT_CONFIGURED)
+        try:
+            with pdfplumber.open(io.BytesIO(content)) as pdf:
+                return self._extract_pages(pdf.pages)
+        except (PDFSyntaxError, PdfminerException) as error:
+            # The file starts like a PDF but cannot be read as one: refused, not failed,
+            # because retrying would read it the same way.
+            logger.warning("pdf_unreadable", extra={"error_type": type(error).__name__})
+            return ExtractionRejection(RejectionReason.UNSUPPORTED_DOCUMENT_TYPE)
+
+    def _extract_pages(self, pages: list[Page]) -> ExtractedInvoice | ExtractionRejection:
+        if not pages or len(pages) > MAX_PDF_PAGES:
+            return ExtractionRejection(RejectionReason.UNSUPPORTED_DOCUMENT_TYPE)
+        if sum(len(page.chars) for page in pages) < self._min_chars_per_page * len(pages):
+            return ExtractionRejection(RejectionReason.PDF_WITHOUT_TEXT_LAYER)
+        words, glyphs = _stacked_text(pages)
+        invoice = read_model_invoice(words, glyphs)
+        if invoice is None:
+            return ExtractionRejection(RejectionReason.UNSUPPORTED_DOCUMENT_TYPE)
+        _log_missing_fields(invoice)
+        return invoice
+
+
+def _stacked_text(pages: list[Page]) -> tuple[list[Word], list[Glyph]]:
+    words: list[Word] = []
+    glyphs: list[Glyph] = []
+    offset = 0.0
+    for page in pages:
+        for word in page.extract_words(extra_attrs=["size"]):
+            top = float(word["top"]) + offset
+            words.append(
+                Word(
+                    str(word["text"]),
+                    float(word["x0"]),
+                    float(word["x1"]),
+                    top,
+                    float(word["size"]),
+                )
+            )
+        glyphs += [
+            Glyph(str(c["text"]), float(c["x0"]), float(c["top"]) + offset) for c in page.chars
+        ]
+        offset += float(page.height) + PAGE_GAP
+    return words, glyphs
+
+
+def _log_missing_fields(invoice: ExtractedInvoice) -> None:
+    # A missing field is recorded as missing, by name only: never its neighbours' text
+    # (REQ-ING-003, SEC-15).
+    missing = [name for name in OPTIONAL_FIELDS if getattr(invoice, name) is None]
+    missing += [] if invoice.supplier.name else ["supplier_name"]
+    missing += [] if invoice.billed_entities else ["billed_entity"]
+    missing += [
+        f"line_{line.position}.{field.name}"
+        for line in invoice.lines
+        for field in fields(line)
+        if getattr(line, field.name) is None
+    ]
+    if missing:
+        logger.info("extraction_fields_missing", extra={"missing_fields": missing})

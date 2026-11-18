@@ -44,6 +44,8 @@ class Settings(BaseModel):
     csv_separator: str = ","
     # Attempts per model call, the first included, for transient failures (REQ-PLT-003).
     model_max_attempts: int = Field(default=3, ge=1, le=10)
+    # Characters per page below which a PDF counts as scanned (REQ-ING-002, L-01).
+    pdf_min_chars_per_page: int = Field(default=100, ge=1, le=10_000)
 
     # A plain model, not pydantic-settings: the environment is always passed in explicitly,
     # so a stray variable in the process cannot silently fill a missing setting.

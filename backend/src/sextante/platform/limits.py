@@ -11,6 +11,8 @@ MAX_UPLOAD_BYTES: Final = 25 * 1024 * 1024
 MAX_FILES_PER_UPLOAD: Final = 50
 MAX_FILE_NAME_LENGTH: Final = 255
 MAX_LINES_PER_INVOICE: Final = 500
+# The sample invoices have one page; a long PDF is not an invoice of the model.
+MAX_PDF_PAGES: Final = 20
 MAX_PAGE_SIZE: Final = 100
 MAX_RATIONALE_LENGTH: Final = 500
 # A note is free text from the reviewer; its limit is declared (REQ-REV-003).

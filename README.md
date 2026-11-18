@@ -4,19 +4,18 @@ Automatic coding of supplier invoice lines for AMT, Advanced Maritime Transports
 
 For each line of a supplier invoice, Sextante assigns the exact item number from the catalog, computes a confidence rating, and flags for human review any line where the decision is not safe.
 
-**Status:** under construction. This version delivers tickets 01 to 07 of `.scratch/nucleo-codificacao/`:
+**Status:** under construction. This version delivers tickets 01 to 10 and 12 of `.scratch/nucleo-codificacao/`:
 
 - application startup with a validated catalog;
 - upload of invoices into a background job;
+- reading native PDF invoices in the layout of the samples. A scanned PDF is refused as `pdf_without_text_layer`, and a document that is not an invoice of that layout as `unsupported_document_type`. XLSX invoices are not read in this version;
 - an entity check with no language model: MATCH codes against OUTLAYS, NO_MATCH against OUTLAYSP, and an ambiguous entity is left for a reviewer;
 - a computed confidence (`HIGH`, `MEDIUM`, `LOW`), the `O00999` fallback in OUTLAYSP only, and review flags;
 - line types: a line made only of VAT or discount wording is recorded without code, and only services reach the model;
-- the coded results, read back through the API, and exported as CSV or XLSX with the nine columns of the brief.
+- the coded results, read back through the API, and exported as CSV or XLSX with the nine columns of the brief;
+- review of coded lines, entity resolution and possible duplicates.
 
-Two parts are not wired yet. Until they are, an uploaded invoice is refused with the reason `extractor_not_configured` and is never coded.
-
-- **Reading real PDF invoices:** ticket 12.
-- **Calling the Claude model:** ticket 11.
+**Not wired yet: calling the Claude model** (ticket 11, waiting for the prompt to be approved). Until then, an invoice with service lines ends `failed`, without any code invented, and can be reprocessed from its stored text once the model is wired.
 
 ## Requirements
 

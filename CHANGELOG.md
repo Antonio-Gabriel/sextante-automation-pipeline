@@ -36,6 +36,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                             └── CHG-0027  feat      Resolução de entidade e duplicado provável
                                                                                                 └── CHG-0028  fix       Correcções da revisão dos tickets 09 e 10
                                                                                                     └── CHG-0029  improve   Saída da resolução humana e do duplicado provável
+                                                                                                        └── CHG-0030  feat      Extracção de PDF nativo no modelo das amostras
 ```
 
 ## Regras
@@ -100,6 +101,34 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0030 · Extracção de PDF nativo no modelo das amostras
+
+- **Data:** 2026-11-18
+- **Tipo:** feat
+- **Pai:** CHG-0029
+- **Estado:** activa
+- **Requisitos:** REQ-ING-001, REQ-ING-002, REQ-ING-003, REQ-ING-004, REQ-ING-005, REQ-ING-006, REQ-ING-008, REQ-ING-009, D-3.6, L-01, L-14, SEC-16
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Dependência nova:** `pdfplumber` 0.11 (MIT), com `pdfminer.six` (MIT), `pypdfium2` (BSD-3-Clause ou Apache-2.0) e `Pillow` (MIT-CMU). `make licenses` passa.
+- **Ficheiros:**
+  - `backend/src/sextante/ingestion/infrastructure/pdf_invoice_extractor.py` e `model_invoice_layout.py` (novos); `unconfigured_extractor.py` retirado
+  - `backend/src/sextante/main.py`, `platform/settings.py` (`pdf_min_chars_per_page`), `platform/limits.py` (`MAX_PDF_PAGES`), `platform/user_messages.py`, `ingestion/domain/model.py`
+  - `backend/pyproject.toml`
+  - testes: `tests/extraction/test_pdf_extractor.py`, `tests/api/test_pdf_ingestion.py`, `tests/fixtures/synthetic_pdf.py` (novos)
+  - `README.md`, `config/.env.example`, ticket 12
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit. O extractor volta a recusar todo o documento com `extractor_not_configured`.
+- **Verificação:** 285 testes. As réplicas sintéticas reproduzem as quatro particularidades; extracção pela porta `InvoiceExtractor` e ponta a ponta pela API; recusas de digitalizado, de documento fora do modelo e de PDF ilegível. As 12 amostras, lidas localmente fora do repositório, dão o que a proposta do conjunto dourado espera. `mypy`, `ruff`, 8 contratos do `import-linter`, licenças, funções com 20 linhas ou menos.
+
+**Extracção.** O layout é lido pelas coordenadas das palavras. O fornecedor é a letra maior da faixa de topo, mesmo quando corre por baixo de "INVOICE / FACTURA". FROM e BILL TO separam-se pelo x do rótulo "BILL TO". As linhas "c/o" e "a/c" ficam como "ao cuidado de", e cada bloco tem o seu NIF. O número da factura pode ter espaço ("FT 2026/0001").
+
+**Linhas.** Cada valor vai para a coluna cujo título termina mais perto, porque os valores estão alinhados à direita. Uma linha de continuação junta-se pelos caracteres em bruto: com espaço quando a quebra caiu num espaço, sem espaço quando caiu a meio da palavra. Os valores são lidos no formato `1,206.00`, e o IVA em `14%`. Subtotal, IVA e total ficam como linhas de resumo, mesmo com o total colado ao rótulo.
+
+**Recusas.** Um PDF com menos caracteres por página do que `SEXTANTE_PDF_MIN_CHARS_PER_PAGE` (100 por omissão) é `pdf_without_text_layer`. Um PDF sem os rótulos do modelo, com mais de 20 páginas, ou ilegível, é `unsupported_document_type`. XLSX continua por ler nesta versão (D-3.6) e é recusado com `extractor_not_configured`, agora com um texto que o diz.
+
+**Campos ausentes.** Ficam vazios e são registados no log só pelo nome (`extraction_fields_missing`), nunca com texto da factura.
 
 ### CHG-0029 · Saída da resolução humana e do duplicado provável
 
