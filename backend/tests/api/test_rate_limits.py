@@ -6,7 +6,8 @@ from contextlib import contextmanager
 import pytest
 from fastapi.testclient import TestClient
 
-from sextante.main import AppDependencies, create_app
+from sextante.main import AppDependencies, create_app, rate_limits
+from sextante.platform.settings import Settings, StartupConfigurationError
 from tests.conftest import SYNTHETIC_API_KEY
 from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fakes.fixed_clock import FixedClock, SequentialIdentifierGenerator
@@ -45,7 +46,7 @@ def _upload(client: TestClient, label: str) -> int:
     return client.post("/api/invoices", files=files, headers=KEY).status_code
 
 
-@pytest.mark.requirement("SEC-12", "SEC-19")
+@pytest.mark.requirement("SEC-12")
 def test_an_endpoint_over_its_limit_answers_429_with_retry_after(
     valid_environment: dict[str, str],
 ) -> None:
@@ -60,7 +61,8 @@ def test_an_endpoint_over_its_limit_answers_429_with_retry_after(
     assert statuses == [202, 202]
     assert refused.status_code == 429
     assert refused.json()["code"] == "errors.rate_limit.exceeded"
-    assert 1 <= int(refused.headers["Retry-After"]) <= 60
+    # The stopwatch reads 1000 s: the minute window ends at 1020 s, 20 s away.
+    assert refused.headers["Retry-After"] == "20"
 
 
 @pytest.mark.requirement("SEC-12")
@@ -139,15 +141,96 @@ def test_each_costly_endpoint_has_its_own_limit(valid_environment: dict[str, str
 
 
 @pytest.mark.requirement("SEC-12")
+def test_entity_resolution_and_acceptance_share_the_costly_limits(
+    valid_environment: dict[str, str],
+) -> None:
+    """Resolution queues paid coding like reprocessing; acceptance is a review write."""
+    limits = {
+        "SEXTANTE_RATE_LIMIT_REPROCESS_PER_HOUR": "1",
+        "SEXTANTE_RATE_LIMIT_CORRECTION_PER_MINUTE": "1",
+    }
+    with _application(valid_environment, _Stopwatch(), **limits) as client:
+        reprocess = client.post(
+            "/api/invoices/unknown/reprocess", headers={**KEY, "Idempotency-Key": "r-1"}
+        ).status_code
+        resolution = client.post(
+            "/api/invoices/unknown/entity-resolution",
+            json={"resolution": "MATCH", "note": "x"},
+            headers={**KEY, "Idempotency-Key": "e-1"},
+        ).status_code
+        correction = client.patch(
+            "/api/encoded-lines/unknown",
+            json={"item_number": "O00004"},
+            headers={**KEY, "Idempotency-Key": "c-1"},
+        ).status_code
+        acceptance = client.post(
+            "/api/encoded-lines/unknown/accept", json={}, headers={**KEY, "Idempotency-Key": "a-1"}
+        ).status_code
+
+    assert (reprocess, resolution, correction, acceptance) == (404, 429, 404, 429)
+
+
+@pytest.mark.requirement("SEC-19", "SEC-12")
+def test_a_repeated_idempotency_key_still_counts_against_the_limit(
+    valid_environment: dict[str, str],
+) -> None:
+    """Idempotency stops a second effect, not the cost of the request (SEC-19)."""
+    with _application(
+        valid_environment, _Stopwatch(), SEXTANTE_RATE_LIMIT_REPROCESS_PER_HOUR="1"
+    ) as client:
+        statuses = [
+            client.post(
+                "/api/invoices/unknown/reprocess", headers={**KEY, "Idempotency-Key": "same"}
+            ).status_code
+            for _ in range(2)
+        ]
+
+    assert statuses == [404, 429]
+
+
+@pytest.mark.requirement("SEC-12")
+def test_a_request_refused_by_its_endpoint_uses_no_general_quota(
+    valid_environment: dict[str, str],
+) -> None:
+    """Refused means not counted, by any limit."""
+    limits = {
+        "SEXTANTE_RATE_LIMIT_GENERAL_PER_MINUTE": "2",
+        "SEXTANTE_RATE_LIMIT_UPLOAD_PER_MINUTE": "1",
+    }
+    with _application(valid_environment, _Stopwatch(), **limits) as client:
+        uploads = [_upload(client, f"quota-{n}") for n in range(2)]
+        reads = [client.get("/api/jobs/unknown", headers=KEY).status_code for _ in range(2)]
+
+    assert (uploads, reads) == ([202, 429], [404, 429])
+
+
+@pytest.mark.requirement("SEC-12")
+def test_the_default_limits_are_the_table_of_sec_12(valid_environment: dict[str, str]) -> None:
+    """Without overrides, the limits are SEC-12's: requests per window, in seconds."""
+    limits = rate_limits(Settings.from_environment(valid_environment))
+
+    assert {
+        rule.value: (limit.requests, limit.window_seconds) for rule, limit in limits.items()
+    } == {
+        "general": (300, 60.0),
+        "upload": (10, 60.0),
+        "reprocess": (20, 3600.0),
+        "export": (30, 3600.0),
+        "correction": (120, 60.0),
+    }
+
+
+@pytest.mark.requirement("SEC-12")
 def test_a_limit_below_one_refuses_startup(valid_environment: dict[str, str]) -> None:
     """A limit of zero would close the endpoint by accident; it is refused, named."""
-    with pytest.raises(Exception, match="SEXTANTE_RATE_LIMIT_UPLOAD_PER_MINUTE"):
+    with pytest.raises(StartupConfigurationError, match="SEXTANTE_RATE_LIMIT_UPLOAD_PER_MINUTE"):
         create_app({**valid_environment, "SEXTANTE_RATE_LIMIT_UPLOAD_PER_MINUTE": "0"})
 
 
 @pytest.mark.requirement("SEC-12")
 @pytest.mark.xfail(
     strict=True,
+    raises=AssertionError,
     reason=(
         "Known limitation, by design of this version (SEC-12): the counter lives in each "
         "process's memory, so two instances each allow the full quota. A shared counter "

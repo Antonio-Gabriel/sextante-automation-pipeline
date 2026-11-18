@@ -1,5 +1,6 @@
 """Base class of domain errors (04-padroes-de-codigo.md §1.6)."""
 
+from collections.abc import Mapping
 from typing import ClassVar
 
 
@@ -14,3 +15,11 @@ class DomainError(Exception):
     """
 
     user_message_key: ClassVar[str] = "errors.internal"
+
+    def response_headers(self) -> Mapping[str, str]:
+        """HTTP headers the error answer carries; none, unless an error needs them.
+
+        Example:
+            RateLimitExceededError(RateRule.UPLOAD, 20).response_headers()
+        """
+        return {}

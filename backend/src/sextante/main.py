@@ -8,6 +8,7 @@ from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Final
 
 from anthropic import AsyncAnthropic
 from fastapi import Depends, FastAPI
@@ -18,11 +19,15 @@ from sextante.catalog.contracts import FALLBACK_ITEM_NUMBER, Catalog, CatalogIte
 from sextante.catalog.domain.catalog_builder import BuiltCatalog
 from sextante.catalog.domain.errors import CatalogValidationError
 from sextante.catalog.infrastructure.xlsx_catalog_reader import XlsxCatalogWorkbookReader
+from sextante.export.api.routes import export_job as export_job_route
 from sextante.export.api.routes import export_router
 from sextante.export.application.build_job_export import BuildJobExport
 from sextante.export.application.export_job import ExportJob
 from sextante.export.infrastructure.spreadsheet_writers import SpreadsheetExportWriter
 from sextante.ingestion.api.routes import ingestion_router
+from sextante.ingestion.api.routes import reprocess_invoice as reprocess_invoice_route
+from sextante.ingestion.api.routes import resolve_entity as resolve_entity_route
+from sextante.ingestion.api.routes import upload_invoices as upload_invoices_route
 from sextante.ingestion.application.read_job_status import JobNotFoundError, ReadJobStatus
 from sextante.ingestion.application.reprocess_invoice import (
     InvoiceNotFoundError,
@@ -68,18 +73,20 @@ from sextante.platform.idempotency import (
     purge_periodically,
 )
 from sextante.platform.rate_limit import (
-    GENERAL_RULE,
     HOUR,
     MINUTE,
     Monotonic,
     RateLimit,
     RateLimiter,
     RateLimitExceededError,
+    RateRule,
     enforce_rate_limits,
 )
 from sextante.platform.retry import RetryPolicy, Sleep
 from sextante.platform.settings import Settings, StartupConfigurationError
 from sextante.platform.structured_logging import configure_logging
+from sextante.review.api.routes import accept_line as accept_line_route
+from sextante.review.api.routes import correct_line as correct_line_route
 from sextante.review.api.routes import review_router
 from sextante.review.application.codings_in_force import CodingsInForce
 from sextante.review.application.list_job_results import ListJobResults
@@ -182,23 +189,37 @@ def create_app(
     app.add_middleware(CorrelationIdMiddleware)
     install_error_handlers(app, HTTP_STATUS_BY_ERROR)
     app.state.rate_limiter = RateLimiter(rate_limits(settings), adapters.monotonic)
+    app.state.costly_endpoints = COSTLY_ENDPOINTS
     _include_routers(app, settings)
     return app
 
 
-def rate_limits(settings: Settings) -> dict[str, RateLimit]:
+def rate_limits(settings: Settings) -> dict[RateRule, RateLimit]:
     """The limits of SEC-12, from the settings.
 
     Example:
         RateLimiter(rate_limits(settings), time.monotonic)
     """
     return {
-        GENERAL_RULE: RateLimit(settings.rate_limit_general_per_minute, MINUTE),
-        "upload": RateLimit(settings.rate_limit_upload_per_minute, MINUTE),
-        "reprocess": RateLimit(settings.rate_limit_reprocess_per_hour, HOUR),
-        "export": RateLimit(settings.rate_limit_export_per_hour, HOUR),
-        "correction": RateLimit(settings.rate_limit_correction_per_minute, MINUTE),
+        RateRule.GENERAL: RateLimit(settings.rate_limit_general_per_minute, MINUTE),
+        RateRule.UPLOAD: RateLimit(settings.rate_limit_upload_per_minute, MINUTE),
+        RateRule.REPROCESS: RateLimit(settings.rate_limit_reprocess_per_hour, HOUR),
+        RateRule.EXPORT: RateLimit(settings.rate_limit_export_per_hour, HOUR),
+        RateRule.CORRECTION: RateLimit(settings.rate_limit_correction_per_minute, MINUTE),
     }
+
+
+# Costly endpoints and their own limit (SEC-12), named by route function so a renamed
+# route fails at import instead of silently losing its limit. Entity resolution queues
+# paid coding like reprocessing; accepting a line is a review write like a correction.
+COSTLY_ENDPOINTS: Final[Mapping[object, RateRule]] = {
+    upload_invoices_route: RateRule.UPLOAD,
+    reprocess_invoice_route: RateRule.REPROCESS,
+    resolve_entity_route: RateRule.REPROCESS,
+    export_job_route: RateRule.EXPORT,
+    correct_line_route: RateRule.CORRECTION,
+    accept_line_route: RateRule.CORRECTION,
+}
 
 
 def _include_routers(app: FastAPI, settings: Settings) -> None:

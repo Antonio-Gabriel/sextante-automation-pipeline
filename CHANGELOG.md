@@ -56,6 +56,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                             └── CHG-0047  security  Chave da API em todo o /api excepto health
                                                                                                                                                                                 └── CHG-0048  docs      Tickets do frontend, da operação e do deploy
                                                                                                                                                                                     └── CHG-0049  security  Limites de taxa por endpoint
+                                                                                                                                                                                        └── CHG-0050  fix       Correcções da revisão dos limites de taxa
 ```
 
 ## Regras
@@ -120,6 +121,26 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0050 · Correcções da revisão dos limites de taxa
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0049
+- **Estado:** activa
+- **Requisitos:** SEC-12, SEC-19, SEC-15
+- **Commit:** pendente
+- **Migração:** nenhuma (o esquema continua na revisão `0009`)
+- **Ficheiros:** `backend/src/sextante/platform/rate_limit.py`, `platform/errors.py` (`response_headers`), `platform/http_errors.py`, `main.py`, `tests/api/test_rate_limits.py`, `docs/03-seguranca.md` (SEC-12), `README.md`, ticket de operação 01
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 333 testes e o `xfail` estrito, agora preso a `AssertionError`; `Retry-After` verificado no valor exacto; testes novos para os valores por omissão, para a chave de idempotência repetida que conta no limite, para o pedido recusado que não gasta quota geral, e para a resolução de entidade e a aceitação sob os limites caros. `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+**Regras.** Os nomes dos limites passam a um conjunto fechado (`RateRule`). As rotas caras são nomeadas pela função da rota, na composição: uma rota renomeada falha na importação, em vez de perder o limite em silêncio.
+
+**Contagem.** Um pedido só conta quando todos os limites o deixam passar. A memória é um contador por regra e chamador, sem percorrer o dicionário a cada pedido. O `Retry-After` sai por um método do erro de domínio, sem o tratador genérico inspeccionar uma subclasse.
+
+**Âmbito.** A resolução de entidade, que põe codificação paga na fila, partilha o limite do reprocessamento; a aceitação de linha partilha o da correcção. O ramo do endereço de origem, que a verificação da chave tornava inalcançável, sai. SEC-12 e o `README.md` passam a dizer que, com uma só chave, há uma só quota partilhada, e que uma janela fixa deixa passar até o dobro da quota na fronteira.
 
 ### CHG-0049 · Limites de taxa por endpoint
 

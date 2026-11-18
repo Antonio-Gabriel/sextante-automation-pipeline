@@ -60,17 +60,17 @@ The application refuses to start, with a message naming the problem, in either o
 
 ## Rate limits
 
-Every caller has quotas per time window (SEC-12). Over a quota the answer is `429` with a `Retry-After` header, in seconds. The health check is never limited, and a request refused for its API key never uses a quota.
+The API counts requests per time window (SEC-12). Over a quota the answer is `429` with a `Retry-After` header, in seconds. The health check is never limited, a request refused for its API key never uses a quota, and a request refused by one limit is not counted by the others. Quotas belong to the API key: with the single key of this version, everyone using it shares one quota.
 
 | Limit | Default | Variable |
 |---|---|---|
 | All `/api` calls | 300 per minute | `SEXTANTE_RATE_LIMIT_GENERAL_PER_MINUTE` |
 | Upload | 10 per minute | `SEXTANTE_RATE_LIMIT_UPLOAD_PER_MINUTE` |
-| Reprocessing | 20 per hour | `SEXTANTE_RATE_LIMIT_REPROCESS_PER_HOUR` |
+| Reprocessing and entity resolution | 20 per hour | `SEXTANTE_RATE_LIMIT_REPROCESS_PER_HOUR` |
 | Export | 30 per hour | `SEXTANTE_RATE_LIMIT_EXPORT_PER_HOUR` |
-| Line correction | 120 per minute | `SEXTANTE_RATE_LIMIT_CORRECTION_PER_MINUTE` |
+| Line correction and acceptance | 120 per minute | `SEXTANTE_RATE_LIMIT_CORRECTION_PER_MINUTE` |
 
-The counters live in the memory of the server process. With one process that is enough. With two or more instances each one allows the full quota: running more than one instance needs a shared counter, such as Redis or Valkey.
+Windows are fixed, so up to twice a quota can pass across the boundary between two windows. The counters live in the memory of the server process. With one process that is enough. With two or more instances each one allows the full quota: running more than one instance needs a shared counter, such as Redis or Valkey.
 
 ## Golden set
 

@@ -51,10 +51,7 @@ def install_error_handlers(app: FastAPI, status_by_error: Mapping[type[DomainErr
             (code for error_type, code in status_by_error.items() if isinstance(error, error_type)),
             DOMAIN_ERROR_DEFAULT_STATUS,
         )
-        # A rate limit says when to come back (SEC-12); no other error carries headers.
-        retry_after = getattr(error, "retry_after", None)
-        headers = {"Retry-After": str(retry_after)} if retry_after is not None else None
-        return error_response(status, error.user_message_key, headers)
+        return error_response(status, error.user_message_key, error.response_headers())
 
     @app.exception_handler(Exception)
     async def respond_to_unexpected_error(request: Request, error: Exception) -> JSONResponse:

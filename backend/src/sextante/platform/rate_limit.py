@@ -1,15 +1,22 @@
 """Rate limits per endpoint, 429 with Retry-After (SEC-12, SEC-19).
 
-Fixed windows counted in this process's memory. With one process that is enough; with
-two instances each one allows the full quota, which is the known limitation of this
-version (SEC-12): production needs a shared counter, 00-decisoes-e-lacunas.md §6.
+Fixed windows counted in this process's memory, per caller. Two limits apply to a
+request: the general one, and its endpoint's own when the endpoint is costly. A request
+is counted only when every limit lets it through, so a refusal uses no quota.
+
+Known limitations of this version, declared rather than hidden:
+- the counters live in one process: with two instances each allows the full quota
+  (SEC-12); production needs a shared counter, 00-decisoes-e-lacunas.md §6;
+- a fixed window lets up to twice the quota through across a window boundary;
+- the caller is the API key, and there is one key (L-07): everyone shares one quota.
 """
 
 import hashlib
 import logging
 import math
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Final
 
 from fastapi import Request
@@ -21,9 +28,18 @@ logger = logging.getLogger(__name__)
 
 MINUTE: Final = 60.0
 HOUR: Final = 3600.0
-GENERAL_RULE: Final = "general"
 
 Monotonic = Callable[[], float]
+
+
+class RateRule(StrEnum):
+    """The closed set of limits of SEC-12."""
+
+    GENERAL = "general"
+    UPLOAD = "upload"
+    REPROCESS = "reprocess"
+    EXPORT = "export"
+    CORRECTION = "correction"
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,66 +55,64 @@ class RateLimitExceededError(DomainError):
 
     user_message_key = "errors.rate_limit.exceeded"
 
-    def __init__(self, message: str, retry_after: int) -> None:
-        super().__init__(message)
+    def __init__(self, rule: RateRule, retry_after: int) -> None:
+        super().__init__(f"Rate limit {rule.value} reached. Expected a retry after {retry_after}s.")
+        self.rule = rule
         self.retry_after = retry_after
+
+    def response_headers(self) -> Mapping[str, str]:
+        """When to come back, in seconds (SEC-12).
+
+        Example:
+            error.response_headers()  # {"Retry-After": "20"}
+        """
+        return {"Retry-After": str(self.retry_after)}
 
 
 class RateLimiter:
-    """Count requests per rule and caller in fixed windows of a monotonic clock.
+    """Count requests per rule and caller, in fixed windows of a monotonic clock.
+
+    Memory is one counter per rule and caller: a new window replaces the old count.
 
     Example:
         limiter = RateLimiter(limits, time.monotonic)
-        limiter.check("upload", caller)  # raises RateLimitExceededError over the limit
+        limiter.check((RateRule.GENERAL, RateRule.UPLOAD), caller)
     """
 
-    def __init__(self, limits: Mapping[str, RateLimit], monotonic: Monotonic) -> None:
+    def __init__(self, limits: Mapping[RateRule, RateLimit], monotonic: Monotonic) -> None:
         self._limits = limits
         self._monotonic = monotonic
-        self._counts: dict[tuple[str, str, int], int] = {}
+        self._counts: dict[tuple[RateRule, str], tuple[int, int]] = {}
 
-    def check(self, rule: str, caller: str) -> None:
-        """Count one request against the rule; refuse it when the window is full.
+    def check(self, rules: Sequence[RateRule], caller: str) -> None:
+        """Let the request through every rule and count it, or refuse it and count nothing.
 
         Example:
-            limiter.check(GENERAL_RULE, "a1b2c3")
+            limiter.check((RateRule.GENERAL,), "a1b2c3")
 
         Raises:
-            RateLimitExceededError: with the seconds until the window opens again.
+            RateLimitExceededError: naming the first full rule and the seconds to wait.
         """
-        limit = self._limits[rule]
         now = self._monotonic()
-        window = int(now // limit.window_seconds)
-        key = (rule, caller, window)
-        if self._counts.get(key, 0) >= limit.requests:
-            retry_after = max(1, math.ceil((window + 1) * limit.window_seconds - now))
-            raise RateLimitExceededError(
-                f"Rate limit {rule} of {limit.requests} per {limit.window_seconds:g}s reached. "
-                f"Expected a retry after {retry_after}s.",
-                retry_after,
-            )
-        self._forget_closed_windows(window, rule)
-        self._counts[key] = self._counts.get(key, 0) + 1
+        windows = {rule: int(now // self._limits[rule].window_seconds) for rule in rules}
+        for rule in rules:
+            if self._used(rule, caller, windows[rule]) >= self._limits[rule].requests:
+                window_end = (windows[rule] + 1) * self._limits[rule].window_seconds
+                raise RateLimitExceededError(rule, max(1, math.ceil(window_end - now)))
+        for rule in rules:
+            used = self._used(rule, caller, windows[rule])
+            self._counts[(rule, caller)] = (windows[rule], used + 1)
 
-    def _forget_closed_windows(self, window: int, rule: str) -> None:
-        # Only the current window of a rule matters; older counts would only grow memory.
-        for stale in [k for k in self._counts if k[0] == rule and k[2] < window]:
-            del self._counts[stale]
-
-
-# Endpoints with their own, tighter limit (SEC-12), by method and route template.
-COSTLY_ROUTES: Final = {
-    ("POST", "/api/invoices"): "upload",
-    ("POST", "/api/invoices/{invoice_id}/reprocess"): "reprocess",
-    ("GET", "/api/exports/{job_id}"): "export",
-    ("PATCH", "/api/encoded-lines/{encoded_line_id}"): "correction",
-}
+    def _used(self, rule: RateRule, caller: str, window: int) -> int:
+        counted_window, used = self._counts.get((rule, caller), (window, 0))
+        return used if counted_window == window else 0
 
 
 async def enforce_rate_limits(request: Request) -> None:
     """Count the request against the general limit and its endpoint's own limit.
 
-    Runs after the key check, so a refused credential never uses anyone's quota.
+    Runs after the key check, so a refused credential never uses anyone's quota. The
+    costly endpoints are named by their route function, in the composition root.
 
     Example:
         app.include_router(router, dependencies=[Depends(enforce_rate_limits)])
@@ -107,24 +121,19 @@ async def enforce_rate_limits(request: Request) -> None:
         RateLimitExceededError: when either limit is reached.
     """
     limiter: RateLimiter = request.app.state.rate_limiter
-    caller = _caller(request)
-    route = request.scope.get("route")
-    rules = [GENERAL_RULE]
-    costly = COSTLY_ROUTES.get((request.method, getattr(route, "path", "")))
-    rules += [costly] if costly else []
+    costly: Mapping[object, RateRule] = request.app.state.costly_endpoints
+    endpoint_rule = costly.get(request.scope.get("endpoint"))
+    rules = (RateRule.GENERAL, endpoint_rule) if endpoint_rule else (RateRule.GENERAL,)
     try:
-        for rule in rules:
-            limiter.check(rule, caller)
+        limiter.check(rules, _caller(request))
     except RateLimitExceededError as error:
         # The rule and the path only: never the key that identifies the caller (SEC-15).
-        logger.warning("rate_limited", extra={"rule": rule, "path": request.url.path})
-        raise error from None
+        logger.warning("rate_limited", extra={"rule": error.rule.value, "path": request.url.path})
+        raise
 
 
 def _caller(request: Request) -> str:
-    # The key's digest is the identity while there is no per-person login; without a
-    # key, the address it came from (SEC-12: "origem enquanto não houver identidade").
-    key = request.headers.get(API_KEY_HEADER)
-    if key:
-        return hashlib.sha256(key.encode()).hexdigest()[:16]
-    return request.client.host if request.client else "unknown"
+    # require_api_key has already refused a request without the key, so the key is
+    # there; its digest identifies the caller without keeping the key in memory.
+    key = request.headers.get(API_KEY_HEADER, "")
+    return hashlib.sha256(key.encode()).hexdigest()[:16]
