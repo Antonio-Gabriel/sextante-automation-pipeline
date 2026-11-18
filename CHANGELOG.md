@@ -108,7 +108,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0028
 - **Estado:** activa
 - **Requisitos:** REQ-ENT-006, REQ-ING-011, REQ-REV-006, REQ-EXP-004
-- **Commit:** pendente
+- **Commit:** `2a1bf15`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/matching/domain/entity_check.py` e contratos (`exact_entity_match_label` com o motivo, `entity_notes`)
