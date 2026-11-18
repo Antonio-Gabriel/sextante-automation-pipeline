@@ -157,14 +157,14 @@ Nunca desenhar esquemas de cifra próprios. Quando a cifra entrar, é AES-256-GC
 
 **Invariante.** Toda a decisão de autenticação é tomada no servidor. O cliente apenas reflecte o resultado.
 
-**Implementação nesta versão: não há autenticação.** Está em aberto por L-07.
+**Implementação nesta versão: uma chave da API, sem perfis.** *Revisto em 19-11-2026, por decisão do responsável (L-07).* Todo o `/api`, excepto `/api/health`, exige o cabeçalho `X-API-Key` com o valor de `SEXTANTE_API_KEY`, comparado em tempo constante; sem ele, 401. A chave tem pelo menos 16 caracteres, e uma recusa é registada sem a chave enviada. A documentação interactiva (`/docs`) fica aberta para leitura. A chave fecha a API a quem não a tem, mas não distingue pessoas: o autor de uma revisão continua a vir de `SEXTANTE_REVIEWER_ID`.
 
 Isto não é tratado como "mais tarde se vê". É tratado como decisão com consequências declaradas:
 
 - O serviço liga apenas a `127.0.0.1`. **Nunca** a `0.0.0.0`, nem em desenvolvimento, porque essa é a alteração de uma palavra que transforma um protótipo local num sistema aberto na rede da empresa.
 - O campo `reviewed_by` existe no esquema desde a primeira migração, preenchido a partir de `SEXTANTE_REVIEWER_ID`. Quando a autenticação entrar, o trilho de auditoria não precisa de migração nem de reinterpretação.
 - Os routers declaram a sua política de autorização desde já, com uma dependência que hoje resolve para um principal único. A estrutura fica montada, por SEC-07.
-- **Risco residual declarado: médio.** Consta do bloco de fecho de qualquer tarefa que toque na API, e consta do `README.md`.
+- **Risco residual declarado: médio.** Uma chave partilhada, em HTTP local, sem identidade por pessoa. Consta do bloco de fecho de qualquer tarefa que toque na API, e consta do `README.md`.
 
 Quando a autenticação entrar, as regras são as do documento de referência: validação completa em cada pedido, assinatura, emissor, destinatário e validade, material de verificação cacheado com rotação, e esconder um botão na interface nunca é autenticação.
 

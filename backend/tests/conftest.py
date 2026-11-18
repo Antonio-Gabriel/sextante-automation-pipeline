@@ -16,6 +16,8 @@ def catalog_path(tmp_path: Path) -> Path:
     return SyntheticCatalog().write(tmp_path / "synthetic-catalog.xlsx")
 
 
+# A fictitious API key for tests (SEC-02): long enough for the startup check.
+SYNTHETIC_API_KEY: Final = "synthetic-api-key-0123456789"
 SYNTHETIC_DENYLISTED_SISTER: Final = "Sextante Sintética Irmã Lda"
 
 
@@ -41,4 +43,5 @@ def valid_environment(tmp_path: Path, catalog_path: Path) -> dict[str, str]:
         "SEXTANTE_UPLOAD_DIR": str(tmp_path / "uploads"),
         "SEXTANTE_ENTITY_DENYLIST_PATH": str(_write_denylist(tmp_path)),
         "SEXTANTE_REVIEWER_ID": "synthetic-reviewer",
+        "SEXTANTE_API_KEY": SYNTHETIC_API_KEY,
     }

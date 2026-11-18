@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from anthropic import AsyncAnthropic
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from sextante.catalog.application.load_catalog import CatalogFileError, load_catalog
@@ -52,6 +52,7 @@ from sextante.matching.infrastructure.claude_classifier import (
 from sextante.matching.infrastructure.denylist_file import DenylistFileError, read_entity_denylist
 from sextante.matching.infrastructure.rapidfuzz_scorer import RapidfuzzLexicalScorer
 from sextante.matching.infrastructure.repository import MatchingRepository
+from sextante.platform.api_key import ApiKeyInvalidError, require_api_key
 from sextante.platform.audit import AuditEventRepository
 from sextante.platform.clock import Clock, IdentifierGenerator, SystemClock, UuidIdentifierGenerator
 from sextante.platform.correlation import CorrelationIdMiddleware
@@ -106,6 +107,7 @@ class ReferenceData:
 HTTP_STATUS_BY_ERROR = {
     InvoiceNotFoundError: 404,
     InvoiceNotReprocessableError: 409,
+    ApiKeyInvalidError: 401,
     InvoiceNotAmbiguousError: 409,
     JobNotFoundError: 404,
     EncodedLineNotFoundError: 404,
@@ -165,9 +167,16 @@ def create_app(
     app.state.catalog = catalog
     app.add_middleware(CorrelationIdMiddleware)
     install_error_handlers(app, HTTP_STATUS_BY_ERROR)
-    for router in (health_router, ingestion_router, review_router, export_router):
-        app.include_router(router)
+    _include_routers(app, settings)
     return app
+
+
+def _include_routers(app: FastAPI, settings: Settings) -> None:
+    app.state.api_key = settings.api_key
+    app.include_router(health_router)
+    # Every /api route but health needs the key (L-07); the docs stay open to read.
+    for router in (ingestion_router, review_router, export_router):
+        app.include_router(router, dependencies=[Depends(require_api_key)])
 
 
 def _lifespan(

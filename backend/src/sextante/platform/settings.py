@@ -12,6 +12,8 @@ SETTING_TEXT_MAX_LENGTH: Final = 512
 # PostgreSQL migration path of 00-decisoes-e-lacunas.md §6 is taken.
 DATABASE_URL_PREFIX: Final = "sqlite+aiosqlite:///"
 CSV_SEPARATORS: Final = frozenset({",", ";", "|"})
+# A key a person could guess is refused at startup.
+API_KEY_MIN_LENGTH: Final = 16
 PDF_MIN_CHARS_DEFAULT: Final = 100
 PDF_MIN_CHARS_MAXIMUM: Final = 10_000
 REVIEWER_ID_MAX_LENGTH: Final = 128
@@ -58,6 +60,8 @@ class Settings(ModelCallSettings):
     target_entity_name: str = Field(max_length=SETTING_TEXT_MAX_LENGTH)
     target_entity_nif: str = Field(max_length=SETTING_TEXT_MAX_LENGTH)
     upload_dir: Path
+    # Key every /api call but health must carry in X-API-Key (L-07, revised 2026-11-19).
+    api_key: SecretStr = Field(min_length=API_KEY_MIN_LENGTH, max_length=SETTING_TEXT_MAX_LENGTH)
     entity_denylist_path: Path
     # Author of every review action in the audit trail: there is no login in this
     # version (L-07), so the identity comes from configuration (REQ-REV-004).

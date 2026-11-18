@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from sextante.main import AppDependencies, create_app
 from sextante.matching.contracts import ItemClassifier
+from tests.conftest import SYNTHETIC_API_KEY
 from tests.fakes.fake_invoice_extractor import FakeInvoiceExtractor
 from tests.fakes.fixed_clock import FixedClock, SequentialIdentifierGenerator
 from tests.fixtures.synthetic_invoices import SyntheticInvoice
@@ -81,7 +82,9 @@ def running_application(
         worker_poll_seconds=WORKER_POLL_SECONDS,
         sleep=_recording_sleep(sleeps if sleeps is not None else []),
     )
-    with TestClient(create_app(environment, dependencies)) as client:
+    with TestClient(
+        create_app(environment, dependencies), headers={"X-API-Key": SYNTHETIC_API_KEY}
+    ) as client:
         yield EncodingHarness(client=client, extractor=extractor, classifier=classifier)
 
 

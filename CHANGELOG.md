@@ -53,6 +53,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                 └── CHG-0044  fix       Correcções da revisão do ticket 14
                                                                                                                                                                     └── CHG-0045  docs      Pasta sources fora do .gitignore e regra dos pedidos repetidos confirmada
                                                                                                                                                                         └── CHG-0046  fix       Idempotency-Key declarado na documentação da API
+                                                                                                                                                                            └── CHG-0047  security  Chave da API em todo o /api excepto health
 ```
 
 ## Regras
@@ -117,6 +118,25 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0047 · Chave da API em todo o /api excepto health
+
+- **Data:** 2026-11-19
+- **Tipo:** security
+- **Pai:** CHG-0046
+- **Estado:** activa
+- **Requisitos:** SEC-06, SEC-02, SEC-15, REQ-PLT-007, L-07
+- **Commit:** pendente
+- **Migração:** nenhuma (o esquema continua na revisão `0009`)
+- **Ficheiros:**
+  - `backend/src/sextante/platform/api_key.py` (novo), `platform/settings.py` (`api_key`), `platform/user_messages.py`, `main.py`
+  - testes: `tests/api/test_api_key.py` (novo), `tests/conftest.py`, harness e clientes de teste
+  - `docs/03-seguranca.md` (SEC-06), `docs/00-decisoes-e-lacunas.md` (L-07), `CLAUDE.md` (tabela de lacunas), `OPEN-ITEMS.md` (item 14), `README.md`, `config/.env.example`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit. A API volta a ficar aberta a quem chegue à máquina.
+- **Verificação:** 323 testes, incluindo: sem chave ou com chave errada, 401 com a mensagem em Português; com a chave certa, o pedido chega à rota; `/api/health` e `/docs` abertos; o esquema `X-API-Key` na descrição da API; a chave recusada nunca no log; uma chave curta recusa o arranque. `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+**Decisão do responsável (L-07).** A API deixa de estar aberta. Uma chave única, `SEXTANTE_API_KEY`, obrigatória e com pelo menos 16 caracteres, é exigida no cabeçalho `X-API-Key` em todo o `/api` excepto `/api/health`. É comparada em tempo constante. A recusa é um 401 com o corpo de erro habitual e fica no log sem a chave enviada. O Swagger fica aberto para leitura, com o botão "Authorize". Não há perfis nem chave por pessoa: o autor das revisões continua a ser `SEXTANTE_REVIEWER_ID`, e o servidor continua só em `127.0.0.1`.
 
 ### CHG-0046 · Idempotency-Key declarado na documentação da API
 

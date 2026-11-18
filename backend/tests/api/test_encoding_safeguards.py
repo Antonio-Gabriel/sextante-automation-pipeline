@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 
 from sextante.main import AppDependencies, create_app
 from tests.api.encoding_harness import running_application
+from tests.conftest import SYNTHETIC_API_KEY
 from tests.fakes.fake_invoice_extractor import FakeInvoiceExtractor
 from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fakes.fixed_clock import FixedClock, SequentialIdentifierGenerator
@@ -81,7 +82,11 @@ async def test_two_simultaneous_uploads_of_the_same_file_create_one_invoice(
 
     async with app.router.lifespan_context(app):
         transport = httpx2.ASGITransport(app=app)
-        async with httpx2.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx2.AsyncClient(
+            transport=transport,
+            base_url="http://test",
+            headers={"X-API-Key": SYNTHETIC_API_KEY},
+        ) as client:
             responses = await asyncio.gather(
                 client.post("/api/invoices", files=files), client.post("/api/invoices", files=files)
             )

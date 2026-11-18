@@ -468,6 +468,8 @@ Cada lacuna tem identificador, questão, porque importa, sugestão da equipa, qu
 
 **Responde:** AMT · **Até:** D+5
 
+**Estado em 19-11-2026.** Decidido pelo responsável: uma chave da API única, em `SEXTANTE_API_KEY`, exigida em todo o `/api` excepto `/api/health`, no cabeçalho `X-API-Key`. Sem perfis e sem chave por pessoa: o autor das revisões continua a ser `SEXTANTE_REVIEWER_ID`. A ligação apenas a `127.0.0.1` mantém-se.
+
 ---
 
 ### L-08 · Ausência de correspondência em OUTLAYS

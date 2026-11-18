@@ -343,6 +343,8 @@ Items O00061 (Compra de bens) and O00063 (Obtenção CNCA) have no English descr
 
 **Note.** The action for resolving an invoice's entity changes the target sheet of the whole invoice. That makes the record of who performed it even more important.
 
+**Update on 2026-11-19.** The owner decided on one API key, `SEXTANTE_API_KEY`, required in the `X-API-Key` header on every `/api` call except the health check. There are still no profiles: the questions below remain open for a per-person identity.
+
 **Questions.**
 
 - How many people will use the system?

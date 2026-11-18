@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from sextante.main import AppDependencies, create_app
 from tests.api.encoding_harness import running_application
 from tests.api.test_encoding_safeguards import _query
+from tests.conftest import SYNTHETIC_API_KEY
 from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fakes.fixed_clock import FixedClock, SequentialIdentifierGenerator
 from tests.fixtures.synthetic_invoices import (
@@ -44,7 +45,9 @@ def _application(
         identifiers=SequentialIdentifierGenerator(),
         worker_poll_seconds=0.01,
     )
-    with TestClient(create_app(environment, dependencies)) as client:
+    with TestClient(
+        create_app(environment, dependencies), headers={"X-API-Key": SYNTHETIC_API_KEY}
+    ) as client:
         yield client
 
 

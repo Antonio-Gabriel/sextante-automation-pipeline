@@ -30,7 +30,7 @@ make install
 make run
 ```
 
-`make run` starts the server on `http://127.0.0.1:8000`. The server listens on the local machine only, because this version has no authentication (gap L-07). Check that it is up:
+`make run` starts the server on `http://127.0.0.1:8000`. The server listens on the local machine only: the API key closes the API to whoever does not hold it, but there are no per-person accounts (gap L-07). Check that it is up:
 
 ```bash
 curl http://127.0.0.1:8000/api/health
@@ -38,7 +38,7 @@ curl http://127.0.0.1:8000/api/health
 
 The response gives the SHA-256 of the loaded catalog.
 
-The interactive API documentation (Swagger UI) is at `http://127.0.0.1:8000/docs`. Every `POST` and `PATCH` except the upload needs an `Idempotency-Key` header: in Swagger, fill the field with any new value, for example `test-1`, and change it for each new request. Without `SEXTANTE_ANTHROPIC_API_KEY` set to a valid key with credit, an invoice with service lines ends `failed`, and can be reprocessed later.
+Every `/api` call except the health check needs the `X-API-Key` header, with the value of `SEXTANTE_API_KEY`; without it the answer is 401. The interactive API documentation (Swagger UI) is at `http://127.0.0.1:8000/docs`: press **Authorize** and paste the key once. Every `POST` and `PATCH` except the upload needs an `Idempotency-Key` header: in Swagger, fill the field with any new value, for example `test-1`, and change it for each new request. Without `SEXTANTE_ANTHROPIC_API_KEY` set to a valid key with credit, an invoice with service lines ends `failed`, and can be reprocessed later.
 
 | Endpoint | What it does |
 |---|---|
