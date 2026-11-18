@@ -1,0 +1,23 @@
+# Secrets (SEC-03)
+.env*
+!.env.example
+*.pem
+*.key
+
+# Invoice data and databases never enter the repository (SEC-03, D-3.18)
+*.db
+*.db-wal
+*.db-shm
+uploads/
+exports/
+# Real catalog: its file metadata carries a personal Windows path (OPEN-ITEMS item 17)
+sources/
+
+# Python tooling
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
