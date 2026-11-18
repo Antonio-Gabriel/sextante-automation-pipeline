@@ -38,7 +38,7 @@ Neste ticket só existe o `FakeInvoiceExtractor`, que devolve facturas já inter
 
 ## Comments
 
-Resolved on 2026-11-18 in commits 76306f1 (implementation) and the code review fixes that follow it, on branch feature/REQ-PLT-007-startup-catalog-validation.
+Resolved on 2026-11-18 in commits 2d6af1b (implementation) and the code review fixes that follow it, on branch feature/REQ-PLT-007-startup-catalog-validation.
 
 Deferred on purpose, to the tickets that own them:
 - invoice_header columns for the entity check result and ambiguity reason: ticket 03;

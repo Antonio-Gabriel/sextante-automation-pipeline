@@ -32,4 +32,4 @@ O catálogo fica em memória, com os valores de apresentação e os de comparaç
 
 ## Comments
 
-Resolved on 2026-11-18 in commits cb2befa (implementation) and 324c492 (code review fixes), on branch feature/REQ-PLT-007-startup-catalog-validation. Header and item-number format checks are stricter than the ticket wording, on purpose: D-3.9 and L-05 forbid reading moved columns in silence, and SEC-09.2 defines the item number format.
+Resolved on 2026-11-18 in commits 5651ff7 (implementation) and 753a000 (code review fixes), on branch feature/REQ-PLT-007-startup-catalog-validation. Header and item-number format checks are stricter than the ticket wording, on purpose: D-3.9 and L-05 forbid reading moved columns in silence, and SEC-09.2 defines the item number format.

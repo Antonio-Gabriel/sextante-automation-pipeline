@@ -118,7 +118,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0038
 - **Estado:** activa
 - **Requisitos:** D-3.18, SEC-03
-- **Commit:** pendente
+- **Commit:** `dedb83a`
 - **Migração:** nenhuma
 - **Ficheiros:** 22 ficheiros versionados: tickets 02, 03, 12 e 13, `OPEN-ITEMS.md`, `CHANGELOG.md`, `docs/00` a `docs/02`, `config/.env.example`, testes e fixtures, e duas docstrings de exemplo do código
 - **Reversibilidade:** não
@@ -138,7 +138,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0037
 - **Estado:** activa
 - **Requisitos:** REQ-MAP-005, SEC-14
-- **Commit:** `49c9a1b`
+- **Commit:** `5a292e4`
 - **Migração:** nenhuma
 - **Ficheiros:** `docs/01-requisitos.md`
 - **Reversibilidade:** total
@@ -154,7 +154,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0036
 - **Estado:** activa
 - **Requisitos:** REQ-MAP-005, REQ-MAP-007, REQ-PLT-003, NFR-TST-001
-- **Commit:** `8299028`
+- **Commit:** `652577b`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/matching/application/line_coding.py` (novo: `LineCoder`), `encode_invoice.py`
@@ -183,7 +183,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0035
 - **Estado:** activa
 - **Requisitos:** NFR-TST-001, D-3.18, L-02, SEC-15
-- **Commit:** `988aa6b`
+- **Commit:** `0c1227e`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/tests/golden/model_run.py` (novo), `backend/tests/golden/runner.py`, `backend/Makefile` (`golden-model`)
@@ -203,7 +203,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0034
 - **Estado:** activa
 - **Requisitos:** REQ-MAP-005, REQ-MAP-007, REQ-AUD-003, REQ-AUD-004, REQ-PLT-003, SEC-14, SEC-15
-- **Commit:** `5ba0053`
+- **Commit:** `d50659c`
 - **Migração:** nenhuma
 - **Dependência nova:** `anthropic` 1.17 (MIT), sobre `httpx2`, que já estava no projecto. `make licenses` passa.
 - **Ficheiros:**
@@ -231,7 +231,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0033
 - **Estado:** activa
 - **Requisitos:** REQ-ING-001, REQ-ING-009, NFR-TST-001, D-3.6, D-3.18
-- **Commit:** `5aa494c`
+- **Commit:** `64bfa67`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/tests/fixtures/synthetic_invoices.py` e os testes que usam as suas réplicas; `tests/domain/test_entity_check.py`, `test_export_rules.py`, `test_lexical_scoring.py`, `test_line_type.py`, `tests/api/test_startup_logging.py`
@@ -254,7 +254,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0032
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** `134b07c`
+- **Commit:** `8124617`
 - **Migração:** nenhuma
 - **Ficheiros:** `CHANGELOG.md`, tickets 01 e 02 (hashes citados)
 - **Reversibilidade:** não
@@ -270,7 +270,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0031
 - **Estado:** activa
 - **Requisitos:** REQ-ING-002, REQ-ING-003, NFR-TST-001, D-3.18, SEC-15, SEC-20
-- **Commit:** `92667b3`
+- **Commit:** `4fcd0e1`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/ingestion/` (extractor, leitor do layout, `missing_fields`, contratos), `worker.py`, `platform/settings.py`
@@ -281,7 +281,7 @@ Três casos estão sempre limitados:
 - **Reversão:** reverter o commit.
 - **Verificação:** 290 testes. O teste da página digitalizada falha com a regra antiga, a da média. `make golden` sobre as 12 amostras, localmente: 12 sem divergências. `mypy`, `ruff`, 8 contratos do `import-linter`, `make licenses` (inclui `pdfplumber`, MIT pelo classificador do pacote, que não preenche o campo `License`), funções com 20 linhas ou menos.
 
-**Excertos de amostras.** As réplicas sintéticas de CHG-0030 traziam valores tirados das amostras reais: números de bilhete, de contentor e de processo, NIFs, nomes de clientes e descrições. Foram substituídos por valores inventados, que mantêm as particularidades: quebra a meio da palavra, quebra num espaço, número com espaço, nome longo na faixa de topo. Os valores antigos continuam no histórico do commit `4b22668`.
+**Excertos de amostras.** As réplicas sintéticas de CHG-0030 traziam valores tirados das amostras reais: números de bilhete, de contentor e de processo, NIFs, nomes de clientes e descrições. Foram substituídos por valores inventados, que mantêm as particularidades: quebra a meio da palavra, quebra num espaço, número com espaço, nome longo na faixa de topo. Os valores antigos continuam no histórico do commit `a444f0a`.
 
 **Texto por página.** O mínimo de caracteres vale para cada página, e não para a média do ficheiro. Uma página digitalizada no meio de páginas nativas recusa o PDF.
 
@@ -302,7 +302,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0030
 - **Estado:** activa
 - **Requisitos:** NFR-TST-001, D-3.18, L-02, SEC-15
-- **Commit:** `3d89031`
+- **Commit:** `78e01e1`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/golden_set.py` (novo), `backend/scripts/golden.py`, `backend/Makefile`
@@ -326,7 +326,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0029
 - **Estado:** activa
 - **Requisitos:** REQ-ING-001, REQ-ING-002, REQ-ING-003, REQ-ING-004, REQ-ING-005, REQ-ING-006, REQ-ING-008, REQ-ING-009, D-3.6, L-01, L-14, SEC-16
-- **Commit:** `4b22668`
+- **Commit:** `a444f0a`
 - **Migração:** nenhuma
 - **Dependência nova:** `pdfplumber` 0.11 (MIT), com `pdfminer.six` (MIT), `pypdfium2` (BSD-3-Clause ou Apache-2.0) e `Pillow` (MIT-CMU). `make licenses` passa.
 - **Ficheiros:**
@@ -354,7 +354,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0028
 - **Estado:** activa
 - **Requisitos:** REQ-ENT-006, REQ-ING-011, REQ-REV-006, REQ-EXP-004
-- **Commit:** `3d4fd24`
+- **Commit:** `58f99b5`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/matching/domain/entity_check.py` e contratos (`exact_entity_match_label` com o motivo, `entity_notes`)
@@ -378,7 +378,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0027
 - **Estado:** activa
 - **Requisitos:** REQ-REV-006, REQ-ING-011, REQ-CNF-001, REQ-AUD-002, SEC-19
-- **Commit:** `03ed982`
+- **Commit:** `eedb6dd`
 - **Migração:** `0007` alterada antes de sair deste ramo: índice parcial também com condição para PostgreSQL, e descida sem trabalho manual
 - **Ficheiros:**
   - `backend/src/sextante/platform/insert_if_absent.py` (novo), `idempotency.py`
@@ -407,7 +407,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0026
 - **Estado:** activa
 - **Requisitos:** REQ-REV-006, REQ-ING-011, REQ-REV-004, REQ-AUD-002, SEC-08, SEC-19, D-3.10, D-3.15
-- **Commit:** `c244b9d`
+- **Commit:** `17bcc08`
 - **Migração:** `0007_entity_resolution_and_duplicates` (tabela `entity_resolution`; `encoded_line.superseded_at` com índice único parcial no lugar da restrição única; `invoice_header.supplier_key` e `possible_duplicate_of`, com índice não único sobre fornecedor e número)
 - **Ficheiros:**
   - `backend/src/sextante/ingestion/` (caso de uso `ResolveEntity`, rota, repositório, tabelas)
@@ -434,7 +434,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0025
 - **Estado:** activa
 - **Requisitos:** SEC-19, NFR-REL-002, REQ-ING-007
-- **Commit:** `32d37c6`
+- **Commit:** `7844846`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `docs/00-decisoes-e-lacunas.md` (§3.19, §3.20)
@@ -455,7 +455,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0024
 - **Estado:** activa
 - **Requisitos:** SEC-19, REQ-REV-003, REQ-REV-004, REQ-AUD-004
-- **Commit:** `760ffc0`
+- **Commit:** `47e4c6e`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/platform/idempotency.py`, `idempotent_route.py`, `http_params.py` (novo), `limits.py`
@@ -482,7 +482,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0023
 - **Estado:** activa
 - **Requisitos:** REQ-REV-001, REQ-REV-002, REQ-REV-003, REQ-REV-004, REQ-REV-005, REQ-REV-007, REQ-EXP-004, SEC-08, SEC-18, SEC-19
-- **Commit:** `54d1560`
+- **Commit:** `040a42c`
 - **Migração:** `0006_review_and_idempotency` (tabelas `line_review` e `idempotency_record`)
 - **Ficheiros:**
   - `backend/src/sextante/review/` (domínio, casos de uso, repositório, rotas e contratos)
@@ -511,7 +511,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0022
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-001, REQ-PLT-002, REQ-PLT-003, REQ-AUD-004, NFR-REL-001, NFR-REL-002, L-12
-- **Commit:** `adb94c8`
+- **Commit:** `14c0b15`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/platform/retry.py`
@@ -539,7 +539,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0021
 - **Estado:** activa
 - **Requisitos:** REQ-ING-006, REQ-EXP-003, REQ-EXP-006, REQ-EXP-007, SEC-17, D-3.17
-- **Commit:** 4fc2164
+- **Commit:** 9e2d8e0
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/ingestion/domain/line_type.py`
@@ -581,7 +581,7 @@ Resolve os achados da revisão dos tickets 05 e 06.
 - **Pai:** CHG-0020
 - **Estado:** activa
 - **Requisitos:** REQ-EXP-001 a REQ-EXP-007, SEC-16, SEC-17, R6, L-13
-- **Commit:** d17e52e
+- **Commit:** c689698
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/export/` (módulo novo)
@@ -614,7 +614,7 @@ Resolve os achados da revisão dos tickets 05 e 06.
 - **Pai:** CHG-0019
 - **Estado:** activa
 - **Requisitos:** REQ-ING-004, REQ-ING-006, D-3.17, L-06, L-16
-- **Commit:** bd2a23f
+- **Commit:** c16f64c
 - **Migração:** `0005`, a partir de `0004`
 - **Ficheiros:**
   - `backend/src/sextante/ingestion/domain/line_type.py`
@@ -641,7 +641,7 @@ Só as linhas de serviço vão ao modelo, e não há chamada se não houver nenh
 - **Pai:** CHG-0018
 - **Estado:** activa
 - **Requisitos:** REQ-ENT-003, REQ-ENT-007, REQ-CNF-002, REQ-PLT-002, NFR-REL-001, D-3.8, D-3.15, SEC-18
-- **Commit:** b692156
+- **Commit:** 09d6f77
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/matching/domain/entity_check.py`, `line_decision.py`
@@ -677,7 +677,7 @@ Resolve os achados da revisão dos tickets 03 e 04.
 - **Pai:** CHG-0017
 - **Estado:** activa
 - **Requisitos:** REQ-CNF-001 a REQ-CNF-005, REQ-MAP-007 a REQ-MAP-009, REQ-MAP-013, REQ-REV-005, D-3.8, D-3.16, L-08, L-13
-- **Commit:** 81ed62b
+- **Commit:** 0927ffe
 - **Migração:** `0004`, a partir de `0003`
 - **Ficheiros:**
   - `backend/src/sextante/matching/domain/line_decision.py`, `scoring.py`
@@ -714,7 +714,7 @@ O `O00999` é atribuído em código, só em OUTLAYSP. Em OUTLAYS a linha fica va
 - **Pai:** CHG-0016
 - **Estado:** activa
 - **Requisitos:** REQ-ENT-001 a REQ-ENT-008, REQ-MAP-001, D-3.15, L-04, L-13
-- **Commit:** c48e86b
+- **Commit:** 2e9a846
 - **Migração:** `0003`, a partir de `0002`
 - **Ficheiros:**
   - `backend/src/sextante/matching/domain/entity_check.py`, `routing.py`
@@ -749,7 +749,7 @@ Uma não correspondência é codificada contra OUTLAYSP. Uma entidade ambígua f
 - **Pai:** CHG-0015
 - **Estado:** activa
 - **Requisitos:** D-3.15, D-3.16, D-3.17, D-3.18
-- **Commit:** 676e751
+- **Commit:** df760ad
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `scripts/gen_diagrams.py`
@@ -780,7 +780,7 @@ O título de `triage-labels.md` passou a «Triage label vocabulary». O título 
 - **Pai:** CHG-0014
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** 2ed641a
+- **Commit:** 3f4ff0f
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `.claude/skills/graphify/`
@@ -805,7 +805,7 @@ Corrige a CHG-0014 por adição, como manda a regra 4. Primeiro, a lista de fich
 - **Pai:** CHG-0012
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** 19d952c
+- **Commit:** 35a41d0
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `.graphifyignore`
@@ -836,7 +836,7 @@ Grafo de conhecimento local do código e dos documentos, que serve de memória e
 - **Pai:** CHG-0012
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** 19d952c
+- **Commit:** 35a41d0
 - **Migração:** nenhuma
 - **Ficheiros:** `CHANGELOG.md`, `CLAUDE.md` (secção «Registo de alterações» e passo 6 do fecho de tarefa)
 - **Reversibilidade:** total
@@ -852,7 +852,7 @@ Cria este registo e torna-o obrigatório para qualquer agente, nesta sessão e n
 - **Pai:** CHG-0011
 - **Estado:** activa
 - **Requisitos:** REQ-ING-007, REQ-ING-008, REQ-MAP-005, REQ-MAP-007, REQ-AUD-001, REQ-PLT-001, SEC-14, SEC-16, SEC-18
-- **Commit:** 56e9647
+- **Commit:** 56c85a3
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/review/`
@@ -885,7 +885,7 @@ Resolve os achados da revisão do ticket 02:
 - **Pai:** CHG-0010
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-001, REQ-ING-001, REQ-ING-007, REQ-MAP-001, REQ-MAP-003 a REQ-MAP-006, REQ-AUD-001, REQ-AUD-002, SEC-04, SEC-14
-- **Commit:** 76306f1
+- **Commit:** 2d6af1b
 - **Migração:** `0002`, a partir de `0001`
 - **Ficheiros:**
   - `backend/src/sextante/ingestion/`
@@ -912,7 +912,7 @@ Carregamento com idempotência pelo digest e um trabalhador em processo que codi
 - **Pai:** CHG-0009
 - **Estado:** activa
 - **Requisitos:** REQ-MAP-012, REQ-PLT-005, REQ-PLT-006, REQ-PLT-007, NFR-OBS-001, SEC-15
-- **Commit:** 324c492
+- **Commit:** 753a000
 - **Migração:** nenhuma; a migração `0001` muda de pasta para `backend/migrations/`
 - **Ficheiros:** `backend/src/sextante/platform/`, `backend/src/sextante/catalog/`, `backend/migrations/`, `backend/tests/`
 - **Reversibilidade:** total
@@ -934,7 +934,7 @@ Resolve os achados da revisão do ticket 01:
 - **Pai:** CHG-0008
 - **Estado:** activa
 - **Requisitos:** REQ-MAP-012, REQ-PLT-007, REQ-PLT-008, NFR-OBS-001, D-3.5, D-3.9
-- **Commit:** cb2befa
+- **Commit:** 5651ff7
 - **Migração:** `0001` (base), sem revisão anterior
 - **Ficheiros:** `backend/`, `config/.env.example`, `README.md`
 - **Reversibilidade:** total
@@ -950,7 +950,7 @@ A aplicação arranca com um comando, escuta só em `127.0.0.1` e valida o catá
 - **Pai:** CHG-0007
 - **Estado:** activa
 - **Requisitos:** SEC-03
-- **Commit:** 478ac66 (commit de base, agrega as entradas CHG-0001 a CHG-0008)
+- **Commit:** 8979ec5 (commit de base, agrega as entradas CHG-0001 a CHG-0008)
 - **Migração:** nenhuma
 - **Ficheiros:** `.gitignore`, ramo `feature/REQ-PLT-007-startup-catalog-validation`
 - **Reversibilidade:** parcial
@@ -966,7 +966,7 @@ Põe o projecto sob controlo de versões. Facturas, bases de dados, segredos e o
 - **Pai:** CHG-0006
 - **Estado:** activa
 - **Requisitos:** SEC-09, SEC-14, D-3.16
-- **Commit:** 478ac66 (agregado)
+- **Commit:** 8979ec5 (agregado)
 - **Migração:** nenhuma
 - **Ficheiros:** `docs/03-seguranca.md`, a spec, os tickets 01 e 02
 - **Reversibilidade:** total
@@ -982,7 +982,7 @@ O limite de 20 candidatos por linha passou a 100 itens por aba, por coerência c
 - **Pai:** CHG-0005
 - **Estado:** activa
 - **Requisitos:** D-3.6, D-3.7, D-3.8, D-3.15 a D-3.18, L-13 a L-16
-- **Commit:** 478ac66 (agregado)
+- **Commit:** 8979ec5 (agregado)
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `docs/00-decisoes-e-lacunas.md`, `docs/01-requisitos.md`, `docs/02-arquitectura.md` e `docs/04-padroes-de-codigo.md` (versão 0.2)
@@ -1007,7 +1007,7 @@ Passa para os documentos oficiais as decisões Q1 a Q24 e a evidência das amost
 - **Pai:** CHG-0004
 - **Estado:** activa
 - **Requisitos:** REQ-ING-009, REQ-ING-010, REQ-ENT-007, REQ-ENT-008
-- **Commit:** 478ac66 (agregado)
+- **Commit:** 8979ec5 (agregado)
 - **Migração:** nenhuma
 - **Ficheiros:** `.scratch/nucleo-codificacao/issues/`, `.scratch/nucleo-codificacao/spec.md`, `GLOSSARY.md`
 - **Reversibilidade:** total
@@ -1023,7 +1023,7 @@ Divide a spec em 13 tickets verticais e emenda-a com a extracção de PDF nativo
 - **Pai:** CHG-0003
 - **Estado:** activa
 - **Requisitos:** REQ-ENT, REQ-MAP, REQ-CNF, REQ-REV, REQ-EXP (as cinco áreas)
-- **Commit:** 478ac66 (agregado)
+- **Commit:** 8979ec5 (agregado)
 - **Migração:** nenhuma
 - **Ficheiros:** `.scratch/nucleo-codificacao/spec.md`
 - **Reversibilidade:** total
@@ -1039,7 +1039,7 @@ Spec do núcleo de codificação, com 58 histórias de utilizador e duas frontei
 - **Pai:** CHG-0001
 - **Estado:** activa
 - **Requisitos:** L-01 a L-12
-- **Commit:** 478ac66 (agregado)
+- **Commit:** 8979ec5 (agregado)
 - **Migração:** nenhuma
 - **Ficheiros:** `GLOSSARY.md`, `OPEN-ITEMS.md`
 - **Reversibilidade:** total
@@ -1055,7 +1055,7 @@ Fixa o vocabulário do domínio e regista os pontos que esperam resposta do aval
 - **Pai:** CHG-0001
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** 478ac66 (agregado)
+- **Commit:** 8979ec5 (agregado)
 - **Migração:** nenhuma
 - **Ficheiros:** `docs/agents/`, `CLAUDE.md` (secção «Agent skills»)
 - **Reversibilidade:** total
@@ -1071,7 +1071,7 @@ Tracker local em `.scratch/`, rótulos de triagem por omissão e documentação 
 - **Pai:** nenhum
 - **Estado:** activa
 - **Requisitos:** todos os de `docs/01-requisitos.md` (versão 0.1)
-- **Commit:** 478ac66 (agregado)
+- **Commit:** 8979ec5 (agregado)
 - **Migração:** nenhuma
 - **Ficheiros:** `docs/00-decisoes-e-lacunas.md` a `docs/04-padroes-de-codigo.md`, `CLAUDE.md`, `assets/`, `scripts/gen_diagrams.py`
 - **Reversibilidade:** total
