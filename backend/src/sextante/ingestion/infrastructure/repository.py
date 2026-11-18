@@ -3,6 +3,7 @@
 import json
 from dataclasses import asdict
 from datetime import datetime
+from typing import Final
 
 from sqlalchemy import Row, Select, Subquery, func, literal, select, tuple_, update
 from sqlalchemy.exc import IntegrityError
@@ -11,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sextante.ingestion.application.records import (
     ClaimedJob,
     DuplicateContentError,
+    EarlierCopy,
     EntityCheckRecord,
     EntityResolutionRecord,
     ExportInvoice,
@@ -212,6 +214,7 @@ class IngestionRepository:
                 description=str(r.description),
                 billed_entity=_detected_entity(_blocks(r.billed_entities)),
                 entity_verdict=r.entity_verdict,
+                entity_reason=r.entity_reason,
                 possible_duplicate_of=r.possible_duplicate_of,
             )
             for r in rows
@@ -368,6 +371,7 @@ def _job_lines_query(job_id: str, invoice_id: str | None) -> Select[tuple[object
             lines.c.description,
             header.c.billed_entities,
             header.c.entity_verdict,
+            header.c.entity_reason,
             header.c.possible_duplicate_of,
         )
         .join(INVOICE_TABLE, INVOICE_TABLE.c.id == lines.c.invoice_id)
@@ -407,22 +411,30 @@ async def _stored_lines(connection: AsyncConnection, invoice_id: str) -> tuple[S
     )
 
 
+# What the export reads of each invoice header (REQ-EXP-004, REQ-ENT-006).
+EXPORT_HEADER_COLUMNS: Final = (
+    "supplier_name",
+    "supplier_nif",
+    "invoice_number",
+    "billed_entities",
+    "entity_verdict",
+    "entity_reason",
+)
+
+
 def _job_invoices_query(job_id: str) -> Select[tuple[object, ...]]:
-    header = INVOICE_HEADER_TABLE
+    header, earlier = INVOICE_HEADER_TABLE, INVOICE_TABLE.alias("earlier")
+    invoice = INVOICE_TABLE.c
     return (
         select(
-            INVOICE_TABLE.c.id,
-            INVOICE_TABLE.c.status,
-            INVOICE_TABLE.c.status_reason,
-            INVOICE_TABLE.c.content_digest,
-            header.c.supplier_name,
-            header.c.supplier_nif,
-            header.c.invoice_number,
-            header.c.billed_entities,
-            header.c.entity_verdict,
+            *(invoice.id, invoice.status, invoice.status_reason, invoice.content_digest),
+            *(header.c[name] for name in EXPORT_HEADER_COLUMNS),
+            earlier.c.display_name.label("earlier_file_name"),
+            earlier.c.created_at.label("earlier_uploaded_at"),
         )
         .select_from(INVOICE_TABLE)
         .outerjoin(header, header.c.invoice_id == INVOICE_TABLE.c.id)
+        .outerjoin(earlier, earlier.c.id == header.c.possible_duplicate_of)
         .where(INVOICE_TABLE.c.job_id == job_id)
         .order_by(INVOICE_TABLE.c.created_at, INVOICE_TABLE.c.id)
     )
@@ -458,7 +470,16 @@ def _export_invoice(row: Row[tuple[object, ...]], lines: tuple[ExportLine, ...])
         care_of=tuple(text for block in blocks for text in block.care_of),
         entity_verdict=row.entity_verdict,
         lines=lines,
+        entity_reason=row.entity_reason,
+        earlier_copy=_earlier_copy(row),
     )
+
+
+def _earlier_copy(row: Row[tuple[object, ...]]) -> EarlierCopy | None:
+    if row.earlier_file_name is None:
+        return None
+    uploaded_at = datetime.fromisoformat(str(row.earlier_uploaded_at))
+    return EarlierCopy(str(row.earlier_file_name), uploaded_at)
 
 
 def _blocks(billed_entities_json: object) -> list[BilledEntityBlock]:

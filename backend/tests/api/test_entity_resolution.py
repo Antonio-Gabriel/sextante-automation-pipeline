@@ -1,5 +1,7 @@
 """Ticket 09: a reviewer resolves an ambiguous entity (REQ-REV-006, D-3.15, SEC-19)."""
 
+import csv
+import io
 import json
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -11,7 +13,12 @@ from alembic.config import Config
 from sqlalchemy import create_engine
 
 from sextante.platform.database import MIGRATIONS_DIRECTORY
-from tests.api.encoding_harness import EncodingHarness, idempotency_headers, running_application
+from tests.api.encoding_harness import (
+    EncodingHarness,
+    export_bytes,
+    idempotency_headers,
+    running_application,
+)
 from tests.api.test_encoding_safeguards import _query
 from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fixtures.synthetic_invoices import billed_to, taag_air_ticket_to_amt, with_description
@@ -56,13 +63,27 @@ def test_a_match_resolution_codes_the_invoice_against_outlays(
         [line] = app.lines(job_id)
 
     assert response.status_code == 202
-    assert (line["target_sheet"], line["item_number"], line["exact_entity_match"]) == (
-        "OUTLAYS",
-        "O00004",
-        "YES",
-    )
+    assert (line["target_sheet"], line["item_number"]) == ("OUTLAYS", "O00004")
     assert "entity_similar_not_equal" not in [flag["code"] for flag in line["flags"]]
     assert len(app.extractor.calls) == 1
+
+
+@pytest.mark.requirement("REQ-ENT-006", "REQ-REV-006")
+def test_a_reviewer_match_is_not_an_exact_match_and_says_so(
+    valid_environment: dict[str, str],
+) -> None:
+    """The check found no exact match: the column stays NO, and a note names the reviewer."""
+    with _ambiguous_invoice(valid_environment, {1: "O00004"}) as (app, job_id, invoice_id):
+        _resolve(app, invoice_id, {"resolution": "MATCH", "note": "Confirmado."})
+        app.wait_for_job(job_id)
+        [line] = app.lines(job_id)
+        content = export_bytes(app, job_id, "csv")
+
+    row = list(csv.reader(io.StringIO(content.decode("utf-8-sig"))))[1]
+    assert line["exact_entity_match"] == "NO"
+    assert [note["code"] for note in line["notes"]] == ["entity_confirmed_by_reviewer"]
+    assert (row[2], row[3]) == ("NO", "OUTLAYS")
+    assert "Entidade confirmada pelo revisor." in row[8]
 
 
 @pytest.mark.requirement("REQ-REV-006", "R3")

@@ -334,6 +334,13 @@ Decisão: nesta versão, o reprocessamento aceita só facturas `failed`. Uma fac
 - **O que fica por fazer.** NFR-REL-002 dá como motivo recalibrar limiares ou corrigir um prompt, e SEC-19 pede que um reprocessamento escreva uma nova linha de resultado, sem alterar a anterior. Recodificar uma factura já codificada, com o histórico guardado, fica para um ticket próprio, depois do adaptador e do prompt (ticket 11), porque é a mudança de prompt que o justifica.
 - **Até lá,** NFR-REL-002 está cumprido para facturas com falha: a codificação parte do texto guardado, sem nova extracção nem novo carregamento.
 
+### 3.21 Saída de uma resolução humana e de um duplicado provável
+
+Decisão tomada pelo responsável em 18-11-2026.
+
+- **`Exact_Entity_Match` depois de uma resolução `MATCH`.** Fica `NO`. A coluna diz o resultado da verificação (REQ-ENT-006), e a verificação não encontrou correspondência exacta: foi um revisor que a confirmou. As linhas levam a nota "Entidade confirmada pelo revisor.", nos resultados e em `Notes_or_Flags`. A aba de destino é OUTLAYS e a confiança segue a regra normal, como diz 3.15.
+- **Referência ao duplicado na exportação.** A nota diz o nome do ficheiro e a data de carregamento da factura anterior: "Possível duplicado de INV-001.pdf, carregada a 18-11-2026." O `Invoice_ID` não serve de referência, porque é igual nas duas cópias. Nos resultados, `possible_duplicate_of` dá o identificador da anterior. A data é a do relógio do servidor, em UTC.
+
 ---
 
 ## 4. Lacunas por resolver

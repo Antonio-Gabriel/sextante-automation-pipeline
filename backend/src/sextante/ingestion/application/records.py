@@ -56,6 +56,7 @@ class JobLine:
     description: str
     billed_entity: str | None
     entity_verdict: str | None
+    entity_reason: str | None = None
     # The invoice uploaded earlier with the same supplier and number (REQ-ING-011).
     possible_duplicate_of: str | None = None
 
@@ -105,6 +106,16 @@ class ExportInvoice:
     care_of: tuple[str, ...]
     entity_verdict: str | None
     lines: tuple["ExportLine", ...]
+    entity_reason: str | None = None
+    earlier_copy: "EarlierCopy | None" = None
+
+
+@dataclass(frozen=True, slots=True)
+class EarlierCopy:
+    """The invoice a possible duplicate points at, as a person recognizes it (REQ-ING-011)."""
+
+    file_name: str
+    uploaded_at: datetime
 
 
 @dataclass(frozen=True, slots=True)

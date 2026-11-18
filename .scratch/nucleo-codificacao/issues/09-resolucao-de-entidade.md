@@ -19,3 +19,5 @@ A lista de exclusão não muda.
 ## Comments
 
 Resolved on 2026-11-18 (CHG-0027). The resolution is stored in its own table and replaces the entity check when the worker codes the invoice again; the lines follow the normal confidence rule. The placeholder codings of the ambiguous invoice are marked superseded, never overwritten, so every reader shows the coding in force and the earlier one stays. A second resolution, or one for an invoice that is not ambiguous, is refused with 409; the primary key on the resolution decides a race between two reviewers.
+
+Decided on 2026-11-18 (CHG-0029, 00-decisoes-e-lacunas.md §3.21): after a reviewer's MATCH, `Exact_Entity_Match` stays `NO` and the lines carry the note `entity_confirmed_by_reviewer`.

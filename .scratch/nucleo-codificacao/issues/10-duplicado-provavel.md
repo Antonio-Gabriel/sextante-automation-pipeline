@@ -15,3 +15,5 @@
 ## Comments
 
 Resolved on 2026-11-18 (CHG-0027). The supplier is its NIF when extracted, its folded name otherwise, the same key the export's Invoice_ID uses. Only an invoice uploaded before counts, so two copies never point at each other. Every line of the copy gets `possible_duplicate`, which sends it to review without changing its confidence; the results show `possible_duplicate_of` with the earlier invoice's identifier, and the audit records `possible_duplicate_detected`. The export carries the flag text, not the earlier identifier: both copies have the same Invoice_ID, so it would not tell them apart. Headers stored before migration 0007 have no supplier key and are never matched.
+
+Decided on 2026-11-18 (CHG-0029, 00-decisoes-e-lacunas.md §3.21): the export names the earlier copy by file name and upload date in Notes_or_Flags.

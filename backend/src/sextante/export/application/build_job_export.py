@@ -18,12 +18,18 @@ from sextante.ingestion.contracts import (
     ReadJobStatus,
     RejectionReason,
 )
-from sextante.matching.contracts import Confidence, exact_entity_match_label
+from sextante.matching.contracts import (
+    Confidence,
+    FlagReason,
+    entity_notes,
+    exact_entity_match_label,
+)
 from sextante.platform.user_messages import USER_MESSAGES_PT
 from sextante.review.contracts import CodingInForce, CodingsInForce
 
 LINELESS_STATUSES: Final = frozenset({InvoiceStatus.REJECTED, InvoiceStatus.FAILED})
 UNKNOWN_REJECTION_KEY: Final = "rejections.other"
+DATE_FORMAT_PT: Final = "%d-%m-%Y"
 
 
 def rejection_message(reason: str | None) -> str:
@@ -108,7 +114,7 @@ def _line_row(invoice: ExportInvoice, line: ExportLine, coding: CodingInForce | 
     return ExportRow(
         invoice_id=_identifier(invoice),
         billed_entity_detected=invoice.billed_entity or "",
-        exact_entity_match=exact_entity_match_label(invoice.entity_verdict),
+        exact_entity_match=exact_entity_match_label(invoice.entity_verdict, invoice.entity_reason),
         target_sheet=(coding.target_sheet or "") if coding else "",
         line_description=line.description,
         assigned_item_no=(coding.item_number or "") if coding else "",
@@ -121,12 +127,28 @@ def _line_row(invoice: ExportInvoice, line: ExportLine, coding: CodingInForce | 
 def _notes(invoice: ExportInvoice, coding: CodingInForce | None) -> str:
     if coding is None:
         return USER_MESSAGES_PT["export.line_not_coded"]
-    texts = [USER_MESSAGES_PT[f"flags.{code}"] for code in coding.flags]
+    texts = [_flag_text(invoice, code) for code in coding.flags]
     texts += [USER_MESSAGES_PT[f"notes.{coding.note}"]] if coding.note else []
+    texts += [
+        USER_MESSAGES_PT[f"notes.{code}"]
+        for code in entity_notes(invoice.entity_verdict, invoice.entity_reason)
+    ]
     texts += [USER_MESSAGES_PT["export.care_of"].format(text) for text in invoice.care_of]
     if coding.review_note:
         texts.append(USER_MESSAGES_PT["export.review_note"].format(coding.review_note))
     return NOTES_SEPARATOR.join(texts)
+
+
+def _flag_text(invoice: ExportInvoice, code: str) -> str:
+    # A possible duplicate names the earlier copy as a person knows it: the file and the
+    # day it was uploaded. Both copies share the Invoice_ID, so it would not tell them apart.
+    earlier = invoice.earlier_copy
+    if code == FlagReason.POSSIBLE_DUPLICATE.value and earlier is not None:
+        uploaded_on = earlier.uploaded_at.strftime(DATE_FORMAT_PT)
+        return USER_MESSAGES_PT["export.possible_duplicate_of"].format(
+            earlier.file_name, uploaded_on
+        )
+    return USER_MESSAGES_PT[f"flags.{code}"]
 
 
 def _identifier(invoice: ExportInvoice) -> str:

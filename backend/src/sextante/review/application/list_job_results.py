@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from sextante.ingestion.contracts import JobLine, JobLinesReader, ReadJobStatus
-from sextante.matching.contracts import exact_entity_match_label
+from sextante.matching.contracts import entity_notes, exact_entity_match_label
 from sextante.review.application.codings_in_force import CodingInForce, CodingsInForce
 
 
@@ -109,7 +109,7 @@ def _result_line(line: JobLine, coding: CodingInForce | None) -> ResultLine:
         encoded_line_id=coding.encoded_line_id if coding else None,
         invoice_number=line.invoice_number,
         billed_entity_detected=line.billed_entity,
-        exact_entity_match=exact_entity_match_label(line.entity_verdict),
+        exact_entity_match=exact_entity_match_label(line.entity_verdict, line.entity_reason),
         line_position=line.position,
         line_description=line.description,
         target_sheet=coding.target_sheet if coding else None,
@@ -118,7 +118,8 @@ def _result_line(line: JobLine, coding: CodingInForce | None) -> ResultLine:
         confidence=coding.confidence if coding else None,
         review_status=coding.review_status if coding else None,
         flags=coding.flags if coding else (),
-        notes=(coding.note,) if coding and coding.note else (),
+        notes=((coding.note,) if coding and coding.note else ())
+        + entity_notes(line.entity_verdict, line.entity_reason),
         review_note=coding.review_note if coding else None,
         possible_duplicate_of=line.possible_duplicate_of,
     )

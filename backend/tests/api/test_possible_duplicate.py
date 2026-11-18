@@ -49,7 +49,7 @@ def test_a_reexported_invoice_is_coded_and_flagged_with_the_earlier_one(
     assert line["possible_duplicate_of"] == earlier["invoice_id"]
     assert (_flag_codes(earlier), earlier["possible_duplicate_of"]) == ([], None)
     row = list(csv.reader(io.StringIO(content.decode("utf-8-sig"))))[1]
-    assert "Possível duplicado" in row[8]
+    assert "Possível duplicado de INV-001_synthetic.pdf, carregada a 18-11-2026." in row[8]
 
 
 @pytest.mark.requirement("REQ-ING-011", "SEC-19")

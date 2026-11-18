@@ -32,6 +32,11 @@ class EntityVerdict(StrEnum):
     AMBIGUOUS = "AMBIGUOUS"
 
 
+# Stored as the entity reason when a reviewer's resolution replaced the check (D-3.15).
+REVIEWER_RESOLUTION_REASON: Final = "reviewer_resolution"
+ENTITY_CONFIRMED_BY_REVIEWER_NOTE: Final = "entity_confirmed_by_reviewer"
+
+
 class EntityVerdictWithoutReasonError(DomainError):
     """An AMBIGUOUS verdict reached the caller without its reason: a defect, never a gap."""
 
@@ -91,15 +96,27 @@ class EntityDenylist:
         return normalize_entity_name(name) in self.normalized_names
 
 
-def exact_entity_match_label(verdict: str | None) -> str:
-    """The Exact_Entity_Match value: YES only for MATCH (REQ-ENT-006, R6).
+def exact_entity_match_label(verdict: str | None, reason: str | None = None) -> str:
+    """The Exact_Entity_Match value: YES only for a MATCH the check itself found (REQ-ENT-006).
 
-    NO_MATCH and AMBIGUOUS are both "not AMT", and so is a verdict not yet given.
+    NO_MATCH and AMBIGUOUS are both "not AMT", and so is a verdict not yet given. A MATCH
+    decided by a reviewer is not an exact match: the check found none, so it stays NO.
 
     Example:
-        exact_entity_match_label("AMBIGUOUS")  # "NO"
+        exact_entity_match_label("MATCH", REVIEWER_RESOLUTION_REASON)  # "NO"
     """
-    return "YES" if verdict == EntityVerdict.MATCH.value else "NO"
+    by_check = reason != REVIEWER_RESOLUTION_REASON
+    return "YES" if verdict == EntityVerdict.MATCH.value and by_check else "NO"
+
+
+def entity_notes(verdict: str | None, reason: str | None) -> tuple[str, ...]:
+    """Note codes the entity decision adds to its lines: a reviewer's MATCH is named.
+
+    Example:
+        entity_notes("MATCH", REVIEWER_RESOLUTION_REASON)  # ("entity_confirmed_by_reviewer",)
+    """
+    confirmed = verdict == EntityVerdict.MATCH.value and reason == REVIEWER_RESOLUTION_REASON
+    return (ENTITY_CONFIRMED_BY_REVIEWER_NOTE,) if confirmed else ()
 
 
 def normalize_entity_name(name: str) -> str:

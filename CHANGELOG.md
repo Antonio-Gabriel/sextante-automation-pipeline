@@ -35,6 +35,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                         └── CHG-0026  docs      Isenção do carregamento e reprocessamento só de falhas
                                                                                             └── CHG-0027  feat      Resolução de entidade e duplicado provável
                                                                                                 └── CHG-0028  fix       Correcções da revisão dos tickets 09 e 10
+                                                                                                    └── CHG-0029  improve   Saída da resolução humana e do duplicado provável
 ```
 
 ## Regras
@@ -99,6 +100,30 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0029 · Saída da resolução humana e do duplicado provável
+
+- **Data:** 2026-11-18
+- **Tipo:** improve
+- **Pai:** CHG-0028
+- **Estado:** activa
+- **Requisitos:** REQ-ENT-006, REQ-ING-011, REQ-REV-006, REQ-EXP-004
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `backend/src/sextante/matching/domain/entity_check.py` e contratos (`exact_entity_match_label` com o motivo, `entity_notes`)
+  - `backend/src/sextante/worker.py` (motivo `reviewer_resolution` no cabeçalho)
+  - `backend/src/sextante/ingestion/` (motivo da entidade e factura anterior nas leituras)
+  - `backend/src/sextante/export/application/build_job_export.py`, `review/application/list_job_results.py`, `platform/user_messages.py`
+  - testes: `test_entity_resolution.py`, `test_possible_duplicate.py`
+  - `docs/00-decisoes-e-lacunas.md` (§3.21), tickets 09 e 10
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit. As facturas resolvidas antes desta alteração têm motivo vazio no cabeçalho e continuam a mostrar `YES`.
+- **Verificação:** 262 testes, incluindo `Exact_Entity_Match` `NO` com a nota do revisor nos resultados e na exportação, e a nota do duplicado com o ficheiro e a data da anterior; `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+**Resolução humana.** Uma resolução `MATCH` grava no cabeçalho o motivo `reviewer_resolution`. `Exact_Entity_Match` fica `NO`, porque a verificação não encontrou correspondência exacta, e as linhas levam a nota "Entidade confirmada pelo revisor.".
+
+**Duplicado provável.** Na exportação, a sinalização diz "Possível duplicado de <ficheiro>, carregada a <dd-mm-aaaa>.", com o ficheiro e a data da factura anterior.
 
 ### CHG-0028 · Correcções da revisão dos tickets 09 e 10
 

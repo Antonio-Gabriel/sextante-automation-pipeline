@@ -9,11 +9,13 @@ from sextante.matching.application.ports import (
 )
 from sextante.matching.application.records import LineCandidates, LineCoding, ScoredCandidate
 from sextante.matching.domain.entity_check import (
+    REVIEWER_RESOLUTION_REASON,
     EntityCheckResult,
     EntityDenylist,
     EntityVerdict,
     TargetEntity,
     check_billed_entity,
+    entity_notes,
     exact_entity_match_label,
 )
 from sextante.matching.domain.item_choice import (
@@ -29,6 +31,7 @@ from sextante.matching.domain.routing import target_sheet_for
 from sextante.matching.domain.scoring import LexicalScore
 
 __all__ = [
+    "REVIEWER_RESOLUTION_REASON",
     "CandidateItem",
     "CodingsReader",
     "Confidence",
@@ -51,6 +54,7 @@ __all__ = [
     "TargetEntity",
     "TokenUsageReader",
     "check_billed_entity",
+    "entity_notes",
     "exact_entity_match_label",
     "target_sheet_for",
 ]

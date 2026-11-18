@@ -53,7 +53,9 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
         "export.line_not_coded": "Linha ainda por codificar.",
         "export.care_of": "Ao cuidado de: {}",
         "export.review_note": "Nota de revisão: {}",
+        "export.possible_duplicate_of": "Possível duplicado de {}, carregada a {}.",
         "notes.line_type_tax": "Linha de IVA: sem código de item.",
         "notes.line_type_discount": "Linha de desconto: sem código de item.",
+        "notes.entity_confirmed_by_reviewer": "Entidade confirmada pelo revisor.",
     }
 )

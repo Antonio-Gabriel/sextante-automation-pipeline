@@ -20,6 +20,7 @@ from sextante.ingestion.domain.ports import InvoiceFileStore
 from sextante.ingestion.domain.statuses import InvoiceStatus, JobStatus
 from sextante.matching.application.encode_invoice import EncodeInvoice, SameTransactionWrite
 from sextante.matching.contracts import (
+    REVIEWER_RESOLUTION_REASON,
     EntityCheckResult,
     EntityDenylist,
     EntityVerdict,
@@ -146,14 +147,13 @@ class EncodingWorker:
 
     async def _encode(self, stored: StoredInvoice) -> tuple[InvoiceStatus, str | None]:
         deps = self._collaborators
-        resolved, earlier = await self._invoice_context(stored.invoice_id)
-        check = resolved or check_billed_entity(
-            stored.billed_entities, deps.target_entity, deps.denylist
-        )
+        check, by_reviewer, earlier = await self._invoice_context(stored)
         target_sheet = target_sheet_for(check.verdict)
         # A possible duplicate is coded as usual, never blocked, and flagged (REQ-ING-011).
         flags = (FlagReason.POSSIBLE_DUPLICATE,) if earlier else ()
-        record_header = self._header_writer(stored.invoice_id, check, target_sheet, earlier)
+        record_header = self._header_writer(
+            stored.invoice_id, _entity_record(check, target_sheet, by_reviewer), earlier
+        )
         if target_sheet is None:
             # An ambiguous entity is never coded by guess: its lines are recorded LOW and
             # flagged with the reason, and a reviewer resolves the entity (D-3.15).
@@ -166,31 +166,25 @@ class EncodingWorker:
         return InvoiceStatus.ENCODED, None
 
     async def _invoice_context(
-        self, invoice_id: str
-    ) -> tuple[EntityCheckResult | None, str | None]:
+        self, stored: StoredInvoice
+    ) -> tuple[EntityCheckResult, bool, str | None]:
         # A reviewer's resolution replaces the entity check, and is not limited by it: the
         # lines follow the normal confidence rule (REQ-REV-006, D-3.15).
         deps = self._collaborators
+        invoice_id = stored.invoice_id
         async with deps.engine.connect() as connection:
             resolution = await deps.repository.entity_resolution(connection, invoice_id)
             earlier = await deps.repository.earlier_invoice_with_same_number(connection, invoice_id)
-        resolved = EntityCheckResult(EntityVerdict(resolution)) if resolution else None
-        return resolved, earlier
+        if resolution is not None:
+            return EntityCheckResult(EntityVerdict(resolution)), True, earlier
+        check = check_billed_entity(stored.billed_entities, deps.target_entity, deps.denylist)
+        return check, False, earlier
 
     def _header_writer(
-        self,
-        invoice_id: str,
-        check: EntityCheckResult,
-        target_sheet: TargetSheet | None,
-        earlier_invoice_id: str | None,
+        self, invoice_id: str, record: EntityCheckRecord, earlier_invoice_id: str | None
     ) -> SameTransactionWrite:
         # Run inside the transaction that stores the lines, so the verdict is never kept
         # without the lines it produced, nor the reverse.
-        record = EntityCheckRecord(
-            verdict=check.verdict.value,
-            reason=check.reason.value if check.reason else None,
-            target_sheet=target_sheet.value if target_sheet else None,
-        )
         repository = self._collaborators.repository
 
         async def write(connection: AsyncConnection) -> None:
@@ -215,3 +209,16 @@ class EncodingWorker:
             {"earlier_invoice_id": earlier_invoice_id},
             deps.clock.now(),
         )
+
+
+def _entity_record(
+    check: EntityCheckResult, target_sheet: TargetSheet | None, by_reviewer: bool
+) -> EntityCheckRecord:
+    # A reviewer's verdict is stored with its own reason, so the output can tell it from
+    # an exact match the check found (REQ-ENT-006).
+    reason = check.reason.value if check.reason else None
+    return EntityCheckRecord(
+        verdict=check.verdict.value,
+        reason=REVIEWER_RESOLUTION_REASON if by_reviewer else reason,
+        target_sheet=target_sheet.value if target_sheet else None,
+    )
