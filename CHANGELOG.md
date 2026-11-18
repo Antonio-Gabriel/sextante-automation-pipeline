@@ -95,7 +95,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0015
 - **Estado:** activa
 - **Requisitos:** D-3.15, D-3.16, D-3.17, D-3.18
-- **Commit:** pendente
+- **Commit:** cbd814c
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `scripts/gen_diagrams.py`
