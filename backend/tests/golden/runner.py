@@ -15,7 +15,7 @@ import sys
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Literal
+from typing import Final, Literal, Self
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -71,7 +71,7 @@ class GoldenSettings(BaseModel):
     )
 
     @classmethod
-    def from_environment(cls, environ: Mapping[str, str]) -> "GoldenSettings":
+    def from_environment(cls, environ: Mapping[str, str]) -> Self:
         """Read the variables; a missing or invalid one is named in the error.
 
         Example:
@@ -183,7 +183,7 @@ def run_golden(
         raise GoldenSetError(f"Samples folder {samples_dir} does not exist. Expected a folder.")
     results = []
     for expectation in expectations.samples:
-        sample = _sample_file(samples_dir, expectation.id)
+        sample = sample_file(samples_dir, expectation.id)
         if sample is None:
             results.append(SampleResult(expectation.id, ("sample file not found",)))
             continue
@@ -206,7 +206,12 @@ def report_lines(results: Sequence[SampleResult]) -> list[str]:
     return [*lines, f"{len(results)} samples, {failed} with divergences"]
 
 
-def _sample_file(samples_dir: Path, sample_id: str) -> Path | None:
+def sample_file(samples_dir: Path, sample_id: str) -> Path | None:
+    """The sample's PDF in the folder, named after its identifier, or None.
+
+    Example:
+        sample_file(Path("/samples"), "INV-001")  # Path("/samples/INV-001_x.pdf")
+    """
     matches = sorted(
         path
         for path in samples_dir.iterdir()
@@ -277,7 +282,9 @@ def golden_main(environ: Mapping[str, str], write: Callable[[str], None]) -> int
         settings = GoldenSettings.from_environment(environ)
         expectations = load_expectations(settings.expected_path)
         extractor = PdfInvoiceExtractor(settings.pdf_min_chars_per_page)
-        results = run_golden(settings.samples_path, expectations, extractor, _entity(settings))
+        results = run_golden(
+            settings.samples_path, expectations, extractor, entity_reference(settings)
+        )
     except GoldenSetError as error:
         write(str(error))
         return 2
@@ -288,7 +295,15 @@ def golden_main(environ: Mapping[str, str], write: Callable[[str], None]) -> int
     return 1 if any(result.divergences for result in results) else 0
 
 
-def _entity(settings: GoldenSettings) -> EntityReference:
+def entity_reference(settings: GoldenSettings) -> EntityReference:
+    """The target entity and denylist the check runs against, from the settings.
+
+    Example:
+        entity_reference(settings).target.name
+
+    Raises:
+        GoldenSetError: when the denylist file cannot be read.
+    """
     try:
         entries = read_entity_denylist(settings.entity_denylist_path)
     except DenylistFileError as error:

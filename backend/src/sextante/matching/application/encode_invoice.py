@@ -138,7 +138,7 @@ class EncodeInvoice:
     ) -> tuple[ModelCallRecord, dict[int, LineChoice]]:
         deps = self._collaborators
         # The model call is made outside any transaction: it takes seconds (D-3.3).
-        request = _request_for(invoice, services, sheet_items)
+        request = item_choice_request(invoice, services, sheet_items)
         response = await call_with_retries(
             lambda: deps.classifier.choose(request),
             ItemClassifierUnavailableError,
@@ -264,9 +264,14 @@ def _non_service_outcome(line: StoredLine) -> _LineOutcome:
     return _LineOutcome(line, None, non_service_line_decision(note), ())
 
 
-def _request_for(
+def item_choice_request(
     invoice: StoredInvoice, services: list[StoredLine], sheet_items: tuple[CatalogItem, ...]
 ) -> ItemChoiceRequest:
+    """The one request per invoice: its context, its service lines, the whole sheet (D-3.16).
+
+    Example:
+        item_choice_request(stored, services, catalog.items_of(TargetSheet.OUTLAYS))
+    """
     return ItemChoiceRequest(
         context=InvoiceContext(supplier_name=invoice.supplier_name, currency=invoice.currency),
         lines=tuple(LineToCode(line.position, line.description) for line in services),

@@ -42,6 +42,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                     └── CHG-0033  docs      Histórico sem Co-Authored-By e hashes actualizados
                                                                                                                         └── CHG-0034  fix       Réplicas sem dados das amostras, XLSX recusado e padrão do conjunto dourado
                                                                                                                             └── CHG-0035  feat      Adaptador Claude do ItemClassifier e prompt v1
+                                                                                                                                └── CHG-0036  feat      Medição manual dos códigos com o modelo real
 ```
 
 ## Regras
@@ -106,6 +107,26 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0036 · Medição manual dos códigos com o modelo real
+
+- **Data:** 2026-11-18
+- **Tipo:** feat
+- **Pai:** CHG-0035
+- **Estado:** activa
+- **Requisitos:** NFR-TST-001, D-3.18, L-02, SEC-15
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `backend/tests/golden/model_run.py` (novo), `backend/tests/golden/runner.py`, `backend/Makefile` (`golden-model`)
+  - `backend/src/sextante/matching/application/encode_invoice.py` (`item_choice_request` passa a público, para o comando usar o mesmo pedido)
+  - testes: `tests/golden/test_golden_set.py`
+  - ticket 13
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 304 testes, incluindo o relatório só com códigos e confiança; `mypy`, `ruff`, funções com 20 linhas ou menos. A primeira execução real foi recusada pela API por falta de crédito; o comando terminou com essa mensagem e código 2.
+
+**Comando.** `make golden-model` codifica as amostras como a aplicação: o mesmo pedido, a mesma validação e a mesma regra de confiança. Reporta, por linha, o código esperado e o atribuído e a confiança, depois as linhas sinalizadas e os tokens gastos. Chama a API e custa dinheiro: só corre de propósito, fora de `make test` e da integração contínua. Um erro da API, como uma chave errada ou falta de crédito, termina com a mensagem da API e código 2. O ticket 13 fica fechado.
 
 ### CHG-0035 · Adaptador Claude do ItemClassifier e prompt v1
 

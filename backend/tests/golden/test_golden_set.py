@@ -11,6 +11,7 @@ from tests.fixtures.synthetic_pdf import (
     model_invoice_pdf,
     scanned_pdf,
 )
+from tests.golden.model_run import LineResult, report
 from tests.golden.runner import DEFAULT_EXPECTED_PATH, golden_main, load_expectations
 
 CARE_OF_EXPECTATION: dict[str, object] = {
@@ -139,3 +140,22 @@ def test_a_field_extracted_or_missing_against_expectation_is_a_divergence(
     code, output = _run(golden_environment)
 
     assert (code, output[0]) == (1, "SYN-002 missing fields: expected ['invoice_date'], got []")
+
+
+@pytest.mark.requirement("NFR-TST-001", "SEC-15")
+def test_the_model_run_report_holds_codes_and_confidence_only() -> None:
+    """Hits, flagged lines and tokens, from item numbers: nothing a sample wrote."""
+    results = [
+        LineResult("INV-001", 1, "O00004", "O00004", "MEDIUM", False),
+        LineResult("INV-008", 1, "O00999", None, "LOW", True),
+    ]
+
+    lines = report(results, (1200, 80))
+
+    assert lines == [
+        "INV-001 line 1: expected O00004, assigned O00004, MEDIUM",
+        "INV-008 line 1: expected O00999, assigned -, LOW, flagged",
+        "2 lines, 1 as expected, 1 flagged for review",
+        "Tokens: 1200 in, 80 out",
+        "Expected results are a proposal to be confirmed by AMT (L-02): not for publication.",
+    ]

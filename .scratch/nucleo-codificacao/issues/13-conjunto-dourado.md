@@ -29,13 +29,13 @@ Nenhuma métrica de precisão é publicada até a AMT confirmar os resultados es
 
 **Blocked by:** 03, 04, 05, 11, 12
 
-**Status:** ready-for-agent (partial: blocked by 11 for the manual model command)
+**Status:** resolved
 
 - [x] Os resultados esperados ficam num ficheiro de configuração editável, inicialmente com a tabela acima
 - [x] O caminho das amostras vem de uma variável de ambiente; sem ela, `make golden` termina com uma mensagem clara
 - [x] `make golden` mede, sem chamar o modelo, a extracção, a entidade, a aba de destino, os tipos de linha e as recusas, e falha quando divergem do esperado
-- [ ] Um comando manual separado mede os códigos de item com o modelo real e reporta acertos, linhas sinalizadas e custo em tokens
-- [ ] O comando manual não faz parte de `make test` nem da integração contínua
+- [x] Um comando manual separado mede os códigos de item com o modelo real e reporta acertos, linhas sinalizadas e custo em tokens
+- [x] O comando manual não faz parte de `make test` nem da integração contínua
 - [x] O `README.md` diz que os resultados esperados são uma proposta por confirmar e que os limiares são provisórios
 - [x] Nenhuma amostra, nem nenhum excerto de amostra, entra no repositório ou nos logs
 
@@ -46,3 +46,5 @@ Partly delivered on 2026-11-18 (CHG-0031). `make golden` measures extraction, en
 Not delivered, because ticket 11 is not done: the manual command that measures item codes with the real model. The two criteria about it stay unticked; "not part of make test nor CI" holds trivially until the command exists, and must be checked when it does.
 
 Review fixes on 2026-11-18 (CHG-0032): the runner and the expected results moved to `backend/tests/golden/`, as 02-arquitectura.md §2.4 places the golden set; the samples variable is `SEXTANTE_GOLDEN_SAMPLES_PATH`, as 02 documents; extraction is also measured by which fields are missing, by name only; an invalid variable ends with exit 2 and its name.
+
+Completed on 2026-11-18 (CHG-0036): `make golden-model` codes the samples with the real model as the application does, and reports per line the expected and assigned item number and the confidence, then the lines flagged and the tokens spent; identifiers and codes only. It lives in `tests/golden/model_run.py`, which pytest never collects, and no make target other than `golden-model` runs it. Its first run was refused by the API for lack of credit, so no figure exists yet.
