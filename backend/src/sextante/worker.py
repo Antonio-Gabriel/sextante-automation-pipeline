@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from sextante.catalog.contracts import TargetSheet
 from sextante.ingestion.application.ports import IngestionRepositoryPort
 from sextante.ingestion.application.records import ClaimedJob, QueuedInvoice
 from sextante.ingestion.contracts import (
@@ -48,20 +47,20 @@ class EncodingWorker:
     """
 
     def __init__(self, collaborators: WorkerCollaborators) -> None:
-        self._with = collaborators
+        self._collaborators = collaborators
         self._worker_id = collaborators.identifiers.new_id()
 
     async def run_forever(self) -> None:
         """Process jobs until cancelled at shutdown."""
         while True:
             if not await self.process_next_job():
-                await asyncio.sleep(self._with.poll_seconds)
+                await asyncio.sleep(self._collaborators.poll_seconds)
 
     async def process_next_job(self) -> bool:
         """Claim and process one job. Return False when no job was waiting."""
-        async with self._with.engine.begin() as connection:
-            job = await self._with.repository.claim_next_job(
-                connection, self._worker_id, self._with.clock.now()
+        async with self._collaborators.engine.begin() as connection:
+            job = await self._collaborators.repository.claim_next_job(
+                connection, self._worker_id, self._collaborators.clock.now()
             )
         if job is None:
             return False
@@ -73,13 +72,13 @@ class EncodingWorker:
         return True
 
     async def _process_job(self, job: ClaimedJob) -> None:
-        async with self._with.engine.connect() as connection:
-            invoices = await self._with.repository.queued_invoices(connection, job.job_id)
+        async with self._collaborators.engine.connect() as connection:
+            invoices = await self._collaborators.repository.queued_invoices(connection, job.job_id)
         for invoice in invoices:
             await self._process_invoice_isolated(invoice)
-        async with self._with.engine.begin() as connection:
-            await self._with.repository.finish_job(
-                connection, job.job_id, JobStatus.COMPLETED, self._with.clock.now()
+        async with self._collaborators.engine.begin() as connection:
+            await self._collaborators.repository.finish_job(
+                connection, job.job_id, JobStatus.COMPLETED, self._collaborators.clock.now()
             )
         logger.info("job_completed", extra={"job_id": job.job_id, "invoice_count": len(invoices)})
 
@@ -93,32 +92,32 @@ class EncodingWorker:
             logger.error(
                 "invoice_failed", extra={"invoice_id": invoice.invoice_id, "error_type": reason}
             )
-        async with self._with.engine.begin() as connection:
-            await self._with.repository.set_invoice_status(
+        async with self._collaborators.engine.begin() as connection:
+            await self._collaborators.repository.set_invoice_status(
                 connection, invoice.invoice_id, status, reason
             )
 
     async def _process_invoice(self, invoice: QueuedInvoice) -> tuple[InvoiceStatus, str | None]:
-        content = self._with.store.read(invoice.storage_name)
-        extraction = self._with.extractor.extract(content, FileFormat(invoice.file_format))
+        content = self._collaborators.store.read(invoice.storage_name)
+        extraction = self._collaborators.extractor.extract(content, FileFormat(invoice.file_format))
         if isinstance(extraction, ExtractionRejection):
             return InvoiceStatus.REJECTED, extraction.reason.value
-        async with self._with.engine.begin() as connection:
-            line_ids = [self._with.identifiers.new_id() for _ in extraction.lines]
-            stored = await self._with.repository.store_extraction(
+        async with self._collaborators.engine.begin() as connection:
+            line_ids = [self._collaborators.identifiers.new_id() for _ in extraction.lines]
+            stored = await self._collaborators.repository.store_extraction(
                 connection, invoice.invoice_id, extraction, line_ids
             )
         return await self._encode(stored)
 
     async def _encode(self, stored: StoredInvoice) -> tuple[InvoiceStatus, str | None]:
-        target_sheet = route_invoice(stored.billed_entities, self._with.target_entity_name)
+        target_sheet = route_invoice(stored.billed_entities, self._collaborators.target_entity_name)
         if target_sheet is None:
             return InvoiceStatus.NOT_CODED, "entity_not_resolved"
-        async with self._with.engine.begin() as connection:
-            await self._with.repository.set_target_sheet(
+        async with self._collaborators.engine.begin() as connection:
+            await self._collaborators.repository.set_target_sheet(
                 connection, stored.invoice_id, target_sheet.value
             )
-        await self._with.encoder.execute(stored, TargetSheet(target_sheet))
+        await self._collaborators.encoder.execute(stored, target_sheet)
         logger.info(
             "invoice_encoded",
             extra={"invoice_id": stored.invoice_id, "line_count": len(stored.lines)},

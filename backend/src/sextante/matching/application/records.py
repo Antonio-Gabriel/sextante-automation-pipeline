@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
+from sextante.catalog.contracts import TargetSheet
 from sextante.matching.application.ports import LexicalScore
 from sextante.matching.domain.choice_resolution import LineChoice
 from sextante.matching.domain.item_choice import ItemChoiceResponse
@@ -24,9 +25,18 @@ class EncodedLineRecord:
 
     encoded_line_id: str
     invoice_line_id: str
-    target_sheet: str
+    target_sheet: TargetSheet
     choice: LineChoice
     scores: tuple[LexicalScore, ...]
     catalog_digest: str
     model_call_id: str
     encoded_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class LineCoding:
+    """The coding of one invoice line, as read for listings."""
+
+    target_sheet: str
+    item_number: str | None
+    catalog_description: str | None

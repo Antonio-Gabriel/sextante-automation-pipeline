@@ -93,8 +93,10 @@ class StoredLine:
 
 @dataclass(frozen=True, slots=True)
 class StoredInvoice:
-    """A persisted extraction, as handed to coding."""
+    """A persisted, normalized extraction, as handed to coding."""
 
     invoice_id: str
+    supplier_name: str | None
+    currency: str | None
     billed_entities: tuple[BilledEntityBlock, ...]
     lines: tuple[StoredLine, ...]

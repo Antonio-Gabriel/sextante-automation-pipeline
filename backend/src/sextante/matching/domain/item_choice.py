@@ -27,9 +27,18 @@ class CandidateItem:
 
 
 @dataclass(frozen=True, slots=True)
-class ItemChoiceRequest:
-    """One call per invoice: its service lines and the whole target sheet (D-3.16)."""
+class InvoiceContext:
+    """Invoice data that helps read short line descriptions. External content (SEC-14)."""
 
+    supplier_name: str | None
+    currency: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class ItemChoiceRequest:
+    """One call per invoice: its context, service lines and the whole target sheet (D-3.16)."""
+
+    context: InvoiceContext
     lines: tuple[LineToCode, ...]
     candidates: tuple[CandidateItem, ...]
 

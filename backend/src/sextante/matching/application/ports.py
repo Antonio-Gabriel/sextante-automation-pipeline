@@ -10,7 +10,7 @@ from sextante.matching.domain.item_choice import ItemChoiceRequest, ItemChoiceRe
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncConnection
 
-    from sextante.matching.application.records import EncodedLineRecord, ModelCallRecord
+    from sextante.matching.application.records import EncodedLineRecord, LineCoding, ModelCallRecord
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +37,16 @@ class ItemClassifier(Protocol):
 
     async def choose(self, request: ItemChoiceRequest) -> ItemChoiceResponse:
         """Answer with indexes into the request's list. Never with codes."""
+        ...
+
+
+class CodingsReader(Protocol):
+    """Port, published to other modules: the coding of given invoice lines."""
+
+    async def read_codings(
+        self, connection: "AsyncConnection", line_ids: Sequence[str]
+    ) -> dict[str, "LineCoding"]:
+        """Return the coding of each line that has one, keyed by invoice line id."""
         ...
 
 

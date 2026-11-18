@@ -5,15 +5,24 @@ from dataclasses import asdict
 from datetime import datetime
 
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from sextante.ingestion.application.records import (
     ClaimedJob,
+    DuplicateContentError,
+    JobLine,
     JobSummary,
     NewInvoice,
     QueuedInvoice,
 )
-from sextante.ingestion.domain.model import ExtractedInvoice, StoredInvoice, StoredLine
+from sextante.ingestion.domain.model import (
+    ExtractedInvoice,
+    ExtractedLine,
+    StoredInvoice,
+    StoredLine,
+)
+from sextante.ingestion.domain.normalization import normalize_extraction
 from sextante.ingestion.domain.statuses import InvoiceStatus, JobStatus
 from sextante.ingestion.infrastructure.tables import (
     INVOICE_HEADER_TABLE,
@@ -21,11 +30,11 @@ from sextante.ingestion.infrastructure.tables import (
     INVOICE_TABLE,
     JOB_TABLE,
 )
-from sextante.platform.text_normalization import normalize_for_comparison, normalize_text_input
+from sextante.platform.text_normalization import normalize_for_comparison
 
 
 class IngestionRepository:
-    """Implements IngestionRepositoryPort with SQLAlchemy Core.
+    """Implements IngestionRepositoryPort and JobLinesReader with SQLAlchemy Core.
 
     Example:
         await IngestionRepository().insert_job(connection, job_id, correlation_id, now)
@@ -52,19 +61,19 @@ class IngestionRepository:
     async def insert_invoice(
         self, connection: AsyncConnection, invoice: NewInvoice, now: datetime
     ) -> None:
-        """Record an accepted upload. The unique digest constraint guards idempotency."""
-        await connection.execute(
-            INVOICE_TABLE.insert().values(
-                id=invoice.invoice_id,
-                job_id=invoice.job_id,
-                content_digest=invoice.content_digest,
-                display_name=invoice.display_name,
-                storage_name=invoice.storage_name,
-                file_format=invoice.file_format,
-                status=InvoiceStatus.QUEUED,
-                created_at=now.isoformat(),
-            )
-        )
+        """Record an accepted upload. The unique digest constraint guards idempotency.
+
+        Raises:
+            DuplicateContentError: when another upload recorded the same digest first.
+        """
+        row = asdict(invoice) | {"status": InvoiceStatus.QUEUED, "created_at": now.isoformat()}
+        row["id"] = row.pop("invoice_id")
+        try:
+            await connection.execute(INVOICE_TABLE.insert().values(**row))
+        except IntegrityError as error:
+            raise DuplicateContentError(
+                f"Content digest {invoice.content_digest} is already recorded."
+            ) from error
 
     async def claim_next_job(
         self, connection: AsyncConnection, worker_id: str, now: datetime
@@ -86,7 +95,11 @@ class IngestionRepository:
             .values(status=JobStatus.RUNNING, worker_id=worker_id, claimed_at=now.isoformat())
         )
         claimed = (await connection.execute(claim)).rowcount == 1
-        return ClaimedJob(job_id=row.id, correlation_id=row.correlation_id) if claimed else None
+        return (
+            ClaimedJob(job_id=str(row.id), correlation_id=str(row.correlation_id))
+            if claimed
+            else None
+        )
 
     async def queued_invoices(
         self, connection: AsyncConnection, job_id: str
@@ -97,13 +110,9 @@ class IngestionRepository:
             .where(INVOICE_TABLE.c.job_id == job_id, INVOICE_TABLE.c.status == InvoiceStatus.QUEUED)
             .order_by(INVOICE_TABLE.c.created_at, INVOICE_TABLE.c.id)
         )
+        rows = (await connection.execute(query)).all()
         return [
-            QueuedInvoice(
-                invoice_id=str(row.id),
-                storage_name=str(row.storage_name),
-                file_format=str(row.file_format),
-            )
-            for row in (await connection.execute(query)).all()
+            QueuedInvoice(str(row.id), str(row.storage_name), str(row.file_format)) for row in rows
         ]
 
     async def set_invoice_status(
@@ -113,7 +122,7 @@ class IngestionRepository:
         status: InvoiceStatus,
         reason: str | None = None,
     ) -> None:
-        """Move an invoice to a final status, with the reason when there is one."""
+        """Move an invoice to a status, with the reason when there is one."""
         await connection.execute(
             update(INVOICE_TABLE)
             .where(INVOICE_TABLE.c.id == invoice_id)
@@ -137,20 +146,23 @@ class IngestionRepository:
         extraction: ExtractedInvoice,
         line_ids: list[str],
     ) -> StoredInvoice:
-        """Persist header and lines, with text normalized before persisting (REQ-ING-008)."""
-        await connection.execute(
-            INVOICE_HEADER_TABLE.insert().values(**_header_row(invoice_id, extraction))
+        """Persist header and lines, normalized first (REQ-ING-008), for coding to read."""
+        normalized = normalize_extraction(extraction)
+        header = _header_row(invoice_id, normalized)
+        await connection.execute(INVOICE_HEADER_TABLE.insert().values(**header))
+        paired = list(zip(line_ids, normalized.lines, strict=True))
+        if paired:
+            rows = [_line_row(invoice_id, line_id, line) for line_id, line in paired]
+            await connection.execute(INVOICE_LINE_TABLE.insert(), rows)
+        return StoredInvoice(
+            invoice_id=invoice_id,
+            supplier_name=normalized.supplier.name,
+            currency=normalized.currency,
+            billed_entities=normalized.billed_entities,
+            lines=tuple(
+                StoredLine(line_id, line.position, line.description) for line_id, line in paired
+            ),
         )
-        stored_lines = tuple(
-            StoredLine(line_id, line.position, normalize_text_input(line.description))
-            for line_id, line in zip(line_ids, extraction.lines, strict=True)
-        )
-        if stored_lines:
-            await connection.execute(
-                INVOICE_LINE_TABLE.insert(),
-                [_line_row(invoice_id, stored, extraction) for stored in stored_lines],
-            )
-        return StoredInvoice(invoice_id, extraction.billed_entities, stored_lines)
 
     async def set_target_sheet(
         self, connection: AsyncConnection, invoice_id: str, target_sheet: str
@@ -164,9 +176,8 @@ class IngestionRepository:
 
     async def job_summary(self, connection: AsyncConnection, job_id: str) -> JobSummary | None:
         """Return the job status and its invoice counts by status, or None if unknown."""
-        status = (
-            await connection.execute(select(JOB_TABLE.c.status).where(JOB_TABLE.c.id == job_id))
-        ).scalar_one_or_none()
+        status_query = select(JOB_TABLE.c.status).where(JOB_TABLE.c.id == job_id)
+        status = (await connection.execute(status_query)).scalar_one_or_none()
         if status is None:
             return None
         counts_query = (
@@ -174,49 +185,68 @@ class IngestionRepository:
             .where(INVOICE_TABLE.c.job_id == job_id)
             .group_by(INVOICE_TABLE.c.status)
         )
-        counts = {row[0]: row[1] for row in (await connection.execute(counts_query)).all()}
-        return JobSummary(job_id=job_id, status=status, invoice_counts=counts)
+        counts = {
+            str(row[0]): int(row[1]) for row in (await connection.execute(counts_query)).all()
+        }
+        return JobSummary(job_id=job_id, status=str(status), invoice_counts=counts)
+
+    async def read_job_lines(
+        self, connection: AsyncConnection, job_id: str, limit: int, offset: int
+    ) -> list[JobLine]:
+        """Return one page of the job's lines, by upload order then document position."""
+        lines = INVOICE_LINE_TABLE
+        query = (
+            select(
+                lines.c.id,
+                INVOICE_HEADER_TABLE.c.invoice_number,
+                lines.c.position,
+                lines.c.description,
+            )
+            .join(INVOICE_TABLE, INVOICE_TABLE.c.id == lines.c.invoice_id)
+            .join(INVOICE_HEADER_TABLE, INVOICE_HEADER_TABLE.c.invoice_id == lines.c.invoice_id)
+            .where(INVOICE_TABLE.c.job_id == job_id)
+            .order_by(INVOICE_TABLE.c.created_at, INVOICE_TABLE.c.id, lines.c.position)
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await connection.execute(query)).all()
+        return [
+            JobLine(str(r.id), r.invoice_number, int(r.position), str(r.description)) for r in rows
+        ]
 
 
 def _header_row(invoice_id: str, extraction: ExtractedInvoice) -> dict[str, object]:
     return {
         "invoice_id": invoice_id,
-        "supplier_name": _optional_text(extraction.supplier.name),
+        "supplier_name": extraction.supplier.name,
         "supplier_nif": extraction.supplier.nif,
-        "invoice_number": _optional_text(extraction.invoice_number),
+        "invoice_number": extraction.invoice_number,
         "invoice_date": extraction.invoice_date,
         "currency": extraction.currency,
         "billed_entities": json.dumps(
-            [asdict(block) for block in extraction.billed_entities], ensure_ascii=False
+            [asdict(b) for b in extraction.billed_entities], ensure_ascii=False
         ),
         "summary_rows": json.dumps(
-            [asdict(row) for row in extraction.summary_rows], ensure_ascii=False, default=str
+            [asdict(r) for r in extraction.summary_rows], ensure_ascii=False, default=str
         ),
-        "notes": normalize_text_input(extraction.notes),
+        "notes": extraction.notes,
     }
 
 
-def _line_row(
-    invoice_id: str, stored: StoredLine, extraction: ExtractedInvoice
-) -> dict[str, object]:
-    source = next(line for line in extraction.lines if line.position == stored.position)
+def _line_row(invoice_id: str, line_id: str, line: ExtractedLine) -> dict[str, object]:
     return {
-        "id": stored.line_id,
+        "id": line_id,
         "invoice_id": invoice_id,
-        "position": stored.position,
-        "description": stored.description,
-        "normalized_description": normalize_for_comparison(stored.description),
-        "quantity": _decimal_text(source.quantity),
-        "unit_price": _decimal_text(source.unit_price),
-        "vat_rate": _decimal_text(source.vat_rate),
-        "amount": _decimal_text(source.amount),
+        "position": line.position,
+        "description": line.description,
+        "normalized_description": normalize_for_comparison(line.description),
+        # Decimals are stored as text: SQLite has no exact decimal type (D-3.5).
+        "quantity": _decimal_text(line.quantity),
+        "unit_price": _decimal_text(line.unit_price),
+        "vat_rate": _decimal_text(line.vat_rate),
+        "amount": _decimal_text(line.amount),
     }
-
-
-def _optional_text(value: str | None) -> str | None:
-    return None if value is None else normalize_text_input(value)
 
 
 def _decimal_text(value: object) -> str | None:
-    # Decimals are stored as text: SQLite has no exact decimal type (D-3.5).
     return None if value is None else str(value)

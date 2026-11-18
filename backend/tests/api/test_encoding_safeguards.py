@@ -57,7 +57,7 @@ def test_same_file_uploaded_twice_returns_the_existing_job(
         second = app.upload(invoice)
 
     assert second["job_id"] == first["job_id"]
-    assert second["already_uploaded_count"] == 1
+    assert second["existing_job_ids"] == [first["job_id"]]
     assert len(classifier.calls) == 1
     assert _query(valid_environment, "SELECT count(*) FROM invoice") == [(1,)]
 

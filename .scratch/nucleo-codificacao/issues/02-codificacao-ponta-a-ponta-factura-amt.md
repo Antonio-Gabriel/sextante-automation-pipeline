@@ -22,16 +22,30 @@ Neste ticket só existe o `FakeInvoiceExtractor`, que devolve facturas já inter
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] O carregamento devolve um identificador de trabalho sem esperar pela codificação
-- [ ] Carregar o mesmo ficheiro outra vez devolve o mesmo trabalho, garantido por uma restrição única sobre o digest
-- [ ] O trabalhador reivindica o trabalho de forma atómica e codifica a factura
-- [ ] São calculados e persistidos os scores lexicais de **todos** os itens da aba de destino, para cada linha. O score é o máximo entre PT e EN
-- [ ] A porta `ItemClassifier` recebe a aba de destino inteira, por ordem fixa do catálogo, com índice, código, PT e EN, e devolve um índice ou `none` por linha
-- [ ] O índice devolvido é validado pelo esquema (tecto de 100) e depois contra o comprimento real da lista e contra a aba de destino, antes de ser persistido
-- [ ] O código persistido é exactamente o valor de `No.` do catálogo
-- [ ] A consulta dos resultados devolve as linhas pela ordem do documento
-- [ ] Cada linha codificada tem um registo de auditoria com: descrição original e normalizada, aba de destino, scores, escolha do modelo, identificador do modelo, versão do prompt, digest do catálogo e momento
-- [ ] Os logs não contêm descrições, nomes, valores nem o corpo do prompt
-- [ ] Os testes passam pela API HTTP, com `FakeInvoiceExtractor` e `FakeItemClassifier`, sem nenhuma chamada à API da Anthropic
+- [x] O carregamento devolve um identificador de trabalho sem esperar pela codificação
+- [x] Carregar o mesmo ficheiro outra vez devolve o mesmo trabalho, garantido por uma restrição única sobre o digest
+- [x] O trabalhador reivindica o trabalho de forma atómica e codifica a factura
+- [x] São calculados e persistidos os scores lexicais de **todos** os itens da aba de destino, para cada linha. O score é o máximo entre PT e EN
+- [x] A porta `ItemClassifier` recebe a aba de destino inteira, por ordem fixa do catálogo, com índice, código, PT e EN, e devolve um índice ou `none` por linha
+- [x] O índice devolvido é validado pelo esquema (tecto de 100) e depois contra o comprimento real da lista e contra a aba de destino, antes de ser persistido
+- [x] O código persistido é exactamente o valor de `No.` do catálogo
+- [x] A consulta dos resultados devolve as linhas pela ordem do documento
+- [x] Cada linha codificada tem um registo de auditoria com: descrição original e normalizada, aba de destino, scores, escolha do modelo, identificador do modelo, versão do prompt, digest do catálogo e momento
+- [x] Os logs não contêm descrições, nomes, valores nem o corpo do prompt
+- [x] Os testes passam pela API HTTP, com `FakeInvoiceExtractor` e `FakeItemClassifier`, sem nenhuma chamada à API da Anthropic
+
+## Comments
+
+Resolved on 2026-11-18 in commits 2eff0ce (implementation) and the code review fixes that follow it, on branch feature/REQ-PLT-007-startup-catalog-validation.
+
+Deferred on purpose, to the tickets that own them:
+- invoice_header columns for the entity check result and ambiguity reason: ticket 03;
+- supplier identifier, exported Invoice_ID and the (supplier, invoice number) index: tickets 06 and 10;
+- confidence, flags and the O00999 fallback: ticket 04;
+- HTTP Idempotency-Key header (SEC-19): ticket 08; upload idempotency by digest is in place;
+- retries and reprocessing: ticket 07;
+- real PDF extractor and Claude adapter: tickets 12 and 11. Until then placeholder adapters refuse with an explicit reason and never code.
+
+SEC-16 is partial: two-step quarantine, Nginx limits and the ZIP-bomb ceiling arrive with the real extractor (ticket 12).

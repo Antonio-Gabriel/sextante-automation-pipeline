@@ -3,8 +3,8 @@
 import asyncio
 import contextlib
 import os
-from collections.abc import AsyncIterator, Mapping
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Callable, Mapping
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -17,12 +17,16 @@ from sextante.catalog.domain.catalog_builder import BuiltCatalog
 from sextante.catalog.domain.errors import CatalogValidationError
 from sextante.catalog.infrastructure.xlsx_catalog_reader import XlsxCatalogWorkbookReader
 from sextante.ingestion.api.routes import ingestion_router
-from sextante.ingestion.application.upload_invoices import UploadInvoices
+from sextante.ingestion.application.read_job_status import JobNotFoundError, ReadJobStatus
+from sextante.ingestion.application.upload_invoices import (
+    FileTooLargeError,
+    UnsupportedFileTypeError,
+    UploadInvoices,
+)
 from sextante.ingestion.contracts import InvoiceExtractor
 from sextante.ingestion.infrastructure.local_file_store import LocalInvoiceFileStore
 from sextante.ingestion.infrastructure.repository import IngestionRepository
 from sextante.ingestion.infrastructure.unconfigured_extractor import UnconfiguredInvoiceExtractor
-from sextante.matching.api.routes import matching_router
 from sextante.matching.application.encode_invoice import EncodeInvoice, EncodingCollaborators
 from sextante.matching.contracts import ItemClassifier
 from sextante.matching.infrastructure.rapidfuzz_scorer import RapidfuzzLexicalScorer
@@ -36,7 +40,15 @@ from sextante.platform.health import health_router
 from sextante.platform.http_errors import install_error_handlers
 from sextante.platform.settings import Settings, StartupConfigurationError
 from sextante.platform.structured_logging import configure_logging
+from sextante.review.api.routes import review_router
+from sextante.review.application.list_job_results import ListJobResults
 from sextante.worker import EncodingWorker, WorkerCollaborators
+
+HTTP_STATUS_BY_ERROR = {
+    JobNotFoundError: 404,
+    UnsupportedFileTypeError: 415,
+    FileTooLargeError: 413,
+}
 
 
 @dataclass(frozen=True)
@@ -70,13 +82,24 @@ def create_app(
     configure_logging()
     settings = Settings.from_environment(os.environ if environ is None else environ)
     catalog = _load_catalog_or_refuse(settings).catalog
-    database_url = settings.database_url.get_secret_value()
-    apply_migrations(database_url)
-    adapters = dependencies or AppDependencies()
+    apply_migrations(settings.database_url.get_secret_value())
+    app = FastAPI(
+        title="Sextante", lifespan=_lifespan(settings, catalog, dependencies or AppDependencies())
+    )
+    app.state.catalog = catalog
+    app.add_middleware(CorrelationIdMiddleware)
+    install_error_handlers(app, HTTP_STATUS_BY_ERROR)
+    for router in (health_router, ingestion_router, review_router):
+        app.include_router(router)
+    return app
 
+
+def _lifespan(
+    settings: Settings, catalog: Catalog, adapters: AppDependencies
+) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        engine = create_database_engine(database_url)
+        engine = create_database_engine(settings.database_url.get_secret_value())
         app.state.database_engine = engine
         _wire_use_cases(app, engine, settings, catalog, adapters)
         worker_task = asyncio.create_task(app.state.worker.run_forever())
@@ -88,13 +111,7 @@ def create_app(
                 await worker_task
             await engine.dispose()
 
-    app = FastAPI(title="Sextante", lifespan=lifespan)
-    app.state.catalog = catalog
-    app.add_middleware(CorrelationIdMiddleware)
-    install_error_handlers(app)
-    for router in (health_router, ingestion_router, matching_router):
-        app.include_router(router)
-    return app
+    return lifespan
 
 
 def _wire_use_cases(
@@ -105,11 +122,43 @@ def _wire_use_cases(
     adapters: AppDependencies,
 ) -> None:
     store = LocalInvoiceFileStore(Path(settings.upload_dir))
-    repository = IngestionRepository()
+    ingestion = IngestionRepository()
     app.state.upload_invoices = UploadInvoices(
-        engine, repository, store, adapters.clock, adapters.identifiers
+        engine, ingestion, store, adapters.clock, adapters.identifiers
     )
-    encoder = EncodeInvoice(
+    app.state.read_job_status = ReadJobStatus(engine, ingestion)
+    app.state.list_job_results = ListJobResults(
+        engine, app.state.read_job_status, ingestion, MatchingRepository()
+    )
+    app.state.worker = _build_worker(engine, settings, catalog, adapters, store)
+
+
+def _build_worker(
+    engine: AsyncEngine,
+    settings: Settings,
+    catalog: Catalog,
+    adapters: AppDependencies,
+    store: LocalInvoiceFileStore,
+) -> EncodingWorker:
+    return EncodingWorker(
+        WorkerCollaborators(
+            engine=engine,
+            repository=IngestionRepository(),
+            store=store,
+            extractor=adapters.extractor,
+            encoder=_build_encoder(engine, catalog, adapters),
+            clock=adapters.clock,
+            identifiers=adapters.identifiers,
+            target_entity_name=settings.target_entity_name,
+            poll_seconds=adapters.worker_poll_seconds,
+        )
+    )
+
+
+def _build_encoder(
+    engine: AsyncEngine, catalog: Catalog, adapters: AppDependencies
+) -> EncodeInvoice:
+    return EncodeInvoice(
         EncodingCollaborators(
             engine=engine,
             catalog=catalog,
@@ -119,19 +168,6 @@ def _wire_use_cases(
             audit=AuditEventRepository(),
             clock=adapters.clock,
             identifiers=adapters.identifiers,
-        )
-    )
-    app.state.worker = EncodingWorker(
-        WorkerCollaborators(
-            engine=engine,
-            repository=repository,
-            store=store,
-            extractor=adapters.extractor,
-            encoder=encoder,
-            clock=adapters.clock,
-            identifiers=adapters.identifiers,
-            target_entity_name=settings.target_entity_name,
-            poll_seconds=adapters.worker_poll_seconds,
         )
     )
 

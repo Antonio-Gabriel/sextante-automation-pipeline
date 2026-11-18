@@ -24,27 +24,38 @@ class FakeItemClassifier:
         self,
         choices_by_item_number: Mapping[int, str | None] | None = None,
         raw_indexes: Mapping[int, int | None] | None = None,
+        bypass_schema_with_index: int | None = None,
     ) -> None:
         self._by_item_number = choices_by_item_number or {}
         self._raw_indexes = raw_indexes or {}
+        self._bypass_index = bypass_schema_with_index
         self.calls: list[ItemChoiceRequest] = []
 
     async def choose(self, request: ItemChoiceRequest) -> ItemChoiceResponse:
         """Return the declared choices for the lines of this request."""
         self.calls.append(request)
-        answered = [line.position for line in request.lines if self._answers(line.position)]
-        choices = tuple(
-            ItemChoiceFromModel(
-                line_position=position, candidate_index=self._index(position, request)
-            )
-            for position in answered
-        )
+        answered = [
+            line.position
+            for line in request.lines
+            if self._answers(line.position) or self._bypass_index is not None
+        ]
+        choices = tuple(self._choice(position, request) for position in answered)
         return ItemChoiceResponse(
             choices=choices,
             model_id=FAKE_MODEL_ID,
             prompt_version=FAKE_PROMPT_VERSION,
             input_tokens=100 * len(request.lines),
             output_tokens=10 * len(request.lines),
+        )
+
+    def _choice(self, position: int, request: ItemChoiceRequest) -> ItemChoiceFromModel:
+        if self._bypass_index is not None:
+            # Simulates a careless adapter that skips validation (model_construct).
+            return ItemChoiceFromModel.model_construct(
+                line_position=position, candidate_index=self._bypass_index, rationale=""
+            )
+        return ItemChoiceFromModel(
+            line_position=position, candidate_index=self._index(position, request)
         )
 
     def _answers(self, position: int) -> bool:

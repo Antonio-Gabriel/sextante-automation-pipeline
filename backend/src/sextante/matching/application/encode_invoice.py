@@ -1,7 +1,10 @@
 """Code the service lines of one routed invoice (REQ-MAP-004 to REQ-MAP-007, SEC-14)."""
 
+import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from sextante.catalog.contracts import Catalog, CatalogItem, TargetSheet
@@ -16,6 +19,8 @@ from sextante.matching.application.records import EncodedLineRecord, ModelCallRe
 from sextante.matching.domain.choice_resolution import LineChoice, resolve_line_choices
 from sextante.matching.domain.item_choice import (
     CandidateItem,
+    InvoiceContext,
+    ItemChoiceFromModel,
     ItemChoiceRequest,
     ItemChoiceResponse,
     LineToCode,
@@ -23,6 +28,8 @@ from sextante.matching.domain.item_choice import (
 from sextante.platform.audit import AuditEventRepository
 from sextante.platform.clock import Clock, IdentifierGenerator
 from sextante.platform.text_normalization import normalize_for_comparison
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +46,14 @@ class EncodingCollaborators:
     identifiers: IdentifierGenerator
 
 
+@dataclass(frozen=True, slots=True)
+class _InvoiceCoding:
+    """What every line of one invoice shares: its routing and its single model call."""
+
+    target_sheet: TargetSheet
+    call: ModelCallRecord
+
+
 class EncodeInvoice:
     """One model call per invoice, then every answer validated and recorded with its audit.
 
@@ -47,74 +62,92 @@ class EncodeInvoice:
     """
 
     def __init__(self, collaborators: EncodingCollaborators) -> None:
-        self._with = collaborators
+        self._collaborators = collaborators
 
     async def execute(self, invoice: StoredInvoice, target_sheet: TargetSheet) -> None:
-        """Score, ask the model once, resolve answers against the sheet, and persist."""
-        sheet_items = self._with.catalog.items_of(target_sheet)
+        """Score, ask the model once, resolve answers against the sheet, and persist.
+
+        Example:
+            await encoder.execute(stored_invoice, TargetSheet.OUTLAYS)
+        """
+        deps = self._collaborators
+        sheet_items = deps.catalog.items_of(target_sheet)
         scores = {
-            line.line_id: self._with.scorer.score(line.description, sheet_items)
-            for line in invoice.lines
+            line.line_id: deps.scorer.score(line.description, sheet_items) for line in invoice.lines
         }
         # The model call is made outside any transaction: it takes seconds (D-3.3).
-        response = await self._with.classifier.choose(_request_for(invoice.lines, sheet_items))
+        response = await deps.classifier.choose(_request_for(invoice, sheet_items))
+        positions = [line.position for line in invoice.lines]
         choices = resolve_line_choices(
-            [line.position for line in invoice.lines], sheet_items, target_sheet, response.choices
+            positions, sheet_items, target_sheet, _validated(response.choices)
         )
-        await self._persist(invoice, target_sheet, response, choices, scores)
+        call = ModelCallRecord(
+            deps.identifiers.new_id(), invoice.invoice_id, response, deps.clock.now()
+        )
+        await self._persist(invoice, _InvoiceCoding(target_sheet, call), choices, scores)
 
     async def _persist(
         self,
         invoice: StoredInvoice,
-        target_sheet: TargetSheet,
-        response: ItemChoiceResponse,
+        coding: _InvoiceCoding,
         choices: dict[int, LineChoice],
         scores: dict[str, tuple[LexicalScore, ...]],
     ) -> None:
-        call = ModelCallRecord(
-            self._with.identifiers.new_id(), invoice.invoice_id, response, self._with.clock.now()
-        )
-        async with self._with.engine.begin() as connection:
-            await self._with.repository.record_model_call(connection, call)
+        deps = self._collaborators
+        async with deps.engine.begin() as connection:
+            await deps.repository.record_model_call(connection, coding.call)
             for line in invoice.lines:
-                record = self._line_record(
-                    line, target_sheet, choices[line.position], scores[line.line_id], call
+                record = self._encoded_record(
+                    line, choices[line.position], scores[line.line_id], coding
                 )
-                await self._with.repository.record_encoded_line(connection, record)
-                await self._with.audit.append(
+                await deps.repository.record_encoded_line(connection, record)
+                await deps.audit.append(
                     connection,
-                    self._with.identifiers.new_id(),
+                    deps.identifiers.new_id(),
                     "line_encoded",
                     ("invoice_line", line.line_id),
-                    _audit_payload(line, record, response),
+                    _audit_payload(line, record, coding.call.response),
                     record.encoded_at,
                 )
 
-    def _line_record(
+    def _encoded_record(
         self,
         line: StoredLine,
-        target_sheet: TargetSheet,
         choice: LineChoice,
         scores: tuple[LexicalScore, ...],
-        call: ModelCallRecord,
+        coding: _InvoiceCoding,
     ) -> EncodedLineRecord:
+        deps = self._collaborators
         return EncodedLineRecord(
-            encoded_line_id=self._with.identifiers.new_id(),
+            encoded_line_id=deps.identifiers.new_id(),
             invoice_line_id=line.line_id,
-            target_sheet=target_sheet.value,
+            target_sheet=coding.target_sheet,
             choice=choice,
             scores=scores,
-            catalog_digest=str(self._with.catalog.digest),
-            model_call_id=call.call_id,
-            encoded_at=self._with.clock.now(),
+            catalog_digest=str(deps.catalog.digest),
+            model_call_id=coding.call.call_id,
+            encoded_at=deps.clock.now(),
         )
 
 
-def _request_for(
-    lines: tuple[StoredLine, ...], sheet_items: tuple[CatalogItem, ...]
-) -> ItemChoiceRequest:
+def _validated(choices: Sequence[ItemChoiceFromModel]) -> list[ItemChoiceFromModel]:
+    # Every answer goes through the schema again, whatever the adapter did: an answer
+    # that fails it is dropped, and its line becomes an invalid response (SEC-14, REQ-MAP-007).
+    valid: list[ItemChoiceFromModel] = []
+    for choice in choices:
+        try:
+            valid.append(ItemChoiceFromModel.model_validate(choice.model_dump()))
+        except ValidationError:
+            logger.warning(
+                "model_answer_rejected_by_schema", extra={"line_position": choice.line_position}
+            )
+    return valid
+
+
+def _request_for(invoice: StoredInvoice, sheet_items: tuple[CatalogItem, ...]) -> ItemChoiceRequest:
     return ItemChoiceRequest(
-        lines=tuple(LineToCode(line.position, line.description) for line in lines),
+        context=InvoiceContext(supplier_name=invoice.supplier_name, currency=invoice.currency),
+        lines=tuple(LineToCode(line.position, line.description) for line in invoice.lines),
         candidates=tuple(
             CandidateItem(
                 index,
@@ -136,11 +169,11 @@ def _audit_payload(
     return {
         "description": line.description,
         "normalized_description": normalize_for_comparison(line.description),
-        "target_sheet": record.target_sheet,
+        "target_sheet": record.target_sheet.value,
         "choice_outcome": record.choice.outcome.value,
         "candidate_index": record.choice.candidate_index,
         "item_number": catalog_item.item_number.value if catalog_item else None,
-        "top_scores": [[s.item_number, s.score] for s in record.scores[:3]],
+        "scores": [[score.item_number, score.score] for score in record.scores],
         "model_id": response.model_id,
         "prompt_version": response.prompt_version,
         "catalog_digest": record.catalog_digest,

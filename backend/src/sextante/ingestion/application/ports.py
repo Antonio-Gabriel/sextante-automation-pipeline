@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from sextante.ingestion.application.records import (
     ClaimedJob,
+    JobLine,
     JobSummary,
     NewInvoice,
     QueuedInvoice,
@@ -31,7 +32,7 @@ class IngestionRepositoryPort(Protocol):
     async def insert_invoice(
         self, connection: AsyncConnection, invoice: NewInvoice, now: datetime
     ) -> None:
-        """Record an accepted upload."""
+        """Record an accepted upload. Raises DuplicateContentError on a known digest."""
         ...
 
     async def claim_next_job(
@@ -80,4 +81,14 @@ class IngestionRepositoryPort(Protocol):
 
     async def job_summary(self, connection: AsyncConnection, job_id: str) -> JobSummary | None:
         """Return the job status and its invoice counts."""
+        ...
+
+
+class JobLinesReader(Protocol):
+    """Port, published to other modules: the invoice lines of a job, in document order."""
+
+    async def read_job_lines(
+        self, connection: AsyncConnection, job_id: str, limit: int, offset: int
+    ) -> list[JobLine]:
+        """Return one page of the job's lines, by upload order then document position."""
         ...

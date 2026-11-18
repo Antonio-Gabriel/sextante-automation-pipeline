@@ -18,9 +18,17 @@ IDENTIFIER = sa.String(64)
 
 def upgrade() -> None:
     """Create the coding tables and make audit_event append-only (SEC-04)."""
-    _create_ingestion_tables()
-    _create_matching_tables()
-    _create_audit_table()
+    for create_table in (
+        _create_job,
+        _create_invoice,
+        _create_invoice_header,
+        _create_invoice_line,
+        _create_model_call,
+        _create_encoded_line,
+        _create_lexical_score,
+        _create_audit_event,
+    ):
+        create_table()
 
 
 def downgrade() -> None:
@@ -40,7 +48,7 @@ def downgrade() -> None:
         op.drop_table(table)
 
 
-def _create_ingestion_tables() -> None:
+def _create_job() -> None:
     op.create_table(
         "job",
         sa.Column("id", IDENTIFIER, primary_key=True),
@@ -51,6 +59,9 @@ def _create_ingestion_tables() -> None:
         sa.Column("claimed_at", TIMESTAMP, nullable=True),
         sa.Column("finished_at", TIMESTAMP, nullable=True),
     )
+
+
+def _create_invoice() -> None:
     op.create_table(
         "invoice",
         sa.Column("id", IDENTIFIER, primary_key=True),
@@ -64,6 +75,9 @@ def _create_ingestion_tables() -> None:
         sa.Column("created_at", TIMESTAMP, nullable=False),
         sa.UniqueConstraint("content_digest", name="uq_invoice_content_digest"),
     )
+
+
+def _create_invoice_header() -> None:
     op.create_table(
         "invoice_header",
         sa.Column("invoice_id", IDENTIFIER, sa.ForeignKey("invoice.id"), primary_key=True),
@@ -77,6 +91,9 @@ def _create_ingestion_tables() -> None:
         sa.Column("notes", sa.Text, nullable=False),
         sa.Column("target_sheet", sa.String(16), nullable=True),
     )
+
+
+def _create_invoice_line() -> None:
     op.create_table(
         "invoice_line",
         sa.Column("id", IDENTIFIER, primary_key=True),
@@ -92,7 +109,7 @@ def _create_ingestion_tables() -> None:
     )
 
 
-def _create_matching_tables() -> None:
+def _create_model_call() -> None:
     op.create_table(
         "model_call",
         sa.Column("id", IDENTIFIER, primary_key=True),
@@ -103,6 +120,9 @@ def _create_matching_tables() -> None:
         sa.Column("output_tokens", sa.Integer, nullable=False),
         sa.Column("called_at", TIMESTAMP, nullable=False),
     )
+
+
+def _create_encoded_line() -> None:
     op.create_table(
         "encoded_line",
         sa.Column("id", IDENTIFIER, primary_key=True),
@@ -117,6 +137,9 @@ def _create_matching_tables() -> None:
         sa.Column("encoded_at", TIMESTAMP, nullable=False),
         sa.UniqueConstraint("invoice_line_id", name="uq_encoded_line_invoice_line"),
     )
+
+
+def _create_lexical_score() -> None:
     op.create_table(
         "lexical_score",
         sa.Column(
@@ -128,7 +151,7 @@ def _create_matching_tables() -> None:
     )
 
 
-def _create_audit_table() -> None:
+def _create_audit_event() -> None:
     op.create_table(
         "audit_event",
         sa.Column("id", IDENTIFIER, primary_key=True),

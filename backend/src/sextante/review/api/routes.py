@@ -1,14 +1,14 @@
-"""HTTP API of coded results (02-arquitectura.md §6, REQ-PLT-004)."""
+"""HTTP API of coded results (02-arquitectura.md §6, REQ-PLT-004, SEC-18)."""
 
 from typing import Annotated
 
 from fastapi import APIRouter, Path, Query, Request
 from pydantic import BaseModel, ConfigDict
 
-from sextante.matching.infrastructure.results_query import read_job_results
 from sextante.platform.limits import IDENTIFIER_MAX_LENGTH, MAX_PAGE_SIZE
+from sextante.review.application.list_job_results import ListJobResults
 
-matching_router = APIRouter(prefix="/api")
+review_router = APIRouter(prefix="/api")
 
 
 class ResultLineResponse(BaseModel):
@@ -35,7 +35,7 @@ class ResultsPageResponse(BaseModel):
     limit_truncated: bool
 
 
-@matching_router.get("/jobs/{job_id}/results", response_model=ResultsPageResponse)
+@review_router.get("/jobs/{job_id}/results", response_model=ResultsPageResponse)
 async def read_results(
     request: Request,
     job_id: Annotated[str, Path(max_length=IDENTIFIER_MAX_LENGTH)],
@@ -48,20 +48,10 @@ async def read_results(
         GET /api/jobs/3f2a.../results?limit=50 -> {"lines": [...], "limit": 50, ...}
     """
     page_size = min(limit, MAX_PAGE_SIZE)
-    async with request.app.state.database_engine.connect() as connection:
-        lines = await read_job_results(connection, job_id, page_size, offset)
+    list_results: ListJobResults = request.app.state.list_job_results
+    lines = await list_results.execute(job_id, page_size, offset)
     return ResultsPageResponse(
-        lines=[
-            ResultLineResponse(
-                invoice_number=line.invoice_number,
-                line_position=line.line_position,
-                line_description=line.line_description,
-                target_sheet=line.target_sheet,
-                item_number=line.item_number,
-                catalog_description=line.catalog_description,
-            )
-            for line in lines
-        ],
+        lines=[ResultLineResponse.model_validate(line, from_attributes=True) for line in lines],
         limit=page_size,
         offset=offset,
         limit_truncated=limit > MAX_PAGE_SIZE,

@@ -3,6 +3,7 @@
 import json
 from collections.abc import Mapping
 from datetime import datetime
+from typing import Final
 
 from sqlalchemy import Column, String, Table, Text
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -21,7 +22,7 @@ AUDIT_EVENT_TABLE = Table(
     Column("recorded_at", String(40), nullable=False),
 )
 
-SYSTEM_AUTHOR = "system"
+SYSTEM_AUTHOR: Final = "system"
 
 
 class AuditEventRepository:
@@ -40,7 +41,12 @@ class AuditEventRepository:
         payload: Mapping[str, object],
         recorded_at: datetime,
     ) -> None:
-        """Insert one audit event inside the caller's transaction."""
+        """Insert one audit event inside the caller's transaction.
+
+        Example:
+            await audit.append(connection, event_id, "line_encoded", ("invoice_line", line_id),
+                               {"item_number": "O00004"}, clock.now())
+        """
         subject_type, subject_id = subject
         await connection.execute(
             AUDIT_EVENT_TABLE.insert().values(

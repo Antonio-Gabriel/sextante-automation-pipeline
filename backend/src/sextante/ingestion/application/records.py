@@ -39,3 +39,21 @@ class JobSummary:
     job_id: str
     status: str
     invoice_counts: dict[str, int]
+
+
+@dataclass(frozen=True, slots=True)
+class JobLine:
+    """One invoice line of a job, as read for listings (REQ-REV-001)."""
+
+    line_id: str
+    invoice_number: str | None
+    position: int
+    description: str
+
+
+class DuplicateContentError(Exception):
+    """Raised by the repository port when the content digest is already recorded.
+
+    The unique constraint on the digest decides concurrent uploads (REQ-ING-007); this
+    error carries that decision to the use case without a database type.
+    """
