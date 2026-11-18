@@ -9,6 +9,7 @@ from sextante.ingestion.application.records import (
     ClaimedJob,
     EntityCheckRecord,
     ExportInvoice,
+    InvoiceState,
     JobLine,
     JobSummary,
     NewInvoice,
@@ -86,6 +87,28 @@ class IngestionRepositoryPort(Protocol):
 
     async def job_summary(self, connection: AsyncConnection, job_id: str) -> JobSummary | None:
         """Return the job status and its invoice counts."""
+        ...
+
+    async def load_stored_invoice(
+        self, connection: AsyncConnection, invoice_id: str
+    ) -> StoredInvoice | None:
+        """Return the stored extraction, or None when the invoice was never extracted."""
+        ...
+
+
+class ReprocessingRepositoryPort(Protocol):
+    """Port: find an invoice, put it back in the queue, and reload what was stored."""
+
+    async def invoice_state(
+        self, connection: AsyncConnection, invoice_id: str
+    ) -> InvoiceState | None:
+        """Return the invoice's job and status, or None when unknown."""
+        ...
+
+    async def requeue_invoice(
+        self, connection: AsyncConnection, invoice_id: str, job_id: str
+    ) -> None:
+        """Queue the invoice again and reopen its job."""
         ...
 
 

@@ -22,6 +22,11 @@ from sextante.export.application.export_job import ExportJob
 from sextante.export.infrastructure.spreadsheet_writers import SpreadsheetExportWriter
 from sextante.ingestion.api.routes import ingestion_router
 from sextante.ingestion.application.read_job_status import JobNotFoundError, ReadJobStatus
+from sextante.ingestion.application.reprocess_invoice import (
+    InvoiceNotFoundError,
+    InvoiceNotReprocessableError,
+    ReprocessInvoice,
+)
 from sextante.ingestion.application.upload_invoices import (
     FileTooLargeError,
     UnsupportedFileTypeError,
@@ -43,11 +48,16 @@ from sextante.platform.correlation import CorrelationIdMiddleware
 from sextante.platform.database import apply_migrations, create_database_engine
 from sextante.platform.health import health_router
 from sextante.platform.http_errors import install_error_handlers
+from sextante.platform.retry import RetryPolicy, Sleep
 from sextante.platform.settings import Settings, StartupConfigurationError
 from sextante.platform.structured_logging import configure_logging
 from sextante.review.api.routes import review_router
 from sextante.review.application.list_job_results import ListJobResults
+from sextante.review.application.read_job_progress import ReadJobProgress
 from sextante.worker import EncodingWorker, WorkerCollaborators
+
+# The first retry waits 1 s, the next 2 s, and so on (REQ-PLT-003).
+MODEL_RETRY_BASE_SECONDS = 1.0
 
 
 @dataclass(frozen=True)
@@ -60,6 +70,8 @@ class ReferenceData:
 
 
 HTTP_STATUS_BY_ERROR = {
+    InvoiceNotFoundError: 404,
+    InvoiceNotReprocessableError: 409,
     JobNotFoundError: 404,
     UnsupportedFileTypeError: 415,
     FileTooLargeError: 413,
@@ -79,6 +91,7 @@ class AppDependencies:
     clock: Clock = field(default_factory=SystemClock)
     identifiers: IdentifierGenerator = field(default_factory=UuidIdentifierGenerator)
     worker_poll_seconds: float = 1.0
+    sleep: Sleep = asyncio.sleep
 
 
 def create_app(
@@ -147,6 +160,12 @@ def _wire_use_cases(
         engine, ingestion, store, adapters.clock, adapters.identifiers
     )
     app.state.read_job_status = ReadJobStatus(engine, ingestion)
+    app.state.read_job_progress = ReadJobProgress(
+        engine, app.state.read_job_status, MatchingRepository()
+    )
+    app.state.reprocess_invoice = ReprocessInvoice(
+        engine, ingestion, AuditEventRepository(), adapters.clock, adapters.identifiers
+    )
     app.state.list_job_results = ListJobResults(
         engine, app.state.read_job_status, ingestion, MatchingRepository()
     )
@@ -195,6 +214,8 @@ def _build_encoder(
             clock=adapters.clock,
             identifiers=adapters.identifiers,
             fallback_item=_fallback_item(catalog),
+            retry_policy=RetryPolicy(settings.model_max_attempts, MODEL_RETRY_BASE_SECONDS),
+            sleep=adapters.sleep,
             generic_items=frozenset(ItemNumber(n) for n in settings.generic_items),
         )
     )

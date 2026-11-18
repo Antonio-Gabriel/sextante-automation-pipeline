@@ -109,6 +109,14 @@ class EncodingWorker:
             )
 
     async def _process_invoice(self, invoice: QueuedInvoice) -> tuple[InvoiceStatus, str | None]:
+        # A reprocessed invoice is coded from its stored text, never extracted twice
+        # (NFR-REL-002).
+        async with self._collaborators.engine.connect() as connection:
+            stored = await self._collaborators.repository.load_stored_invoice(
+                connection, invoice.invoice_id
+            )
+        if stored is not None:
+            return await self._encode(stored)
         content = self._collaborators.store.read(invoice.storage_name)
         extraction = self._collaborators.extractor.extract(content, FileFormat(invoice.file_format))
         if isinstance(extraction, ExtractionRejection):

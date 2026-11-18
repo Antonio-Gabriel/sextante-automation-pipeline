@@ -1,7 +1,7 @@
 """Build the application with test doubles and drive it like an HTTP client."""
 
 import time
-from collections.abc import Iterator
+from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Final
@@ -58,6 +58,7 @@ def running_application(
     environment: dict[str, str],
     invoices: list[SyntheticInvoice],
     classifier: ItemClassifier,
+    sleeps: list[float] | None = None,
 ) -> Iterator[EncodingHarness]:
     """Start the application with fakes for the extractor and the model, nothing else.
 
@@ -72,6 +73,7 @@ def running_application(
         clock=FixedClock(),
         identifiers=SequentialIdentifierGenerator(),
         worker_poll_seconds=WORKER_POLL_SECONDS,
+        sleep=_recording_sleep(sleeps if sleeps is not None else []),
     )
     with TestClient(create_app(environment, dependencies)) as client:
         yield EncodingHarness(client=client, extractor=extractor, classifier=classifier)
@@ -86,3 +88,11 @@ def export_bytes(harness: EncodingHarness, job_id: object, export_format: str) -
     response = harness.client.get(f"/api/exports/{job_id}", params={"format": export_format})
     assert response.status_code == 200, response.text
     return response.content
+
+
+def _recording_sleep(sleeps: list[float]) -> Callable[[float], Awaitable[None]]:
+    # Retries wait through this: tests record the delays instead of sleeping.
+    async def sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+
+    return sleep

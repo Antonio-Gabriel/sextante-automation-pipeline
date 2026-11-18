@@ -11,6 +11,7 @@ from sextante.catalog.contracts import Catalog, CatalogItem, ItemNumber, TargetS
 from sextante.ingestion.contracts import LineType, StoredInvoice, StoredLine
 from sextante.matching.application.ports import (
     ItemClassifier,
+    ItemClassifierUnavailableError,
     LexicalScorer,
     MatchingRepositoryPort,
 )
@@ -34,6 +35,7 @@ from sextante.matching.domain.line_decision import (
 from sextante.matching.domain.scoring import LexicalScore
 from sextante.platform.audit import AuditEventRepository
 from sextante.platform.clock import Clock, IdentifierGenerator
+from sextante.platform.retry import RetryPolicy, Sleep, call_with_retries
 from sextante.platform.text_normalization import normalize_for_comparison
 
 logger = logging.getLogger(__name__)
@@ -57,6 +59,8 @@ class EncodingCollaborators:
     identifiers: IdentifierGenerator
     fallback_item: CatalogItem
     generic_items: frozenset[ItemNumber]
+    retry_policy: RetryPolicy
+    sleep: Sleep
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,7 +129,13 @@ class EncodeInvoice:
     ) -> tuple[ModelCallRecord, dict[int, LineChoice]]:
         deps = self._collaborators
         # The model call is made outside any transaction: it takes seconds (D-3.3).
-        response = await deps.classifier.choose(_request_for(invoice, services, sheet_items))
+        request = _request_for(invoice, services, sheet_items)
+        response = await call_with_retries(
+            lambda: deps.classifier.choose(request),
+            ItemClassifierUnavailableError,
+            deps.retry_policy,
+            deps.sleep,
+        )
         positions = [line.position for line in services]
         choices = resolve_line_choices(
             positions, sheet_items, target_sheet, _validated(response.choices)

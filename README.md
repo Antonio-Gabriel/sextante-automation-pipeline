@@ -4,7 +4,7 @@ Automatic coding of supplier invoice lines for AMT, Advanced Maritime Transports
 
 For each line of a supplier invoice, Sextante assigns the exact item number from the catalog, computes a confidence rating, and flags for human review any line where the decision is not safe.
 
-**Status:** under construction. This version delivers tickets 01 to 06 of `.scratch/nucleo-codificacao/`:
+**Status:** under construction. This version delivers tickets 01 to 07 of `.scratch/nucleo-codificacao/`:
 
 - application startup with a validated catalog;
 - upload of invoices into a background job;
@@ -43,7 +43,8 @@ The response gives the SHA-256 of the loaded catalog.
 | Endpoint | What it does |
 |---|---|
 | `POST /api/invoices` | Upload PDF or XLSX invoices (multipart field `files`). Answers at once with a job id |
-| `GET /api/jobs/{job_id}` | Job status, with its invoices counted by status |
+| `GET /api/jobs/{job_id}` | Job status, invoices counted by status and in total, and the tokens spent |
+| `POST /api/invoices/{invoice_id}/reprocess` | Queue a failed invoice again; it is coded from its stored text, without a new upload |
 | `GET /api/jobs/{job_id}/results` | Coded lines in document order, paginated (`limit` up to 100, `offset`) |
 | `GET /api/exports/{job_id}?format=csv` | Export with the nine columns: CSV in UTF-8 with BOM, or `format=xlsx` |
 

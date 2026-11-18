@@ -1,6 +1,12 @@
 """Published contract of the matching module (02-arquitectura.md §2.1)."""
 
-from sextante.matching.application.ports import CodingsReader, ItemClassifier, LexicalScorer
+from sextante.matching.application.ports import (
+    CodingsReader,
+    ItemClassifier,
+    ItemClassifierUnavailableError,
+    LexicalScorer,
+    TokenUsageReader,
+)
 from sextante.matching.application.records import LineCoding
 from sextante.matching.domain.entity_check import (
     EntityCheckResult,
@@ -35,11 +41,13 @@ __all__ = [
     "ItemChoiceRequest",
     "ItemChoiceResponse",
     "ItemClassifier",
+    "ItemClassifierUnavailableError",
     "LexicalScore",
     "LexicalScorer",
     "LineCoding",
     "LineToCode",
     "TargetEntity",
+    "TokenUsageReader",
     "check_billed_entity",
     "exact_entity_match_label",
     "target_sheet_for",

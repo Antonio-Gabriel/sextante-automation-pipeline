@@ -37,6 +37,8 @@ class Settings(BaseModel):
     generic_items: tuple[str, ...] = ("O00052",)
     # CSV separator, comma by default (REQ-EXP-005).
     csv_separator: str = ","
+    # Attempts per model call, the first included, for transient failures (REQ-PLT-003).
+    model_max_attempts: int = Field(default=3, ge=1, le=10)
 
     # A plain model, not pydantic-settings: the environment is always passed in explicitly,
     # so a stray variable in the process cannot silently fill a missing setting.

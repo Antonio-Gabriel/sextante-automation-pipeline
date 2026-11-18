@@ -14,12 +14,13 @@ from sextante.ingestion.application.records import (
     EntityCheckRecord,
     ExportInvoice,
     ExportLine,
+    InvoiceState,
     JobLine,
     JobSummary,
     NewInvoice,
     QueuedInvoice,
 )
-from sextante.ingestion.domain.line_type import classify_line_type
+from sextante.ingestion.domain.line_type import LineType, classify_line_type
 from sextante.ingestion.domain.model import (
     BilledEntityBlock,
     ExtractedInvoice,
@@ -189,7 +190,9 @@ class IngestionRepository:
         counts = {
             str(row[0]): int(row[1]) for row in (await connection.execute(counts_query)).all()
         }
-        return JobSummary(job_id=job_id, status=str(status), invoice_counts=counts)
+        ids_query = select(INVOICE_TABLE.c.id).where(INVOICE_TABLE.c.job_id == job_id)
+        invoice_ids = tuple(str(i) for i in (await connection.execute(ids_query)).scalars())
+        return JobSummary(job_id, str(status), counts, invoice_ids)
 
     async def read_job_lines(
         self, connection: AsyncConnection, job_id: str, limit: int, offset: int
@@ -207,6 +210,45 @@ class IngestionRepository:
             )
             for r in rows
         ]
+
+    async def invoice_state(
+        self, connection: AsyncConnection, invoice_id: str
+    ) -> InvoiceState | None:
+        """Return the invoice's job and status, or None when unknown."""
+        query = select(INVOICE_TABLE.c.job_id, INVOICE_TABLE.c.status).where(
+            INVOICE_TABLE.c.id == invoice_id
+        )
+        row = (await connection.execute(query)).first()
+        return InvoiceState(str(row.job_id), InvoiceStatus(str(row.status))) if row else None
+
+    async def requeue_invoice(
+        self, connection: AsyncConnection, invoice_id: str, job_id: str
+    ) -> None:
+        """Queue the invoice again and reopen its job, so the worker claims it (NFR-REL-001)."""
+        await connection.execute(
+            update(INVOICE_TABLE)
+            .where(INVOICE_TABLE.c.id == invoice_id)
+            .values(status=InvoiceStatus.QUEUED, status_reason=None)
+        )
+        await connection.execute(
+            update(JOB_TABLE)
+            .where(JOB_TABLE.c.id == job_id)
+            .values(status=JobStatus.QUEUED, finished_at=None)
+        )
+
+    async def load_stored_invoice(
+        self, connection: AsyncConnection, invoice_id: str
+    ) -> StoredInvoice | None:
+        """Rebuild the stored extraction from header and lines, for coding without extraction."""
+        header_query = select(INVOICE_HEADER_TABLE).where(
+            INVOICE_HEADER_TABLE.c.invoice_id == invoice_id
+        )
+        header = (await connection.execute(header_query)).first()
+        if header is None:
+            return None
+        lines = await _stored_lines(connection, invoice_id)
+        blocks = tuple(_blocks(header.billed_entities))
+        return StoredInvoice(invoice_id, header.supplier_name, header.currency, blocks, lines)
 
     async def read_job_invoices(
         self, connection: AsyncConnection, job_id: str
@@ -251,6 +293,18 @@ def _stored_invoice(
             )
             for line_id, line in zip(line_ids, normalized.lines, strict=True)
         ),
+    )
+
+
+async def _stored_lines(connection: AsyncConnection, invoice_id: str) -> tuple[StoredLine, ...]:
+    query = (
+        select(INVOICE_LINE_TABLE)
+        .where(INVOICE_LINE_TABLE.c.invoice_id == invoice_id)
+        .order_by(INVOICE_LINE_TABLE.c.position)
+    )
+    return tuple(
+        StoredLine(str(r.id), int(r.position), str(r.description), LineType(str(r.line_type)))
+        for r in (await connection.execute(query)).all()
     )
 
 

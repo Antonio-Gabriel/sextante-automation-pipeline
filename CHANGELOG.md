@@ -29,6 +29,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                 └── CHG-0020  feat      Tipos de linha
                                                                     └── CHG-0021  feat      Exportação em CSV e XLSX
                                                                         └── CHG-0022  fix       Correcções da revisão dos tickets 05 e 06
+                                                                            └── CHG-0023  feat      Trabalhador robusto e reprocessamento
 ```
 
 ## Regras
@@ -93,6 +94,34 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0023 · Trabalhador robusto e reprocessamento
+
+- **Data:** 2026-11-18
+- **Tipo:** feat
+- **Pai:** CHG-0022
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-001, REQ-PLT-002, REQ-PLT-003, REQ-AUD-004, NFR-REL-001, NFR-REL-002, L-12
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `backend/src/sextante/platform/retry.py`
+  - `backend/src/sextante/ingestion/application/reprocess_invoice.py`, repositório e rotas
+  - `backend/src/sextante/matching/` (`ItemClassifierUnavailableError`, `TokenUsageReader`)
+  - `backend/src/sextante/review/application/read_job_progress.py`
+  - `backend/src/sextante/worker.py`, `main.py`, `platform/settings.py`
+  - `README.md`, `config/.env.example`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit. O esquema não mudou. As facturas reabertas por um reprocessamento ficam no estado em que estiverem.
+- **Verificação:** 217 testes, incluindo repetições com espera registada, falha permanente sem repetição, reprocessamento sem segunda extracção e tokens por trabalho; `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+**Repetições.** Só o modelo indisponível (`ItemClassifierUnavailableError`) é repetido, com recuo exponencial (1 s, 2 s, …). O número de tentativas é configurável, 3 por omissão. Qualquer outra falha é final, e uma resposta inválida nunca é repetida.
+
+**Falhas.** Uma factura que falha fica `failed`, com o motivo, e o trabalho continua.
+
+**Reprocessamento.** `POST /api/invoices/{id}/reprocess` volta a pôr na fila uma factura `failed`. O trabalho é reaberto e a factura é codificada a partir do texto guardado, sem nova extracção. Pedir duas vezes põe-na na fila uma só vez.
+
+**Estado do trabalho.** `GET /api/jobs/{id}` mostra as facturas por estado e no total, e os tokens gastos.
 
 ### CHG-0022 · Correcções da revisão dos tickets 05 e 06
 

@@ -110,7 +110,14 @@ def test_responses_carry_exactly_their_declared_fields(valid_environment: dict[s
         page = app.results(upload["job_id"])
 
     assert set(upload) == {"job_id", "status", "invoice_count", "existing_job_ids"}
-    assert set(job) == {"job_id", "status", "invoice_counts"}
+    assert set(job) == {
+        "job_id",
+        "status",
+        "invoice_counts",
+        "invoice_total",
+        "input_tokens",
+        "output_tokens",
+    }
     assert set(page) == {"lines", "limit", "offset", "limit_truncated"}
     lines = page["lines"]
     assert isinstance(lines, list)

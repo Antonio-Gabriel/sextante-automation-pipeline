@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Protocol
 from sextante.catalog.contracts import CatalogItem
 from sextante.matching.domain.item_choice import ItemChoiceRequest, ItemChoiceResponse
 from sextante.matching.domain.scoring import LexicalScore
+from sextante.platform.errors import DomainError
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncConnection
@@ -20,6 +21,26 @@ class LexicalScorer(Protocol):
         self, description: str, catalog_items: Sequence[CatalogItem]
     ) -> tuple[LexicalScore, ...]:
         """Return one score per item, ranked best first."""
+        ...
+
+
+class ItemClassifierUnavailableError(DomainError):
+    """The model could not answer now (timeout, overload, network): worth retrying.
+
+    Adapters raise this for transient failures only (REQ-PLT-003). Any other failure,
+    including an answer that breaks the schema, is never retried.
+    """
+
+    user_message_key = "errors.internal"
+
+
+class TokenUsageReader(Protocol):
+    """Port, published to other modules: tokens spent on given invoices (REQ-AUD-004)."""
+
+    async def read_token_usage(
+        self, connection: "AsyncConnection", invoice_ids: Sequence[str]
+    ) -> tuple[int, int]:
+        """Return the input and output tokens of every model call of these invoices."""
         ...
 
 

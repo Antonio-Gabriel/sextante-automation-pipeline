@@ -1,6 +1,6 @@
 """In-memory ItemClassifier for tests (04-padroes-de-codigo.md §3.3). Never calls a network."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Final
 
 from sextante.matching.contracts import ItemChoiceFromModel, ItemChoiceRequest, ItemChoiceResponse
@@ -25,15 +25,20 @@ class FakeItemClassifier:
         choices_by_item_number: Mapping[int, str | None] | None = None,
         raw_indexes: Mapping[int, int | None] | None = None,
         bypass_schema_with_index: int | None = None,
+        failures: Sequence[Exception] = (),
     ) -> None:
         self._by_item_number = choices_by_item_number or {}
         self._raw_indexes = raw_indexes or {}
         self._bypass_index = bypass_schema_with_index
+        # Raised one per call, in order, before any answer: simulates an unavailable model.
+        self._failures = list(failures)
         self.calls: list[ItemChoiceRequest] = []
 
     async def choose(self, request: ItemChoiceRequest) -> ItemChoiceResponse:
         """Return the declared choices for the lines of this request."""
         self.calls.append(request)
+        if self._failures:
+            raise self._failures.pop(0)
         answered = [
             line.position
             for line in request.lines

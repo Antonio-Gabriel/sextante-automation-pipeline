@@ -5,9 +5,10 @@ from typing import Annotated
 from fastapi import APIRouter, Path, Query, Request
 from pydantic import BaseModel, ConfigDict
 
-from sextante.platform.limits import IDENTIFIER_MAX_LENGTH, MAX_PAGE_SIZE
+from sextante.platform.limits import IDENTIFIER_MAX_LENGTH, IDENTIFIER_PATTERN, MAX_PAGE_SIZE
 from sextante.platform.user_messages import USER_MESSAGES_PT
 from sextante.review.application.list_job_results import ListJobResults, ResultLine
+from sextante.review.application.read_job_progress import ReadJobProgress
 
 review_router = APIRouter(prefix="/api")
 
@@ -49,6 +50,41 @@ class ResultsPageResponse(BaseModel):
     limit: int
     offset: int
     limit_truncated: bool
+
+
+class JobProgressResponse(BaseModel):
+    """Output contract of a job's progress (REQ-PLT-001, REQ-AUD-004)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    job_id: str
+    status: str
+    invoice_counts: dict[str, int]
+    invoice_total: int
+    input_tokens: int
+    output_tokens: int
+
+
+@review_router.get("/jobs/{job_id}", response_model=JobProgressResponse)
+async def read_job_progress(
+    request: Request,
+    job_id: Annotated[str, Path(max_length=IDENTIFIER_MAX_LENGTH, pattern=IDENTIFIER_PATTERN)],
+) -> JobProgressResponse:
+    """Return the job status, its invoices counted by status and in total, and its tokens.
+
+    Example:
+        GET /api/jobs/3f2a... -> {"status": "completed", "invoice_total": 1, ...}
+    """
+    read_progress: ReadJobProgress = request.app.state.read_job_progress
+    progress = await read_progress.execute(job_id)
+    return JobProgressResponse(
+        job_id=progress.job_id,
+        status=progress.status,
+        invoice_counts=progress.invoice_counts,
+        invoice_total=progress.invoice_total,
+        input_tokens=progress.input_tokens,
+        output_tokens=progress.output_tokens,
+    )
 
 
 @review_router.get("/jobs/{job_id}/results", response_model=ResultsPageResponse)

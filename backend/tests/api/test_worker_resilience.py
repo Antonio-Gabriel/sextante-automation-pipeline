@@ -1,0 +1,119 @@
+"""Ticket 07: failure isolation, retries, reprocessing and token usage (REQ-PLT-001 to 003)."""
+
+import pytest
+
+from sextante.matching.contracts import ItemClassifierUnavailableError
+from tests.api.encoding_harness import running_application
+from tests.api.test_encoding_safeguards import _query
+from tests.fakes.fake_item_classifier import FakeItemClassifier
+from tests.fixtures.synthetic_invoices import billed_to, taag_air_ticket_to_amt
+
+
+def _unavailable() -> ItemClassifierUnavailableError:
+    return ItemClassifierUnavailableError("Model timed out. Expected an answer within the timeout.")
+
+
+@pytest.mark.requirement("REQ-PLT-003")
+def test_transient_model_failures_are_retried_with_exponential_backoff(
+    valid_environment: dict[str, str],
+) -> None:
+    """Two timeouts, then an answer: the invoice is coded, after waiting 1 s then 2 s."""
+    invoice = taag_air_ticket_to_amt()
+    classifier = FakeItemClassifier({1: "O00004"}, failures=[_unavailable(), _unavailable()])
+    sleeps: list[float] = []
+
+    with running_application(valid_environment, [invoice], classifier, sleeps) as app:
+        job = app.wait_for_job(app.upload(invoice)["job_id"])
+
+    assert job["invoice_counts"] == {"encoded": 1}
+    assert (len(classifier.calls), sleeps) == (3, [1.0, 2.0])
+
+
+@pytest.mark.requirement("REQ-PLT-002", "REQ-PLT-003", "NFR-REL-001")
+def test_a_model_down_for_every_attempt_fails_one_invoice_and_the_job_continues(
+    valid_environment: dict[str, str],
+) -> None:
+    """After the last attempt the invoice is failed; the next one is still coded."""
+    first = taag_air_ticket_to_amt()
+    second = billed_to("INV-004", "Petrolífera Sintética de Cabinda Lda", "5419990003")
+    failures = [_unavailable(), _unavailable(), _unavailable()]
+    classifier = FakeItemClassifier({1: "O00031"}, failures=failures)
+
+    with running_application(valid_environment, [first, second], classifier) as app:
+        files = [("files", (i.file_name, i.content, "application/pdf")) for i in (first, second)]
+        job = app.wait_for_job(app.client.post("/api/invoices", files=files).json()["job_id"])
+
+    assert job["status"] == "completed"
+    assert job["invoice_counts"] == {"encoded": 1, "failed": 1}
+    assert job["invoice_total"] == 2
+
+
+@pytest.mark.requirement("REQ-PLT-003", "REQ-MAP-007")
+def test_a_permanent_failure_is_not_retried(valid_environment: dict[str, str]) -> None:
+    """Only an unavailable model is worth another call; anything else fails at once."""
+    invoice = taag_air_ticket_to_amt()
+    classifier = FakeItemClassifier({1: "O00004"}, failures=[RuntimeError("bad request")])
+
+    with running_application(valid_environment, [invoice], classifier) as app:
+        job = app.wait_for_job(app.upload(invoice)["job_id"])
+
+    assert job["invoice_counts"] == {"failed": 1}
+    assert len(classifier.calls) == 1
+
+
+@pytest.mark.requirement("NFR-REL-001", "NFR-REL-002")
+def test_a_failed_invoice_is_reprocessed_from_its_stored_text_without_new_extraction(
+    valid_environment: dict[str, str],
+) -> None:
+    """Reprocessing codes the stored lines again; the file is not extracted twice."""
+    invoice = taag_air_ticket_to_amt()
+    failures = [_unavailable(), _unavailable(), _unavailable()]
+    classifier = FakeItemClassifier({1: "O00004"}, failures=failures)
+
+    with running_application(valid_environment, [invoice], classifier) as app:
+        job_id = app.upload(invoice)["job_id"]
+        app.wait_for_job(job_id)
+        [(invoice_id,)] = _query(valid_environment, "SELECT id FROM invoice")
+        response = app.client.post(f"/api/invoices/{invoice_id}/reprocess")
+        job = app.wait_for_job(job_id)
+        line = app.results(job_id)["lines"][0]  # type: ignore[index]
+
+    assert response.status_code == 202
+    assert job["invoice_counts"] == {"encoded": 1}
+    assert line["item_number"] == "O00004"
+    assert len(app.extractor.calls) == 1
+
+
+@pytest.mark.requirement("NFR-REL-001")
+def test_only_a_failed_invoice_can_be_reprocessed(valid_environment: dict[str, str]) -> None:
+    """A coded invoice is not coded twice; an unknown invoice is not found."""
+    invoice = taag_air_ticket_to_amt()
+
+    with running_application(
+        valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
+    ) as app:
+        app.wait_for_job(app.upload(invoice)["job_id"])
+        [(invoice_id,)] = _query(valid_environment, "SELECT id FROM invoice")
+        coded = app.client.post(f"/api/invoices/{invoice_id}/reprocess")
+        unknown = app.client.post("/api/invoices/nope/reprocess")
+
+    assert (coded.status_code, unknown.status_code) == (409, 404)
+    assert coded.json()["code"] == "errors.invoice.not_reprocessable"
+
+
+@pytest.mark.requirement("REQ-AUD-004", "L-12")
+def test_job_status_reports_the_tokens_of_its_model_calls(
+    valid_environment: dict[str, str],
+) -> None:
+    """Tokens are recorded per invoice and summed per job, to measure the real cost."""
+    invoice = taag_air_ticket_to_amt()
+
+    with running_application(
+        valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
+    ) as app:
+        job = app.wait_for_job(app.upload(invoice)["job_id"])
+
+    assert (job["input_tokens"], job["output_tokens"]) == (100, 10)
+    assert _query(valid_environment, "SELECT input_tokens, output_tokens FROM model_call") == [
+        (100, 10)
+    ]

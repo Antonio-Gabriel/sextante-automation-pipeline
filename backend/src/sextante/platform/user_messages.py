@@ -15,6 +15,8 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
         "errors.upload.invalid_file_name": "O nome do ficheiro é inválido.",
         "errors.upload.no_files": "Nenhum ficheiro foi enviado.",
         "errors.job.not_found": "Trabalho não encontrado.",
+        "errors.invoice.not_found": "Factura não encontrada.",
+        "errors.invoice.not_reprocessable": "Só uma factura com falha pode ser reprocessada.",
         "flags.entity_label_not_found": "Não foi encontrada a entidade facturada na factura.",
         "flags.multiple_billed_entities": "A factura indica mais do que uma entidade facturada.",
         "flags.entity_similar_not_equal": "Entidade parecida com a AMT, mas não igual: confirmar.",

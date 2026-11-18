@@ -41,6 +41,7 @@ class JobSummary:
     job_id: str
     status: str
     invoice_counts: dict[str, int]
+    invoice_ids: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,3 +100,11 @@ class ExportLine:
     line_id: str
     position: int
     description: str
+
+
+@dataclass(frozen=True, slots=True)
+class InvoiceState:
+    """Where an invoice is: its job and its status."""
+
+    job_id: str
+    status: InvoiceStatus

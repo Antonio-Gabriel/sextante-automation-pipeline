@@ -5,14 +5,14 @@ from typing import Annotated
 from fastapi import APIRouter, File, Path, Request, UploadFile
 from pydantic import BaseModel, ConfigDict
 
-from sextante.ingestion.application.read_job_status import ReadJobStatus
+from sextante.ingestion.application.reprocess_invoice import ReprocessInvoice
 from sextante.ingestion.application.upload_invoices import (
     FileTooLargeError,
     IncomingFile,
     UploadInvoices,
     check_file_count,
 )
-from sextante.platform.limits import IDENTIFIER_MAX_LENGTH, MAX_UPLOAD_BYTES
+from sextante.platform.limits import IDENTIFIER_MAX_LENGTH, IDENTIFIER_PATTERN, MAX_UPLOAD_BYTES
 from sextante.platform.structured_logging import correlation_id_var
 
 ingestion_router = APIRouter(prefix="/api")
@@ -29,14 +29,13 @@ class UploadResponse(BaseModel):
     existing_job_ids: list[str]
 
 
-class JobStatusResponse(BaseModel):
-    """Output contract of a job status (REQ-PLT-001)."""
+class ReprocessResponse(BaseModel):
+    """Output contract of a reprocessing request."""
 
     model_config = ConfigDict(frozen=True)
 
+    invoice_id: str
     job_id: str
-    status: str
-    invoice_counts: dict[str, int]
 
 
 @ingestion_router.post("/invoices", status_code=202, response_model=UploadResponse)
@@ -63,20 +62,21 @@ async def upload_invoices(
     )
 
 
-@ingestion_router.get("/jobs/{job_id}", response_model=JobStatusResponse)
-async def read_job_status(
-    request: Request, job_id: Annotated[str, Path(max_length=IDENTIFIER_MAX_LENGTH)]
-) -> JobStatusResponse:
-    """Return the job status with its invoices counted by status.
+@ingestion_router.post(
+    "/invoices/{invoice_id}/reprocess", status_code=202, response_model=ReprocessResponse
+)
+async def reprocess_invoice(
+    request: Request,
+    invoice_id: Annotated[str, Path(max_length=IDENTIFIER_MAX_LENGTH, pattern=IDENTIFIER_PATTERN)],
+) -> ReprocessResponse:
+    """Queue a failed invoice again; it is coded from its stored text (NFR-REL-002).
 
     Example:
-        GET /api/jobs/3f2a... -> {"status": "completed", "invoice_counts": {"encoded": 1}}
+        POST /api/invoices/3f2a.../reprocess -> 202 {"invoice_id": "...", "job_id": "..."}
     """
-    read_status: ReadJobStatus = request.app.state.read_job_status
-    summary = await read_status.execute(job_id)
-    return JobStatusResponse(
-        job_id=summary.job_id, status=summary.status, invoice_counts=summary.invoice_counts
-    )
+    use_case: ReprocessInvoice = request.app.state.reprocess_invoice
+    receipt = await use_case.execute(invoice_id)
+    return ReprocessResponse(invoice_id=receipt.invoice_id, job_id=receipt.job_id)
 
 
 async def _read_bounded(upload: UploadFile) -> IncomingFile:

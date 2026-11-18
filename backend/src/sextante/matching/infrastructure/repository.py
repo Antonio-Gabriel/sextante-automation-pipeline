@@ -3,7 +3,7 @@
 from collections import defaultdict
 from collections.abc import Sequence
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from sextante.matching.application.records import EncodedLineRecord, LineCoding, ModelCallRecord
@@ -16,7 +16,7 @@ from sextante.matching.infrastructure.tables import (
 
 
 class MatchingRepository:
-    """Implements MatchingRepositoryPort and CodingsReader with SQLAlchemy Core.
+    """Implements MatchingRepositoryPort, CodingsReader and TokenUsageReader.
 
     Example:
         await MatchingRepository().record_model_call(connection, record)
@@ -59,6 +59,12 @@ class MatchingRepository:
         if scores:
             await connection.execute(LEXICAL_SCORE_TABLE.insert(), scores)
 
+    async def read_token_usage(
+        self, connection: AsyncConnection, invoice_ids: Sequence[str]
+    ) -> tuple[int, int]:
+        """Return the input and output tokens of every model call of these invoices."""
+        return await _token_usage(connection, invoice_ids)
+
     async def read_codings(
         self, connection: AsyncConnection, line_ids: Sequence[str]
     ) -> dict[str, LineCoding]:
@@ -82,6 +88,16 @@ class MatchingRepository:
             )
             for r in rows
         }
+
+
+async def _token_usage(connection: AsyncConnection, invoice_ids: Sequence[str]) -> tuple[int, int]:
+    table = MODEL_CALL_TABLE
+    query = select(
+        func.coalesce(func.sum(table.c.input_tokens), 0),
+        func.coalesce(func.sum(table.c.output_tokens), 0),
+    ).where(table.c.invoice_id.in_(list(invoice_ids)))
+    row = (await connection.execute(query)).one()
+    return int(str(row[0])), int(str(row[1]))
 
 
 async def _flags_of(
