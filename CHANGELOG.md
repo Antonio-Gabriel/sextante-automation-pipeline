@@ -131,7 +131,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0051
 - **Estado:** activa
 - **Requisitos:** SEC-12, NFR-REL-001, NFR-REL-002, REQ-PLT-003, SEC-15
-- **Commit:** pendente
+- **Commit:** `dc32a24`
 - **Migração:** nenhuma (o esquema continua na revisão `0009`)
 - **Ficheiros:** `backend/src/sextante/platform/model_call_ceiling.py` (`CeilingObserver`), `platform/rate_limit.py` (`RateLimit.window_at`, `seconds_left`), `worker.py` (`JobCeilingStatus`, reposição no arranque), `ingestion/domain/statuses.py`, `ingestion/application/ports.py` e `ingestion/infrastructure/repository.py` (`change_job_status`, `finish_job` condicional, `requeue_interrupted_jobs`), `main.py` (`model_call_limit`), `tests/api/test_model_call_ceiling.py`, `tests/platform/test_model_call_ceiling.py`, `tests/fakes/held_clock.py`, `tests/fakes/fixed_clock.py`, `README.md`, `docs/03-seguranca.md` (SEC-12), ticket de operação 02
 - **Reversibilidade:** total
