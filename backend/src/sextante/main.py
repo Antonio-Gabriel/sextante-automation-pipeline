@@ -48,6 +48,7 @@ from sextante.ingestion.contracts import InvoiceExtractor
 from sextante.ingestion.infrastructure.local_file_store import LocalInvoiceFileStore
 from sextante.ingestion.infrastructure.pdf_invoice_extractor import PdfInvoiceExtractor
 from sextante.ingestion.infrastructure.repository import IngestionRepository
+from sextante.matching.application.ceiling_classifier import CeilingItemClassifier
 from sextante.matching.application.encode_invoice import EncodeInvoice, EncodingCollaborators
 from sextante.matching.application.line_coding import CodingRules, LineCoder
 from sextante.matching.contracts import EntityDenylist, ItemClassifier, TargetEntity
@@ -72,6 +73,7 @@ from sextante.platform.idempotency import (
     IdempotentExecutor,
     purge_periodically,
 )
+from sextante.platform.model_call_ceiling import ModelCallCeiling
 from sextante.platform.rate_limit import (
     HOUR,
     MINUTE,
@@ -192,6 +194,15 @@ def create_app(
     app.state.costly_endpoints = COSTLY_ENDPOINTS
     _include_routers(app, settings)
     return app
+
+
+def model_call_ceiling(settings: Settings) -> RateLimit:
+    """The ceiling on model calls per window (SEC-12), from the settings.
+
+    Example:
+        ModelCallCeiling(model_call_ceiling(settings), time.monotonic, asyncio.sleep)
+    """
+    return RateLimit(settings.model_call_ceiling, float(settings.model_call_window_seconds))
 
 
 def rate_limits(settings: Settings) -> dict[RateRule, RateLimit]:
@@ -352,19 +363,23 @@ def _build_worker(
     store: LocalInvoiceFileStore,
     classifier: ItemClassifier,
 ) -> EncodingWorker:
+    # Every model call of the worker, retries included, takes room under the ceiling.
+    ceiling = ModelCallCeiling(model_call_ceiling(settings), adapters.monotonic, adapters.sleep)
+    ceiled = CeilingItemClassifier(classifier, ceiling)
     return EncodingWorker(
         WorkerCollaborators(
             engine=engine,
             repository=IngestionRepository(),
             store=store,
             extractor=adapters.extractor or PdfInvoiceExtractor(settings.pdf_min_chars_per_page),
-            encoder=_build_encoder(engine, reference.catalog, settings, adapters, classifier),
+            encoder=_build_encoder(engine, reference.catalog, settings, adapters, ceiled),
             audit=AuditEventRepository(),
             clock=adapters.clock,
             identifiers=adapters.identifiers,
             target_entity=reference.target_entity,
             denylist=reference.denylist,
             poll_seconds=adapters.worker_poll_seconds,
+            ceiling=ceiling,
         )
     )
 

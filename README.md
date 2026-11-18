@@ -72,6 +72,12 @@ The API counts requests per time window (SEC-12). Over a quota the answer is `42
 
 Windows are fixed, so up to twice a quota can pass across the boundary between two windows. The counters live in the memory of the server process. With one process that is enough. With two or more instances each one allows the full quota: running more than one instance needs a shared counter, such as Redis or Valkey.
 
+## Model call ceiling
+
+The worker makes at most `SEXTANTE_MODEL_CALL_CEILING` model calls per `SEXTANTE_MODEL_CALL_WINDOW_SECONDS` (SEC-12). The default is 200 calls per hour, provisional until the real volume is known. Every call counts, retries included, because every attempt is paid. Invoices over the ceiling are never refused nor failed: they stay `queued`, the job shows `waiting_model`, and the worker codes them when the window opens again. The log records `model_call_ceiling_reached`, with the job and the seconds to wait, and `model_call_ceiling_released`.
+
+To code faster, raise the ceiling; to spend less per hour, lower it. Both values must be at least 1. Like the rate limits, the count lives in the memory of the process: two workers would each allow the full ceiling.
+
 ## Golden set
 
 The sample invoices never enter the repository. Point `SEXTANTE_GOLDEN_SAMPLES_PATH`, in `config/.env`, at the local folder that holds them, then run `make golden` from `backend/`. It measures, for each sample, the refusal, the entity, the target sheet, the number and types of lines, and which fields the extraction did not find. Each sample is reported as `ok` or with the fields that diverge; the report holds no text from any sample.

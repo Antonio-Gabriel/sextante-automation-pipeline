@@ -57,6 +57,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                 └── CHG-0048  docs      Tickets do frontend, da operação e do deploy
                                                                                                                                                                                     └── CHG-0049  security  Limites de taxa por endpoint
                                                                                                                                                                                         └── CHG-0050  fix       Correcções da revisão dos limites de taxa
+                                                                                                                                                                                            └── CHG-0051  security  Tecto de chamadas ao modelo no trabalhador
 ```
 
 ## Regras
@@ -121,6 +122,24 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0051 · Tecto de chamadas ao modelo no trabalhador
+
+- **Data:** 2026-11-19
+- **Tipo:** security
+- **Pai:** CHG-0050
+- **Estado:** activa
+- **Requisitos:** SEC-12, REQ-PLT-002, REQ-PLT-003, SEC-15
+- **Commit:** pendente
+- **Migração:** nenhuma (o estado do trabalho é texto; o esquema continua na revisão `0009`)
+- **Ficheiros:** `backend/src/sextante/platform/model_call_ceiling.py`, `matching/application/ceiling_classifier.py`, `worker.py`, `main.py`, `platform/settings.py`, `ingestion/domain/statuses.py` (`waiting_model`), `ingestion/application/ports.py` e `ingestion/infrastructure/repository.py` (`set_job_status`), `tests/api/test_model_call_ceiling.py`, `README.md`, `config/.env.example`, `docs/02-arquitectura.md`, `docs/03-seguranca.md` (SEC-12), ticket de operação 02
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit. Um trabalho deixado em `waiting_model` por um processo parado fica como um em `running`.
+- **Verificação:** 339 testes e o `xfail` estrito; testes novos com o `FakeItemClassifier` e um relógio monotónico controlado: acima do tecto a factura fica `queued`, o trabalho mostra `waiting_model`, e tudo é codificado quando a janela abre, sem nenhuma factura `failed`; uma nova tentativa conta no tecto; o log regista a espera sem conteúdo da factura; valores por omissão; tecto ou janela abaixo de 1 recusam o arranque. `make golden` com 12 amostras sem divergências. `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+**Comportamento.** O trabalhador faz no máximo `SEXTANTE_MODEL_CALL_CEILING` chamadas ao modelo por `SEXTANTE_MODEL_CALL_WINDOW_SECONDS`, 200 por hora por omissão, valor provisório. Cada chamada conta, novas tentativas incluídas, porque cada tentativa é paga. Antes de cada factura, se o tecto está cheio, o trabalho passa a `waiting_model`, o log regista `model_call_ceiling_reached` com o trabalho e os segundos de espera, e o trabalhador espera pela janela seguinte; depois volta a `running`. Recusar seria perder trabalho; atrasar é só atrasar.
+
+**Limites declarados.** O contador vive na memória do processo, como os limites de taxa. Uma nova tentativa a meio de uma factura também espera pelo tecto, mas sem marcar o trabalho. Uma factura que não chama o modelo (rejeitada, entidade ambígua, sem linhas de serviço) espera igualmente quando o tecto está cheio.
 
 ### CHG-0050 · Correcções da revisão dos limites de taxa
 

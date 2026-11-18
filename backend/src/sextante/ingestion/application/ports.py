@@ -61,6 +61,12 @@ class IngestionRepositoryPort(Protocol):
         """Move an invoice to a status."""
         ...
 
+    async def set_job_status(
+        self, connection: AsyncConnection, job_id: str, status: JobStatus
+    ) -> None:
+        """Move a claimed job between running and waiting for the model call ceiling."""
+        ...
+
     async def finish_job(
         self, connection: AsyncConnection, job_id: str, status: JobStatus, now: datetime
     ) -> None:

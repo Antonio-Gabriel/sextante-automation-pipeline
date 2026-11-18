@@ -15,6 +15,7 @@ CSV_SEPARATORS: Final = frozenset({",", ";", "|"})
 # A key a person could guess is refused at startup.
 API_KEY_MIN_LENGTH: Final = 16
 RATE_LIMIT_MAXIMUM: Final = 100_000
+MODEL_CALL_WINDOW_MAXIMUM_SECONDS: Final = 86_400
 PDF_MIN_CHARS_DEFAULT: Final = 100
 PDF_MIN_CHARS_MAXIMUM: Final = 10_000
 REVIEWER_ID_MAX_LENGTH: Final = 128
@@ -75,6 +76,10 @@ class Settings(ModelCallSettings):
     rate_limit_export_per_hour: int = Field(default=30, ge=1, le=RATE_LIMIT_MAXIMUM)
     rate_limit_correction_per_minute: int = Field(default=120, ge=1, le=RATE_LIMIT_MAXIMUM)
     rate_limit_general_per_minute: int = Field(default=300, ge=1, le=RATE_LIMIT_MAXIMUM)
+    # Ceiling on model calls per window, in the worker: over it invoices wait queued
+    # (SEC-12). Provisional default, to calibrate with the real volume (L-02).
+    model_call_ceiling: int = Field(default=200, ge=1, le=RATE_LIMIT_MAXIMUM)
+    model_call_window_seconds: int = Field(default=3600, ge=1, le=MODEL_CALL_WINDOW_MAXIMUM_SECONDS)
     # Characters per page below which a PDF counts as scanned (REQ-ING-002, L-01).
     pdf_min_chars_per_page: int = Field(
         default=PDF_MIN_CHARS_DEFAULT, ge=1, le=PDF_MIN_CHARS_MAXIMUM

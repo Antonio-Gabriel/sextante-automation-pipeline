@@ -32,6 +32,7 @@ from sextante.matching.contracts import (
 )
 from sextante.platform.audit import AuditEventRepository
 from sextante.platform.clock import Clock, IdentifierGenerator
+from sextante.platform.model_call_ceiling import ModelCallCeiling
 from sextante.platform.structured_logging import correlation_id_var
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,7 @@ class WorkerCollaborators:
     target_entity: TargetEntity
     denylist: EntityDenylist
     poll_seconds: float
+    ceiling: ModelCallCeiling
 
 
 class EncodingWorker:
@@ -90,12 +92,32 @@ class EncodingWorker:
         async with self._collaborators.engine.connect() as connection:
             invoices = await self._collaborators.repository.queued_invoices(connection, job.job_id)
         for invoice in invoices:
+            await self._wait_for_ceiling(job.job_id)
             await self._process_invoice_isolated(invoice)
         async with self._collaborators.engine.begin() as connection:
             await self._collaborators.repository.finish_job(
                 connection, job.job_id, JobStatus.COMPLETED, self._collaborators.clock.now()
             )
         logger.info("job_completed", extra={"job_id": job.job_id, "invoice_count": len(invoices)})
+
+    async def _wait_for_ceiling(self, job_id: str) -> None:
+        # Over the model call ceiling the next invoice stays queued and the job shows it
+        # is waiting; the work is delayed, never failed (SEC-12).
+        deps = self._collaborators
+        wait_seconds = deps.ceiling.wait_seconds()
+        if wait_seconds == 0:
+            return
+        logger.info(
+            "model_call_ceiling_reached", extra={"job_id": job_id, "wait_seconds": wait_seconds}
+        )
+        await self._set_job_status(job_id, JobStatus.WAITING_MODEL)
+        await deps.ceiling.wait_for_room()
+        await self._set_job_status(job_id, JobStatus.RUNNING)
+        logger.info("model_call_ceiling_released", extra={"job_id": job_id})
+
+    async def _set_job_status(self, job_id: str, status: JobStatus) -> None:
+        async with self._collaborators.engine.begin() as connection:
+            await self._collaborators.repository.set_job_status(connection, job_id, status)
 
     async def _process_invoice_isolated(self, invoice: QueuedInvoice) -> None:
         # One invoice failing does not stop the job (REQ-PLT-002). The failure is recorded

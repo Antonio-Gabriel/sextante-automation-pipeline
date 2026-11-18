@@ -8,6 +8,8 @@ class JobStatus(StrEnum):
 
     QUEUED = "queued"
     RUNNING = "running"
+    # Claimed, with invoices waiting for room under the model call ceiling (SEC-12).
+    WAITING_MODEL = "waiting_model"
     COMPLETED = "completed"
     FAILED = "failed"
 

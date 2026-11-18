@@ -294,7 +294,7 @@ SQLite com WAL. Datas em UTC, texto ISO 8601, porque o SQLite não tem tipo de d
 
 | Tabela | Conteúdo | Notas |
 |---|---|---|
-| `job` | Um carregamento. Estado, contagens, momentos, `worker_id` | `queued`, `running`, `completed`, `failed` |
+| `job` | Um carregamento. Estado, contagens, momentos, `worker_id` | `queued`, `running`, `waiting_model`, `completed`, `failed` |
 | `invoice` | Uma factura. `content_digest` único, nome apresentado, caminho em armazenamento, formato, estado | O digest é a chave de idempotência |
 | `invoice_header` | Entidade extraída e o seu NIF, linhas "ao cuidado de", número, data, fornecedor e o seu NIF, moeda, total, resultado da verificação de entidade e motivo de ambiguidade, aba de destino (pode ficar vazia), identificador do fornecedor, `Invoice_ID` | Um para um com `invoice`. Índice não único sobre (fornecedor, número), para o duplicado provável |
 | `invoice_line` | Descrição original e normalizada, tipo de linha, quantidade, preço unitário, percentagem de IVA, valor, ordem no documento | A ordem na saída é a ordem aqui |

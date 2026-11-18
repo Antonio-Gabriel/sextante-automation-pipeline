@@ -4,11 +4,13 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] O tecto e a janela são configuráveis, com valores por omissão declarados
-- [ ] Acima do tecto, a factura fica `queued` e é codificada depois; nenhuma factura passa a `failed` por causa do tecto
-- [ ] O estado do trabalho mostra que há facturas à espera do tecto
-- [ ] O log regista quando o tecto atrasa trabalho, sem conteúdo de facturas
-- [ ] O `README.md` explica o tecto e como o ajustar
-- [ ] Testes com o `FakeItemClassifier` e um relógio controlado, que provam que o tecto atrasa e não perde trabalho
+- [x] O tecto e a janela são configuráveis, com valores por omissão declarados
+- [x] Acima do tecto, a factura fica `queued` e é codificada depois; nenhuma factura passa a `failed` por causa do tecto
+- [x] O estado do trabalho mostra que há facturas à espera do tecto
+- [x] O log regista quando o tecto atrasa trabalho, sem conteúdo de facturas
+- [x] O `README.md` explica o tecto e como o ajustar
+- [x] Testes com o `FakeItemClassifier` e um relógio controlado, que provam que o tecto atrasa e não perde trabalho
+
+Resolved on 2026-11-19 (CHG-0051): the worker counts every model call, retries included, in fixed windows; over the ceiling it waits before the next invoice, which stays `queued`, and the job shows `waiting_model`. Default 200 calls per hour, provisional.

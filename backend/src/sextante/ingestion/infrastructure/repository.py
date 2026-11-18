@@ -141,6 +141,14 @@ class IngestionRepository:
             .values(status=status, status_reason=reason)
         )
 
+    async def set_job_status(
+        self, connection: AsyncConnection, job_id: str, status: JobStatus
+    ) -> None:
+        """Move a claimed job between running and waiting for the model call ceiling."""
+        await connection.execute(
+            update(JOB_TABLE).where(JOB_TABLE.c.id == job_id).values(status=status)
+        )
+
     async def finish_job(
         self, connection: AsyncConnection, job_id: str, status: JobStatus, now: datetime
     ) -> None:
