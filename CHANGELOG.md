@@ -111,7 +111,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0031
 - **Estado:** activa
 - **Requisitos:** REQ-ING-002, REQ-ING-003, NFR-TST-001, D-3.18, SEC-15, SEC-20
-- **Commit:** pendente
+- **Commit:** `01df5cf`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/ingestion/` (extractor, leitor do layout, `missing_fields`, contratos), `worker.py`, `platform/settings.py`
