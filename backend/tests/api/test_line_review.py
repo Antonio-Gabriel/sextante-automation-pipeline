@@ -17,9 +17,9 @@ from tests.api.encoding_harness import (
 from tests.api.test_encoding_safeguards import _query
 from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fixtures.synthetic_invoices import (
+    air_ticket_to_amt,
     billed_to,
     hotel_stay_to_amt,
-    taag_air_ticket_to_amt,
 )
 
 
@@ -230,7 +230,7 @@ def test_results_can_be_filtered(
 @pytest.mark.requirement("REQ-REV-001")
 def test_results_can_be_filtered_by_invoice(valid_environment: dict[str, str]) -> None:
     """Only the lines of the chosen invoice."""
-    first, second = taag_air_ticket_to_amt(), hotel_stay_to_amt()
+    first, second = air_ticket_to_amt(), hotel_stay_to_amt()
     with running_application(
         valid_environment, [first, second], FakeItemClassifier({1: None, 2: None})
     ) as app:

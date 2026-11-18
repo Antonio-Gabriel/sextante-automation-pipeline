@@ -3,7 +3,8 @@
 A scanned PDF has no text layer and is refused with ``pdf_without_text_layer``; a PDF
 that is not an invoice of the model, such as a customs assessment notice, is refused
 with ``unsupported_document_type`` (L-14). Neither is ever coded. XLSX extraction is not
-implemented in this version (D-3.6), so an XLSX upload is refused with its own reason.
+implemented in this version (D-3.6): an XLSX upload is refused as
+``unsupported_document_type``, as REQ-ING-001 sends it to REQ-ING-009.
 """
 
 import io
@@ -51,7 +52,7 @@ class PdfInvoiceExtractor:
             extractor.extract(pdf_bytes, FileFormat.PDF).invoice_number
         """
         if file_format is not FileFormat.PDF:
-            return ExtractionRejection(RejectionReason.EXTRACTOR_NOT_CONFIGURED)
+            return ExtractionRejection(RejectionReason.UNSUPPORTED_DOCUMENT_TYPE)
         try:
             with pdfplumber.open(io.BytesIO(content)) as pdf:
                 return self._extract_pages(pdf.pages)

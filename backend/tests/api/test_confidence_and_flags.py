@@ -9,7 +9,7 @@ from sextante.platform.settings import StartupConfigurationError
 from tests.api.encoding_harness import running_application
 from tests.api.test_encoding_safeguards import _query
 from tests.fakes.fake_item_classifier import FakeItemClassifier
-from tests.fixtures.synthetic_invoices import billed_to, taag_air_ticket_to_amt
+from tests.fixtures.synthetic_invoices import air_ticket_to_amt, billed_to
 
 CHEVRON = ("INV-004", "Petrolífera Sintética de Cabinda Lda", "5419990003")
 
@@ -51,7 +51,7 @@ def test_outlays_line_without_a_fitting_item_is_left_empty_and_flagged(
     valid_environment: dict[str, str],
 ) -> None:
     """No O00999 and no best guess in OUTLAYS: the gap goes back to a reviewer."""
-    line = _coded_line(valid_environment, taag_air_ticket_to_amt(), FakeItemClassifier({1: None}))
+    line = _coded_line(valid_environment, air_ticket_to_amt(), FakeItemClassifier({1: None}))
 
     assert (line["item_number"], line["confidence"]) == (None, "LOW")
     assert _flag_codes(line) == ["no_match_in_outlays"]
@@ -60,9 +60,7 @@ def test_outlays_line_without_a_fitting_item_is_left_empty_and_flagged(
 @pytest.mark.requirement("REQ-MAP-013", "L-08")
 def test_choosing_the_generic_item_is_low_and_flagged(valid_environment: dict[str, str]) -> None:
     """O00052 is a valid answer that never passes unreviewed."""
-    line = _coded_line(
-        valid_environment, taag_air_ticket_to_amt(), FakeItemClassifier({1: "O00052"})
-    )
+    line = _coded_line(valid_environment, air_ticket_to_amt(), FakeItemClassifier({1: "O00052"}))
 
     assert (line["item_number"], line["confidence"]) == ("O00052", "LOW")
     assert _flag_codes(line) == ["generic_catalog_item"]
@@ -74,7 +72,7 @@ def test_invalid_model_answer_is_low_flagged_and_without_code(
 ) -> None:
     """A line failure, never an improvised code."""
     line = _coded_line(
-        valid_environment, taag_air_ticket_to_amt(), FakeItemClassifier(raw_indexes={1: 50})
+        valid_environment, air_ticket_to_amt(), FakeItemClassifier(raw_indexes={1: 50})
     )
 
     assert (line["item_number"], line["confidence"]) == (None, "LOW")
@@ -117,9 +115,7 @@ def test_every_flag_comes_with_its_portuguese_message(valid_environment: dict[st
 @pytest.mark.requirement("REQ-REV-005", "REQ-CNF-002")
 def test_an_unflagged_line_starts_accepted(valid_environment: dict[str, str]) -> None:
     """A line with no flag needs no review."""
-    line = _coded_line(
-        valid_environment, taag_air_ticket_to_amt(), FakeItemClassifier({1: "O00004"})
-    )
+    line = _coded_line(valid_environment, air_ticket_to_amt(), FakeItemClassifier({1: "O00004"}))
 
     assert line["review_status"] == "accepted"
     assert line["flags"] == []

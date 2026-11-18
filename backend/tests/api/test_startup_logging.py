@@ -36,7 +36,8 @@ def test_forbidden_fields_are_redacted_even_when_a_developer_logs_them(
     capsys.readouterr()
 
     logging.getLogger("sextante.test").warning(
-        "line_encoded", extra={"description": "Passagem aérea", "supplier_name": "companhia aérea"}
+        "line_encoded",
+        extra={"description": "Passagem aérea", "supplier_name": "Fornecedor Sintético"},
     )
 
     record = _json_lines(capsys.readouterr().out)[-1]

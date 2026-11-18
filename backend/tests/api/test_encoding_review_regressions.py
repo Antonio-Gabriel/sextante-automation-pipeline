@@ -13,10 +13,10 @@ from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fixtures.synthetic_invoices import (
     AMT_NAME,
     SyntheticInvoice,
+    air_ticket_to_amt,
     extraction_of,
     hotel_stay_to_amt,
     synthetic_pdf_bytes,
-    taag_air_ticket_to_amt,
 )
 
 
@@ -25,7 +25,7 @@ def test_model_receives_the_invoice_context_with_the_lines(
     valid_environment: dict[str, str],
 ) -> None:
     """Supplier and currency travel with the lines, as context for short descriptions."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     classifier = FakeItemClassifier({1: "O00004"})
 
     with running_application(valid_environment, [invoice], classifier) as app:
@@ -40,7 +40,7 @@ def test_billed_entity_is_normalized_before_it_is_compared(
     valid_environment: dict[str, str],
 ) -> None:
     """An invisible character inside the name does not stop an otherwise exact match."""
-    original = taag_air_ticket_to_amt()
+    original = air_ticket_to_amt()
     block = dataclasses.replace(
         extraction_of(original).billed_entities[0], name=AMT_NAME.replace(" Limitada", "​ Limitada")
     )
@@ -74,7 +74,7 @@ def test_an_answer_built_without_validation_is_validated_before_use(
     valid_environment: dict[str, str],
 ) -> None:
     """An adapter that skips the schema still cannot get an index past the ceiling in."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     classifier = FakeItemClassifier({1: "O00004"}, bypass_schema_with_index=MAX_SHEET_ITEMS + 5)
 
     with running_application(valid_environment, [invoice], classifier) as app:
@@ -91,7 +91,7 @@ def test_audit_event_keeps_the_score_of_every_item_of_the_sheet(
     valid_environment: dict[str, str],
 ) -> None:
     """The audit trail explains the decision with all the scores, not a sample."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     with running_application(
         valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
     ) as app:
@@ -113,7 +113,7 @@ def test_mixed_upload_reports_the_existing_job_of_files_seen_before(
     valid_environment: dict[str, str],
 ) -> None:
     """The new job is returned, and so is the job that already holds the repeated file."""
-    seen, fresh = taag_air_ticket_to_amt(), hotel_stay_to_amt()
+    seen, fresh = air_ticket_to_amt(), hotel_stay_to_amt()
     with running_application(
         valid_environment, [seen, fresh], FakeItemClassifier({1: None, 2: None})
     ) as app:

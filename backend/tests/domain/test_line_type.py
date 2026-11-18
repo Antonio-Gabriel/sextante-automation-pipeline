@@ -16,7 +16,7 @@ LINE_TYPES: Final = {
     "Taxa de pilotagem sintética": LineType.SERVICE,
     "Imposto Sobre a Importação": LineType.SERVICE,
     "Taxa de Serviços Aduaneiros": LineType.SERVICE,
-    "Passagem aérea Sintética - Rota Teste (isento de IVA)": LineType.SERVICE,
+    "Passagem aérea de teste (isento de IVA)": LineType.SERVICE,
     "Ivanhoe Logistics handling fee": LineType.SERVICE,
     "Alojamento de 2 noites": LineType.SERVICE,
     "Valor do IVA": LineType.TAX,

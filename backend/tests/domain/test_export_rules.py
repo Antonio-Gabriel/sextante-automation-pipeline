@@ -33,11 +33,11 @@ def test_a_leading_formula_trigger_is_prefixed_with_an_apostrophe(
     ("supplier_nif", "supplier_name", "number", "expected"),
     [
         ("5419990001", "Companhia Aérea Sintética", "SYN-2026-001", "5419990001/SYN-2026-001"),
-        ("NIF: 541 999 0001", "companhia aérea", "FT 2026/0001", "5419990001/FT 2026/0001"),
+        ("NIF: 541 999 0001", "Companhia Sintética", "FT 2026/0001", "5419990001/FT 2026/0001"),
         (None, "Hotel Sintético, Lda.", "HTL-SYN-0001", "hotel sintetico lda/HTL-SYN-0001"),
-        ("5419990001", "companhia aérea", None, "5419990001/3f2a9c1b0d4e"),
+        ("5419990001", "Companhia Sintética", None, "5419990001/3f2a9c1b0d4e"),
         (None, None, None, "3f2a9c1b0d4e"),
-        ("5419990001", "companhia aérea", "   ", "5419990001/3f2a9c1b0d4e"),
+        ("5419990001", "Companhia Sintética", "   ", "5419990001/3f2a9c1b0d4e"),
     ],
     ids=[
         "NIF and number",

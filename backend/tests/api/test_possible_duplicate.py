@@ -10,11 +10,11 @@ from tests.api.encoding_harness import export_bytes, idempotency_headers, runnin
 from tests.api.test_encoding_safeguards import _query
 from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fixtures.synthetic_invoices import (
+    air_ticket_to_amt,
     billed_to,
     extraction_of,
     hotel_stay_to_amt,
     reexported,
-    taag_air_ticket_to_amt,
     without_invoice_number,
 )
 
@@ -30,7 +30,7 @@ def test_a_reexported_invoice_is_coded_and_flagged_with_the_earlier_one(
     valid_environment: dict[str, str],
 ) -> None:
     """Coded as usual, flagged, and pointing at the invoice uploaded first."""
-    original = taag_air_ticket_to_amt()
+    original = air_ticket_to_amt()
     copy = reexported(original, "INV-001-again")
     with running_application(
         valid_environment, [original, copy], FakeItemClassifier({1: "O00004"})
@@ -49,7 +49,7 @@ def test_a_reexported_invoice_is_coded_and_flagged_with_the_earlier_one(
     assert line["possible_duplicate_of"] == earlier["invoice_id"]
     assert (_flag_codes(earlier), earlier["possible_duplicate_of"]) == ([], None)
     row = list(csv.reader(io.StringIO(content.decode("utf-8-sig"))))[1]
-    assert "Possível duplicado de INV-001_synthetic.pdf, carregada a 18-11-2026." in row[8]
+    assert "Possível duplicado de SYN-001_air_synthetic.pdf, carregada a 18-11-2026." in row[8]
 
 
 @pytest.mark.requirement("REQ-ING-011", "SEC-19")
@@ -57,7 +57,7 @@ def test_the_same_file_again_is_the_existing_job_without_a_flag(
     valid_environment: dict[str, str],
 ) -> None:
     """Idempotency by digest comes first: no second invoice, so nothing to flag."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     with running_application(
         valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
     ) as app:
@@ -76,8 +76,8 @@ def test_an_invoice_without_number_is_never_a_possible_duplicate(
     valid_environment: dict[str, str],
 ) -> None:
     """Two invoices of one supplier without a number are not the same invoice."""
-    first = without_invoice_number(taag_air_ticket_to_amt(), "no-number-1")
-    second = without_invoice_number(taag_air_ticket_to_amt(), "no-number-2")
+    first = without_invoice_number(air_ticket_to_amt(), "no-number-1")
+    second = without_invoice_number(air_ticket_to_amt(), "no-number-2")
     with running_application(
         valid_environment, [first, second], FakeItemClassifier({1: "O00004"})
     ) as app:
@@ -94,7 +94,7 @@ def test_the_same_number_from_another_supplier_is_not_a_duplicate(
     valid_environment: dict[str, str],
 ) -> None:
     """Two suppliers easily issue the same number (D-3.10)."""
-    taag = taag_air_ticket_to_amt()
+    taag = air_ticket_to_amt()
     hotel_extraction = dataclasses.replace(
         extraction_of(hotel_stay_to_amt()), invoice_number=extraction_of(taag).invoice_number
     )

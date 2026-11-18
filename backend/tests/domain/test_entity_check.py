@@ -48,12 +48,18 @@ def test_minor_variations_of_the_target_name_match(block: BilledEntityBlock) -> 
 
 
 NO_MATCH_CASES: Final = {
-    "third-party client (petrolífera cliente)": _block("Petrolífera Sintética de Cabinda Lda", "5419990003"),
-    "third-party client (empresa de serviços petrolíferos)": _block("Serviços Petrolíferos Sintéticos Angola", "5419990007"),
-    "third-party client (empresa de engenharia)": _block("Engenharia Sintética Angola", "5419990008"),
+    "third-party client (oil company)": _block(
+        "Petrolífera Sintética de Cabinda Lda", "5419990003"
+    ),
+    "third-party client (services company)": _block(
+        "Serviços Petrolíferos Sintéticos Angola", "5419990007"
+    ),
+    "third-party client (engineering company)": _block("Engenharia Sintética Angola", "5419990008"),
     "shipping line": _block("Linha de Navegação Sintética Limitada"),
     "client billed care of AMT (INV-002)": _block(
-        "Operadora Sintética de Petróleo Angola", "5419990005", care_of=("c/o Advanced Maritime Transports",)
+        "Operadora Sintética de Petróleo Angola",
+        "5419990005",
+        care_of=("c/o Advanced Maritime Transports",),
     ),
     "sister company with another NIF (INV-010)": _block(
         "AMT - Empresa Irmã Sintética Limitada", "5419990099"
@@ -88,7 +94,10 @@ AMBIGUOUS_CASES: Final = {
     ),
     "no billed-entity block": ((), FlagReason.ENTITY_LABEL_NOT_FOUND),
     "two billed-entity blocks": (
-        (_block("Engenharia Sintética Angola"), _block("Advanced Maritime Transports - Transitarios Limitada")),
+        (
+            _block("Engenharia Sintética Angola"),
+            _block("Advanced Maritime Transports - Transitarios Limitada"),
+        ),
         FlagReason.MULTIPLE_BILLED_ENTITIES,
     ),
 }

@@ -7,9 +7,9 @@ from tests.api.encoding_harness import idempotency_headers, running_application
 from tests.api.test_encoding_safeguards import _query
 from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fixtures.synthetic_invoices import (
+    air_ticket_to_amt,
     billed_to,
     hotel_stay_to_amt,
-    taag_air_ticket_to_amt,
 )
 
 
@@ -22,7 +22,7 @@ def test_transient_model_failures_are_retried_with_exponential_backoff(
     valid_environment: dict[str, str],
 ) -> None:
     """Two timeouts, then an answer: the invoice is coded, after waiting 1 s then 2 s."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     classifier = FakeItemClassifier({1: "O00004"}, failures=[_unavailable(), _unavailable()])
     sleeps: list[float] = []
 
@@ -38,7 +38,7 @@ def test_a_model_down_for_every_attempt_fails_one_invoice_and_the_job_continues(
     valid_environment: dict[str, str],
 ) -> None:
     """After the last attempt the invoice is failed; the next one is still coded."""
-    first = taag_air_ticket_to_amt()
+    first = air_ticket_to_amt()
     second = billed_to("INV-004", "Petrolífera Sintética de Cabinda Lda", "5419990003")
     failures = [_unavailable(), _unavailable(), _unavailable()]
     classifier = FakeItemClassifier({1: "O00031"}, failures=failures)
@@ -55,7 +55,7 @@ def test_a_model_down_for_every_attempt_fails_one_invoice_and_the_job_continues(
 @pytest.mark.requirement("REQ-PLT-003", "REQ-MAP-007")
 def test_a_permanent_failure_is_not_retried(valid_environment: dict[str, str]) -> None:
     """Only an unavailable model is worth another call; anything else fails at once."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     classifier = FakeItemClassifier({1: "O00004"}, failures=[RuntimeError("bad request")])
 
     with running_application(valid_environment, [invoice], classifier) as app:
@@ -70,7 +70,7 @@ def test_a_failed_invoice_is_reprocessed_from_its_stored_text_without_new_extrac
     valid_environment: dict[str, str],
 ) -> None:
     """Reprocessing codes the stored lines again; the file is not extracted twice."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     failures = [_unavailable(), _unavailable(), _unavailable()]
     classifier = FakeItemClassifier({1: "O00004"}, failures=failures)
 
@@ -101,7 +101,7 @@ def test_a_failed_invoice_is_reprocessed_from_its_stored_text_without_new_extrac
 @pytest.mark.requirement("NFR-REL-001")
 def test_only_a_failed_invoice_can_be_reprocessed(valid_environment: dict[str, str]) -> None:
     """A coded invoice is not coded twice; an unknown invoice is not found."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
 
     with running_application(
         valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
@@ -124,7 +124,7 @@ def test_job_status_reports_the_tokens_of_each_invoice_and_their_sum(
     valid_environment: dict[str, str],
 ) -> None:
     """Tokens are shown per invoice and summed per job, to measure the real cost."""
-    first, second = taag_air_ticket_to_amt(), hotel_stay_to_amt()
+    first, second = air_ticket_to_amt(), hotel_stay_to_amt()
     classifier = FakeItemClassifier({1: "O00004", 2: "O00004"})
 
     with running_application(valid_environment, [first, second], classifier) as app:

@@ -7,7 +7,7 @@ import pytest
 from sextante.platform.limits import MAX_PAGE_SIZE
 from tests.api.encoding_harness import running_application
 from tests.fakes.fake_item_classifier import FakeItemClassifier
-from tests.fixtures.synthetic_invoices import taag_air_ticket_to_amt
+from tests.fixtures.synthetic_invoices import air_ticket_to_amt
 
 
 @pytest.mark.requirement("REQ-ING-001", "SEC-16")
@@ -36,7 +36,7 @@ def test_file_name_too_long_or_with_control_characters_is_refused(
     The multipart body is written by hand: a well-behaved client percent-encodes control
     characters, and the rule exists for clients that do not.
     """
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     body = (
         b'--boundary\r\nContent-Disposition: form-data; name="files"; filename="'
         + file_name
@@ -60,7 +60,7 @@ def test_traversal_in_the_file_name_never_reaches_the_storage_path(
     valid_environment: dict[str, str],
 ) -> None:
     """Stored files are named by digest only, inside the upload directory."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     with running_application(valid_environment, [invoice], FakeItemClassifier({1: None})) as app:
         response = app.client.post(
             "/api/invoices",
@@ -88,7 +88,7 @@ def test_results_limit_above_the_server_maximum_is_capped_and_says_so(
     valid_environment: dict[str, str],
 ) -> None:
     """An abusive limit is truncated, and the truncation is visible in the response."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     with running_application(valid_environment, [invoice], FakeItemClassifier({1: None})) as app:
         job_id = app.upload(invoice)["job_id"]
         app.wait_for_job(job_id)
@@ -101,7 +101,7 @@ def test_results_limit_above_the_server_maximum_is_capped_and_says_so(
 @pytest.mark.requirement("SEC-18")
 def test_responses_carry_exactly_their_declared_fields(valid_environment: dict[str, str]) -> None:
     """No storage path, digest, worker id or prompt leaks into an API response."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     with running_application(
         valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
     ) as app:

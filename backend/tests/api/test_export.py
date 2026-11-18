@@ -11,10 +11,10 @@ from tests.api.encoding_harness import export_bytes, running_application
 from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fixtures.synthetic_invoices import (
     SyntheticInvoice,
+    air_ticket_to_amt,
     billed_to,
     scanned_pdf_without_text,
     service_with_vat_and_discount_lines,
-    taag_air_ticket_to_amt,
     with_description,
 )
 
@@ -64,7 +64,7 @@ def test_export_has_exactly_the_nine_columns_in_order(
     """Same header, same row, in CSV (UTF-8 with BOM) and in XLSX."""
     content = _export(
         valid_environment,
-        [taag_air_ticket_to_amt()],
+        [air_ticket_to_amt()],
         FakeItemClassifier({1: "O00004"}),
         export_format,
     )
@@ -109,7 +109,7 @@ def test_csv_separator_is_configurable_and_survives_separators_and_quotes(
     """csv.writer escapes; a description with ; and quotes reads back as one cell."""
     valid_environment["SEXTANTE_CSV_SEPARATOR"] = ";"
     description = 'Serviço "urgente"; porto, cais 3'
-    invoice = with_description(taag_air_ticket_to_amt(), description, "QUOTES")
+    invoice = with_description(air_ticket_to_amt(), description, "QUOTES")
 
     rows = _csv_rows(_export(valid_environment, [invoice], FakeItemClassifier({1: "O00004"})), ";")
 
@@ -147,7 +147,10 @@ def test_a_refused_document_appears_as_one_low_row_with_its_reason(
 def test_notes_carry_care_of_lines_and_line_type_notes(valid_environment: dict[str, str]) -> None:
     """Care-of lines and the VAT note reach Notes_or_Flags, in Portuguese."""
     care_of = billed_to(
-        "INV-002", "Operadora Sintética de Petróleo Angola", "5419990005", ("c/o Advanced Maritime Transports",)
+        "INV-002",
+        "Operadora Sintética de Petróleo Angola",
+        "5419990005",
+        ("c/o Advanced Maritime Transports",),
     )
     vat = service_with_vat_and_discount_lines()
 
@@ -163,7 +166,7 @@ def test_export_is_built_from_persisted_state_after_a_restart(
     valid_environment: dict[str, str],
 ) -> None:
     """A new process with the same database exports the same rows."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     with running_application(
         valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
     ) as app:
@@ -182,7 +185,7 @@ def test_export_is_an_attachment_and_an_unknown_job_is_not_found(
     valid_environment: dict[str, str],
 ) -> None:
     """Downloaded, never rendered; and no export for a job that does not exist."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     with running_application(
         valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
     ) as app:

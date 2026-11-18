@@ -10,7 +10,7 @@ class FakeInvoiceExtractor:
     """Returns the extraction declared for each synthetic invoice, and records calls.
 
     Example:
-        extractor = FakeInvoiceExtractor([taag_air_ticket_to_amt()])
+        extractor = FakeInvoiceExtractor([air_ticket_to_amt()])
     """
 
     def __init__(self, invoices: Iterable[SyntheticInvoice]) -> None:

@@ -16,7 +16,7 @@ def invoice_identifier(
     is left out when neither exists. Never a counter: it would not survive reprocessing.
 
     Example:
-        invoice_identifier("5419990001", "companhia aérea", "SYN-2026-001", digest)
+        invoice_identifier("5419990001", "Fornecedor Sintético", "SYN-2026-001", digest)
         # "5419990001/SYN-2026-001"
     """
     reference = number.strip() if number and number.strip() else digest[:SHORT_DIGEST_LENGTH]

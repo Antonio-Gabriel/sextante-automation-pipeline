@@ -40,6 +40,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                             └── CHG-0031  feat      Conjunto dourado sem o modelo
                                                                                                                 └── CHG-0032  fix       Correcções da revisão dos tickets 12 e 13
                                                                                                                     └── CHG-0033  docs      Histórico sem Co-Authored-By e hashes actualizados
+                                                                                                                        └── CHG-0034  fix       Réplicas sem dados das amostras, XLSX recusado e padrão do conjunto dourado
 ```
 
 ## Regras
@@ -104,6 +105,29 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0034 · Réplicas sem dados das amostras, XLSX recusado e padrão do conjunto dourado
+
+- **Data:** 2026-11-18
+- **Tipo:** fix
+- **Pai:** CHG-0033
+- **Estado:** activa
+- **Requisitos:** REQ-ING-001, REQ-ING-009, NFR-TST-001, D-3.6, D-3.18
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `backend/tests/fixtures/synthetic_invoices.py` e os testes que usam as suas réplicas; `tests/domain/test_entity_check.py`, `test_export_rules.py`, `test_lexical_scoring.py`, `test_line_type.py`, `tests/api/test_startup_logging.py`
+  - `backend/src/sextante/ingestion/` (motivo de recusa do XLSX), `platform/user_messages.py`, exemplos de docstrings em `platform/` e `export/domain/`
+  - `docs/00-decisoes-e-lacunas.md` (§3.6), `docs/04-padroes-de-codigo.md` (§3.6 e comandos), ticket 12
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 290 testes; nenhum nome de empresa, NIF, número de documento ou descrição das amostras nos testes nem nos exemplos do código; `mypy`, `ruff`, 8 contratos do `import-linter`.
+
+**Réplicas.** As réplicas dos tickets 02 a 10 usavam valores das amostras reais: nomes de fornecedores e clientes, NIFs, números de factura, descrições e moradas. Passam a valores inventados, com a mesma estrutura. A fixture `taag_air_ticket_to_amt` passa a `air_ticket_to_amt`. Os valores antigos continuam no histórico, por decisão do responsável.
+
+**XLSX.** É recusado com `unsupported_document_type`, porque REQ-ING-001 manda um XLSX para a recusa de REQ-ING-009. O motivo `extractor_not_configured` deixou de ter uso e foi retirado.
+
+**Conjunto dourado em 04.** O padrão de código dizia que `make golden` imprime precisão por aba, distribuição de confiança e taxa de sinalização. Passa a dizer o que §3.18 decidiu: as etapas determinísticas, sem o modelo. As medidas que precisam do modelo ficam para o comando manual, publicadas só depois da confirmação da AMT.
 
 ### CHG-0033 · Histórico sem Co-Authored-By e hashes actualizados
 

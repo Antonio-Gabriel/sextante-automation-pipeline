@@ -18,8 +18,8 @@ from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fakes.fixed_clock import FixedClock, SequentialIdentifierGenerator
 from tests.fixtures.synthetic_invoices import (
     AMT_NIF,
+    air_ticket_to_amt,
     extraction_of,
-    taag_air_ticket_to_amt,
     with_description,
 )
 from tests.fixtures.synthetic_pdf import (
@@ -126,7 +126,7 @@ def test_extracted_text_is_stored_in_nfc_and_without_control_characters(
     valid_environment: dict[str, str],
 ) -> None:
     """Decomposed accents are composed and control characters dropped before persisting."""
-    invoice = with_description(taag_air_ticket_to_amt(), "Café\x07 e serviço", "nfc")
+    invoice = with_description(air_ticket_to_amt(), "Café\x07 e serviço", "nfc")
     with running_application(
         valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
     ) as app:
@@ -142,7 +142,7 @@ def test_a_missing_field_is_recorded_as_missing_with_the_invoice(
     valid_environment: dict[str, str],
 ) -> None:
     """No date on the document: the date stays empty and the audit names the field."""
-    base = taag_air_ticket_to_amt()
+    base = air_ticket_to_amt()
     invoice = dataclasses.replace(
         base,
         content=base.content + b"no-date",

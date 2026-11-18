@@ -21,7 +21,7 @@ from tests.api.encoding_harness import (
 )
 from tests.api.test_encoding_safeguards import _query
 from tests.fakes.fake_item_classifier import FakeItemClassifier
-from tests.fixtures.synthetic_invoices import billed_to, taag_air_ticket_to_amt, with_description
+from tests.fixtures.synthetic_invoices import air_ticket_to_amt, billed_to, with_description
 
 SISTER_COMPANY = "Advanced Maritime Transports Moçambique Limitada"
 
@@ -132,7 +132,7 @@ def test_the_resolution_is_audited_and_the_placeholder_coding_is_kept(
 @pytest.mark.requirement("REQ-REV-006")
 def test_only_an_ambiguous_invoice_can_be_resolved(valid_environment: dict[str, str]) -> None:
     """An invoice whose entity was decided by the rules is refused."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     with running_application(
         valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
     ) as app:

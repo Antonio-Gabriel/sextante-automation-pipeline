@@ -4,7 +4,7 @@ import pytest
 
 from tests.api.encoding_harness import running_application
 from tests.fakes.fake_item_classifier import FakeItemClassifier
-from tests.fixtures.synthetic_invoices import hotel_stay_to_amt, taag_air_ticket_to_amt
+from tests.fixtures.synthetic_invoices import air_ticket_to_amt, hotel_stay_to_amt
 
 
 @pytest.mark.requirement("REQ-PLT-001", "REQ-MAP-001", "REQ-MAP-003")
@@ -12,7 +12,7 @@ def test_invoice_billed_to_amt_is_coded_against_outlays_and_read_back(
     valid_environment: dict[str, str],
 ) -> None:
     """The tracer bullet: upload, encode in the background, read the coded line."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     classifier = FakeItemClassifier(choices_by_item_number={1: "O00004"})
 
     with running_application(valid_environment, [invoice], classifier) as app:
@@ -52,7 +52,7 @@ def test_upload_answers_with_a_queued_job_before_any_coding(
     valid_environment: dict[str, str],
 ) -> None:
     """The upload returns at once; coding happens afterwards, in the worker."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
 
     with running_application(valid_environment, [invoice], FakeItemClassifier({1: None})) as app:
         upload = app.upload(invoice)

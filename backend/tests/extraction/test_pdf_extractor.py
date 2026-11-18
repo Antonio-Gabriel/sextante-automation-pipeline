@@ -199,12 +199,12 @@ def test_a_file_that_is_not_a_readable_pdf_is_refused_not_failed() -> None:
     assert result == ExtractionRejection(RejectionReason.UNSUPPORTED_DOCUMENT_TYPE)
 
 
-@pytest.mark.requirement("D-3.6", "L-01")
-def test_xlsx_extraction_is_not_available_in_this_version() -> None:
-    """No XLSX sample exists, so no XLSX reader: refused with its own reason."""
+@pytest.mark.requirement("REQ-ING-001", "REQ-ING-009", "D-3.6")
+def test_an_xlsx_invoice_is_refused_as_unsupported() -> None:
+    """No XLSX sample exists, so no XLSX reader: refused as REQ-ING-009 says."""
     result = PdfInvoiceExtractor(MIN_CHARS_PER_PAGE).extract(b"PK\x03\x04", FileFormat.XLSX)
 
-    assert result == ExtractionRejection(RejectionReason.EXTRACTOR_NOT_CONFIGURED)
+    assert result == ExtractionRejection(RejectionReason.UNSUPPORTED_DOCUMENT_TYPE)
 
 
 @pytest.mark.requirement("REQ-ING-003")

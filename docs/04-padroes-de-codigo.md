@@ -202,7 +202,7 @@ Referenciar sempre `REQ-`, `NFR-`, `SEC-`, `D-`, `L-`, `R` ou o identificador do
 # Backend
 make test               # tudo
 make test-unit          # rápido, sem I/O
-make golden             # precisão contra o conjunto dourado
+make golden             # etapas determinísticas contra o conjunto dourado
 make traceability-matrix # falha se algum REQ- ficar sem teste
 
 # Frontend
@@ -290,7 +290,9 @@ def test_exported_description_starting_with_equals_is_prefixed() -> None: ...
 
 ### 3.6 Conjunto dourado
 
-`make golden` corre o pipeline sobre `tests/golden/` e imprime precisão por aba, distribuição de confiança, e taxa de sinalização.
+`make golden` corre, sem chamar o modelo, as etapas determinísticas sobre as amostras da pasta `SEXTANTE_GOLDEN_SAMPLES_PATH`: extracção, verificação de entidade, aba de destino, tipos de linha e recusas. Compara-as com os resultados esperados de `tests/golden/expected_results.yaml` e falha quando divergem. *Revisto em 18-11-2026*, por 00-decisoes-e-lacunas.md §3.18.
+
+A precisão dos códigos de item por aba, a distribuição de confiança e a taxa de sinalização precisam do modelo real. São medidas por um comando manual e explícito, fora de `make test` e da integração contínua, e só são publicadas depois de a AMT confirmar os resultados esperados (L-02).
 
 Regras:
 

@@ -10,7 +10,7 @@ from tests.api.encoding_harness import running_application
 from tests.api.test_encoding_safeguards import _query
 from tests.conftest import SYNTHETIC_DENYLISTED_SISTER
 from tests.fakes.fake_item_classifier import FakeItemClassifier
-from tests.fixtures.synthetic_invoices import billed_to, taag_air_ticket_to_amt
+from tests.fixtures.synthetic_invoices import air_ticket_to_amt, billed_to
 
 
 @pytest.mark.requirement("REQ-MAP-001", "REQ-ENT-006", "R2")
@@ -84,7 +84,7 @@ def test_invoice_billed_to_amt_reports_an_exact_entity_match(
     valid_environment: dict[str, str],
 ) -> None:
     """The detected entity is shown as extracted, with YES for a match."""
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
 
     with running_application(
         valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
@@ -155,7 +155,7 @@ def test_a_failed_coding_leaves_no_entity_verdict_without_lines(
     """The verdict and the lines are written in one transaction: all or nothing."""
     from sextante.matching.infrastructure.unconfigured_classifier import UnconfiguredItemClassifier
 
-    invoice = taag_air_ticket_to_amt()
+    invoice = air_ticket_to_amt()
     with running_application(valid_environment, [invoice], UnconfiguredItemClassifier()) as app:
         job = app.wait_for_job(app.upload(invoice)["job_id"])
 

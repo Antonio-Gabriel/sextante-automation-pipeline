@@ -41,19 +41,19 @@ def synthetic_pdf_bytes(label: str) -> bytes:
     return b"%PDF-1.7\n% SYNTHETIC test invoice " + label.encode() + b"\n%%EOF\n"
 
 
-def taag_air_ticket_to_amt() -> SyntheticInvoice:
-    """Replica of the structure of sample INV-001: companhia aérea bills AMT for one air ticket.
+def air_ticket_to_amt() -> SyntheticInvoice:
+    """An airline bills AMT for one air ticket, in the structure of the sample model.
 
     Example:
-        invoice = taag_air_ticket_to_amt()
+        invoice = air_ticket_to_amt()
     """
     return SyntheticInvoice(
-        file_name="INV-001_synthetic.pdf",
+        file_name="SYN-001_air_synthetic.pdf",
         content=synthetic_pdf_bytes("INV-001"),
         extraction=ExtractedInvoice(
             supplier=PartyIdentity(name="Companhia Aérea Sintética E.P.", nif="5419990001"),
             invoice_number="SYN-2026-001",
-            invoice_date="2026-10-12",
+            invoice_date="2026-01-12",
             currency="AOA",
             billed_entities=(
                 BilledEntityBlock(
@@ -86,7 +86,7 @@ def taag_air_ticket_to_amt() -> SyntheticInvoice:
 
 
 def hotel_stay_to_amt() -> SyntheticInvoice:
-    """Replica of the structure of sample INV-009: two lines, both coded against OUTLAYS.
+    """A hotel bills AMT for two lines, both coded against OUTLAYS.
 
     Example:
         invoice = hotel_stay_to_amt()
@@ -96,12 +96,12 @@ def hotel_stay_to_amt() -> SyntheticInvoice:
         ("Serviço de restaurante sintético", "65000.00", "0"),
     )
     return SyntheticInvoice(
-        file_name="INV-009_Hotel_synthetic.pdf",
+        file_name="SYN-009_hotel_synthetic.pdf",
         content=synthetic_pdf_bytes("INV-009"),
         extraction=ExtractedInvoice(
             supplier=PartyIdentity(name="Hotel Sintético Luanda", nif="5419990006"),
             invoice_number="HTL-SYN-0001",
-            invoice_date="2026-10-22",
+            invoice_date="2026-01-22",
             currency="AOA",
             billed_entities=(
                 BilledEntityBlock(name=AMT_NAME, nif=AMT_NIF, care_of=(), address_lines=()),
@@ -131,7 +131,7 @@ def billed_to(
     Example:
         invoice = billed_to("INV-004", "Petrolífera Sintética de Cabinda Lda", "5419990003")
     """
-    base = taag_air_ticket_to_amt()
+    base = air_ticket_to_amt()
     assert isinstance(base.extraction, ExtractedInvoice)
     blocks = (
         ()
@@ -153,7 +153,7 @@ def service_with_vat_and_discount_lines() -> SyntheticInvoice:
     Example:
         invoice = service_with_vat_and_discount_lines()
     """
-    base = taag_air_ticket_to_amt()
+    base = air_ticket_to_amt()
     assert isinstance(base.extraction, ExtractedInvoice)
     extra = (
         ExtractedLine(2, "IVA 14%", None, None, Decimal("14"), Decimal("44800.00")),
@@ -180,7 +180,7 @@ def with_description(invoice: SyntheticInvoice, description: str, label: str) ->
     """The same invoice with another description on its first line, and new file bytes.
 
     Example:
-        with_description(taag_air_ticket_to_amt(), "=cmd|' /C calc'!A0", "formula")
+        with_description(air_ticket_to_amt(), "=cmd|' /C calc'!A0", "formula")
     """
     assert isinstance(invoice.extraction, ExtractedInvoice)
     first = dataclasses.replace(invoice.extraction.lines[0], description=description)
@@ -192,7 +192,7 @@ def extraction_of(invoice: SyntheticInvoice) -> ExtractedInvoice:
     """The invoice's extraction, for a synthetic invoice that is not a refusal.
 
     Example:
-        extraction_of(taag_air_ticket_to_amt()).lines[0]
+        extraction_of(air_ticket_to_amt()).lines[0]
     """
     assert isinstance(invoice.extraction, ExtractedInvoice)
     return invoice.extraction
@@ -202,7 +202,7 @@ def reexported(invoice: SyntheticInvoice, label: str) -> SyntheticInvoice:
     """The same invoice in a new file, as when it is exported again: same supplier and number.
 
     Example:
-        reexported(taag_air_ticket_to_amt(), "INV-001-again")
+        reexported(air_ticket_to_amt(), "INV-001-again")
     """
     return SyntheticInvoice(
         f"{label}_synthetic.pdf", synthetic_pdf_bytes(label), extraction_of(invoice)
@@ -213,7 +213,7 @@ def without_invoice_number(invoice: SyntheticInvoice, label: str) -> SyntheticIn
     """The invoice in a new file, with no invoice number extracted.
 
     Example:
-        without_invoice_number(taag_air_ticket_to_amt(), "INV-001-no-number")
+        without_invoice_number(air_ticket_to_amt(), "INV-001-no-number")
     """
     extraction = dataclasses.replace(extraction_of(invoice), invoice_number=None)
     return SyntheticInvoice(f"{label}_synthetic.pdf", synthetic_pdf_bytes(label), extraction)

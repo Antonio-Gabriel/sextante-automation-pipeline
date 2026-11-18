@@ -141,7 +141,7 @@ Decisão: porta `InvoiceExtractor`, escolhida pelo **tipo real do conteúdo** e 
 | Formato | Biblioteca | Licença | Nota |
 |---|---|---|---|
 | PDF nativo no modelo das amostras | `pdfplumber` | MIT | Implementado nesta versão. Texto com coordenadas, o que permite separar colunas e recortar regiões |
-| XLSX | `openpyxl` | MIT | **Não implementado nesta versão**, por não haver nenhuma amostra. Quando for, leitura em `read_only` e `data_only` |
+| XLSX | `openpyxl` | MIT | **Não implementado nesta versão**, por não haver nenhuma amostra. Recusado com `unsupported_document_type`, por REQ-ING-001 e REQ-ING-009 (decidido em 18-11-2026). Quando for, leitura em `read_only` e `data_only` |
 | PDF digitalizado | não implementado | | Recusado com `pdf_without_text_layer`. Porta `OpticalCharacterRecognizer` declarada. Ver L-01 |
 | Outro documento, como a nota de liquidação aduaneira da AGT | não implementado | | Recusado com `unsupported_document_type`. Ver L-14 |
 

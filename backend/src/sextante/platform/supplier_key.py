@@ -10,7 +10,7 @@ def supplier_key(supplier_nif: str | None, supplier_name: str | None) -> str | N
     what "the same supplier" means.
 
     Example:
-        supplier_key("541-999-0001", "companhia aérea")  # "5419990001"
+        supplier_key("541-999-0001", "Fornecedor Sintético")  # "5419990001"
     """
     digits = digits_only(supplier_nif)
     if digits:
