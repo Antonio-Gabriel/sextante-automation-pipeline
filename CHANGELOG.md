@@ -121,7 +121,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0041
 - **Estado:** activa
 - **Requisitos:** REQ-MAP-004, REQ-MAP-005, REQ-AUD-003, REQ-AUD-004, SEC-14
-- **Commit:** pendente
+- **Commit:** `c1cae2b`
 - **Migração:** `0008_model_call_cache_tokens` (colunas `cache_creation_input_tokens` e `cache_read_input_tokens` em `model_call`, a zero nas chamadas anteriores)
 - **Ficheiros:**
   - `backend/src/sextante/prompts/item_choice_v2.txt` (novo, texto aprovado), `prompts/__init__.py` (versões)
