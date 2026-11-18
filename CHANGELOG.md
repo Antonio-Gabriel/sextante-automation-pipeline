@@ -94,7 +94,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0014
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** pendente
+- **Commit:** b8a0ffb
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `.claude/skills/graphify/`
