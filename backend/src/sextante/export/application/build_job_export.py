@@ -1,0 +1,108 @@
+"""Build the export rows of a job from the persisted state (REQ-EXP-001, REQ-EXP-004).
+
+A read model that composes the published readers of ingestion and matching, so that the
+export module reads no other module's tables (02-arquitectura.md §2.1).
+"""
+
+from sqlalchemy.ext.asyncio import AsyncEngine
+
+from sextante.export.domain.export_rows import NOTES_SEPARATOR, ExportRow
+from sextante.export.domain.invoice_identifier import invoice_identifier
+from sextante.ingestion.contracts import (
+    ExportInvoice,
+    ExportLine,
+    InvoiceExportReader,
+    ReadJobStatus,
+)
+from sextante.matching.contracts import CodingsReader, EntityVerdict, LineCoding
+from sextante.platform.user_messages import USER_MESSAGES_PT
+
+LINELESS_STATUSES = {"rejected": "rejections.{reason}", "failed": "export.invoice_failed"}
+
+
+class BuildJobExport:
+    """Return the rows of a job's export, invoices in upload order, lines in document order.
+
+    Example:
+        rows = await BuildJobExport(engine, status, invoices, codings).execute(job_id)
+    """
+
+    def __init__(
+        self,
+        engine: AsyncEngine,
+        job_status: ReadJobStatus,
+        invoices_reader: InvoiceExportReader,
+        codings_reader: CodingsReader,
+    ) -> None:
+        self._engine = engine
+        self._job_status = job_status
+        self._invoices_reader = invoices_reader
+        self._codings_reader = codings_reader
+
+    async def execute(self, job_id: str) -> list[ExportRow]:
+        """Return the rows; reviewed values are those in force (REQ-EXP-004).
+
+        Example:
+            await build_export.execute("3f2a...")
+
+        Raises:
+            JobNotFoundError: when no job has this identifier.
+        """
+        await self._job_status.execute(job_id)
+        async with self._engine.connect() as connection:
+            invoices = await self._invoices_reader.read_job_invoices(connection, job_id)
+            line_ids = [line.line_id for invoice in invoices for line in invoice.lines]
+            codings = await self._codings_reader.read_codings(connection, line_ids)
+        return [row for invoice in invoices for row in _rows_for(invoice, codings)]
+
+
+def _rows_for(invoice: ExportInvoice, codings: dict[str, LineCoding]) -> list[ExportRow]:
+    # A refused or failed document still gets one row, so the reviewer sees it existed
+    # (REQ-EXP-007). An invoice still waiting has nothing to export yet.
+    if invoice.status in LINELESS_STATUSES:
+        return [_lineless_row(invoice)]
+    return [_line_row(invoice, line, codings.get(line.line_id)) for line in invoice.lines]
+
+
+def _lineless_row(invoice: ExportInvoice) -> ExportRow:
+    key = LINELESS_STATUSES[invoice.status].format(reason=invoice.status_reason)
+    return ExportRow(
+        invoice_id=_identifier(invoice),
+        billed_entity_detected=invoice.billed_entity or "",
+        exact_entity_match="NO",
+        target_sheet="",
+        line_description="",
+        assigned_item_no="",
+        matched_catalog_description="",
+        confidence="LOW",
+        notes_or_flags=USER_MESSAGES_PT[key],
+    )
+
+
+def _line_row(invoice: ExportInvoice, line: ExportLine, coding: LineCoding | None) -> ExportRow:
+    return ExportRow(
+        invoice_id=_identifier(invoice),
+        billed_entity_detected=invoice.billed_entity or "",
+        exact_entity_match="YES" if invoice.entity_verdict == EntityVerdict.MATCH.value else "NO",
+        target_sheet=(coding.target_sheet or "") if coding else "",
+        line_description=line.description,
+        assigned_item_no=(coding.item_number or "") if coding else "",
+        matched_catalog_description=(coding.catalog_description or "") if coding else "",
+        confidence=coding.confidence if coding else "LOW",
+        notes_or_flags=_notes(invoice, coding),
+    )
+
+
+def _notes(invoice: ExportInvoice, coding: LineCoding | None) -> str:
+    if coding is None:
+        return USER_MESSAGES_PT["export.line_not_coded"]
+    texts = [USER_MESSAGES_PT[f"flags.{code}"] for code in coding.flags]
+    texts += [USER_MESSAGES_PT[f"notes.{coding.note}"]] if coding.note else []
+    texts += [USER_MESSAGES_PT["export.care_of"].format(text) for text in invoice.care_of]
+    return NOTES_SEPARATOR.join(texts)
+
+
+def _identifier(invoice: ExportInvoice) -> str:
+    return invoice_identifier(
+        invoice.supplier_nif, invoice.supplier_name, invoice.invoice_number, invoice.content_digest
+    )

@@ -11,6 +11,7 @@ SETTING_TEXT_MAX_LENGTH: Final = 512
 # The SQLite pragmas of D-3.5 assume SQLite; another engine is refused until the
 # PostgreSQL migration path of 00-decisoes-e-lacunas.md §6 is taken.
 DATABASE_URL_PREFIX: Final = "sqlite+aiosqlite:///"
+CSV_SEPARATORS: Final = frozenset({",", ";", "|"})
 
 
 class StartupConfigurationError(RuntimeError):
@@ -34,6 +35,8 @@ class Settings(BaseModel):
     # Items that fit any expense; choosing one is always LOW and flagged (D-3.16).
     # Comma-separated item numbers; tuning, not a secret, so it has a default.
     generic_items: tuple[str, ...] = ("O00052",)
+    # CSV separator, comma by default (REQ-EXP-005).
+    csv_separator: str = ","
 
     # A plain model, not pydantic-settings: the environment is always passed in explicitly,
     # so a stray variable in the process cannot silently fill a missing setting.
@@ -52,6 +55,13 @@ class Settings(BaseModel):
     def _split_items(cls, value: object) -> object:
         if isinstance(value, str):
             return tuple(part.strip() for part in value.split(",") if part.strip())
+        return value
+
+    @field_validator("csv_separator")
+    @classmethod
+    def _known_separator(cls, value: str) -> str:
+        if value not in CSV_SEPARATORS:
+            raise ValueError(f"unsupported separator. Expected one of {sorted(CSV_SEPARATORS)}")
         return value
 
     @field_validator("database_url")

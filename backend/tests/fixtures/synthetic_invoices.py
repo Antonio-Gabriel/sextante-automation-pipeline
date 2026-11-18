@@ -13,7 +13,9 @@ from sextante.ingestion.contracts import (
     BilledEntityBlock,
     ExtractedInvoice,
     ExtractedLine,
+    ExtractionRejection,
     PartyIdentity,
+    RejectionReason,
     SummaryRow,
 )
 
@@ -27,7 +29,7 @@ class SyntheticInvoice:
 
     file_name: str
     content: bytes
-    extraction: ExtractedInvoice
+    extraction: ExtractedInvoice | ExtractionRejection
 
 
 def synthetic_pdf_bytes(label: str) -> bytes:
@@ -130,6 +132,7 @@ def billed_to(
         invoice = billed_to("INV-004", "Petrolífera Sintética de Cabinda Lda", "5419990003")
     """
     base = taag_air_ticket_to_amt()
+    assert isinstance(base.extraction, ExtractedInvoice)
     blocks = (
         ()
         if name is None
@@ -151,9 +154,45 @@ def service_with_vat_and_discount_lines() -> SyntheticInvoice:
         invoice = service_with_vat_and_discount_lines()
     """
     base = taag_air_ticket_to_amt()
+    assert isinstance(base.extraction, ExtractedInvoice)
     extra = (
         ExtractedLine(2, "IVA 14%", None, None, Decimal("14"), Decimal("44800.00")),
         ExtractedLine(3, "Desconto comercial", None, None, None, Decimal("-10000.00")),
     )
     extraction = dataclasses.replace(base.extraction, lines=base.extraction.lines + extra)
     return SyntheticInvoice("INV-VAT_synthetic.pdf", synthetic_pdf_bytes("INV-VAT"), extraction)
+
+
+def scanned_pdf_without_text() -> SyntheticInvoice:
+    """A PDF the extractor refuses for having no text layer, like sample INV-011.
+
+    Example:
+        invoice = scanned_pdf_without_text()
+    """
+    return SyntheticInvoice(
+        "INV-011_scan_synthetic.pdf",
+        synthetic_pdf_bytes("INV-011"),
+        ExtractionRejection(reason=RejectionReason.PDF_WITHOUT_TEXT_LAYER),
+    )
+
+
+def with_description(invoice: SyntheticInvoice, description: str, label: str) -> SyntheticInvoice:
+    """The same invoice with another description on its first line, and new file bytes.
+
+    Example:
+        with_description(taag_air_ticket_to_amt(), "=cmd|' /C calc'!A0", "formula")
+    """
+    assert isinstance(invoice.extraction, ExtractedInvoice)
+    first = dataclasses.replace(invoice.extraction.lines[0], description=description)
+    extraction = dataclasses.replace(invoice.extraction, lines=(first,))
+    return SyntheticInvoice(f"{label}_synthetic.pdf", synthetic_pdf_bytes(label), extraction)
+
+
+def extraction_of(invoice: SyntheticInvoice) -> ExtractedInvoice:
+    """The invoice's extraction, for a synthetic invoice that is not a refusal.
+
+    Example:
+        extraction_of(taag_air_ticket_to_amt()).lines[0]
+    """
+    assert isinstance(invoice.extraction, ExtractedInvoice)
+    return invoice.extraction

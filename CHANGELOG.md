@@ -27,6 +27,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                         └── CHG-0018  feat      Confiança, recurso e sinalização
                                                             └── CHG-0019  fix       Correcções da revisão dos tickets 03 e 04
                                                                 └── CHG-0020  feat      Tipos de linha
+                                                                    └── CHG-0021  feat      Exportação em CSV e XLSX
 ```
 
 ## Regras
@@ -91,6 +92,39 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0021 · Exportação em CSV e XLSX
+
+- **Data:** 2026-11-18
+- **Tipo:** feat
+- **Pai:** CHG-0020
+- **Estado:** activa
+- **Requisitos:** REQ-EXP-001 a REQ-EXP-007, SEC-16, SEC-17, R6, L-13
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `backend/src/sextante/export/` (módulo novo)
+  - `backend/src/sextante/ingestion/` (leitor publicado `InvoiceExportReader`)
+  - `backend/src/sextante/platform/settings.py`, `limits.py`, `user_messages.py`
+  - `backend/src/sextante/main.py`, `backend/pyproject.toml` (contrato de camadas do `export`)
+  - `README.md`, `config/.env.example`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit. O esquema não mudou.
+- **Verificação:**
+  - Feito:
+    - 195 testes, incluindo a neutralização em CSV e XLSX, o separador `;` com aspas, e a exportação depois de reiniciar a aplicação;
+    - `mypy`, `ruff`, 8 contratos do `import-linter`;
+    - exportação no servidor real.
+  - Não verificado: abrir os ficheiros no Excel em configuração portuguesa.
+
+`GET /api/exports/{job_id}?format=csv|xlsx` exporta as nove colunas do enunciado, a partir do estado persistido:
+
+- **Neutralização:** aplica-se a todas as células, num só ponto (SEC-17). O CSV sai em UTF-8 com BOM, escrito com `csv.writer`, e o separador é configurável. No XLSX, cada célula leva tipo texto explícito.
+- **`Invoice_ID`:** combina o NIF do fornecedor, ou o seu nome normalizado, com o número da factura, ou com um digest curto quando falta o número.
+- **Facturas ambíguas:** saem com a aba de destino vazia e o motivo.
+- **Documentos recusados ou falhados:** saem numa linha `LOW` com o motivo em português.
+- **`Notes_or_Flags`:** junta as sinalizações, as notas de tipo de linha e as linhas "ao cuidado de".
+- **Entrega:** a resposta é sempre um anexo com `nosniff`.
 
 ### CHG-0020 · Tipos de linha
 

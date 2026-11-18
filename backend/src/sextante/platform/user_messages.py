@@ -25,6 +25,16 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
         "flags.conflicting_candidates": "Dois itens do catálogo estão muito próximos.",
         "flags.model_response_invalid": "A resposta do modelo foi inválida: código por atribuir.",
         "flags.possible_duplicate": "Possível duplicado de uma factura já carregada.",
+        "rejections.pdf_without_text_layer": "Documento recusado: PDF digitalizado, sem texto.",
+        "rejections.unsupported_document_type": (
+            "Documento recusado: não é uma factura no modelo suportado."
+        ),
+        "rejections.extractor_not_configured": (
+            "Documento recusado: a leitura de facturas não está configurada."
+        ),
+        "export.invoice_failed": "Falha no processamento: a factura pode ser reprocessada.",
+        "export.line_not_coded": "Linha ainda por codificar.",
+        "export.care_of": "Ao cuidado de: {}",
         "notes.line_type_tax": "Linha de IVA: sem código de item.",
         "notes.line_type_discount": "Linha de desconto: sem código de item.",
     }

@@ -71,3 +71,29 @@ class EntityCheckRecord:
     verdict: str
     reason: str | None
     target_sheet: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class ExportInvoice:
+    """One invoice of a job as the export reads it: header, status and lines (REQ-EXP-004)."""
+
+    invoice_id: str
+    status: str
+    status_reason: str | None
+    content_digest: str
+    supplier_name: str | None
+    supplier_nif: str | None
+    invoice_number: str | None
+    billed_entity: str | None
+    care_of: tuple[str, ...]
+    entity_verdict: str | None
+    lines: tuple["ExportLine", ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ExportLine:
+    """One invoice line, in document order."""
+
+    line_id: str
+    position: int
+    description: str

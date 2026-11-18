@@ -13,6 +13,7 @@ from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fixtures.synthetic_invoices import (
     AMT_NAME,
     SyntheticInvoice,
+    extraction_of,
     hotel_stay_to_amt,
     synthetic_pdf_bytes,
     taag_air_ticket_to_amt,
@@ -41,9 +42,9 @@ def test_billed_entity_is_normalized_before_it_is_compared(
     """An invisible character inside the name does not stop an otherwise exact match."""
     original = taag_air_ticket_to_amt()
     block = dataclasses.replace(
-        original.extraction.billed_entities[0], name=AMT_NAME.replace(" Limitada", "​ Limitada")
+        extraction_of(original).billed_entities[0], name=AMT_NAME.replace(" Limitada", "​ Limitada")
     )
-    extraction = dataclasses.replace(original.extraction, billed_entities=(block,))
+    extraction = dataclasses.replace(extraction_of(original), billed_entities=(block,))
     invoice = SyntheticInvoice(original.file_name, synthetic_pdf_bytes("zwsp"), extraction)
 
     with running_application(

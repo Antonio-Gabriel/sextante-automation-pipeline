@@ -96,6 +96,17 @@ layers = [
 containers = []
 
 [[tool.importlinter.contracts]]
+name = "export layers point inwards"
+type = "layers"
+layers = [
+    "sextante.export.api",
+    "sextante.export.infrastructure",
+    "sextante.export.application",
+    "sextante.export.domain",
+]
+containers = []
+
+[[tool.importlinter.contracts]]
 name = "api depends on application, never on infrastructure"
 type = "forbidden"
 source_modules = ["sextante.ingestion.api", "sextante.review.api"]
@@ -108,7 +119,7 @@ allow_indirect_imports = true
 [[tool.importlinter.contracts]]
 name = "modules reach each other only through contracts"
 type = "forbidden"
-source_modules = ["sextante.matching", "sextante.review"]
+source_modules = ["sextante.matching", "sextante.review", "sextante.export"]
 forbidden_modules = [
     "sextante.ingestion.domain",
     "sextante.ingestion.application",

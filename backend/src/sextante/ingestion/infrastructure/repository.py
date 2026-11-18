@@ -4,7 +4,7 @@ import json
 from dataclasses import asdict
 from datetime import datetime
 
-from sqlalchemy import Select, func, select, update
+from sqlalchemy import Row, Select, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -12,6 +12,8 @@ from sextante.ingestion.application.records import (
     ClaimedJob,
     DuplicateContentError,
     EntityCheckRecord,
+    ExportInvoice,
+    ExportLine,
     JobLine,
     JobSummary,
     NewInvoice,
@@ -36,7 +38,7 @@ from sextante.platform.text_normalization import normalize_for_comparison
 
 
 class IngestionRepository:
-    """Implements IngestionRepositoryPort and JobLinesReader with SQLAlchemy Core.
+    """Implements IngestionRepositoryPort, JobLinesReader and InvoiceExportReader.
 
     Example:
         await IngestionRepository().insert_job(connection, job_id, correlation_id, now)
@@ -205,6 +207,14 @@ class IngestionRepository:
             for r in rows
         ]
 
+    async def read_job_invoices(
+        self, connection: AsyncConnection, job_id: str
+    ) -> list[ExportInvoice]:
+        """Return the job's invoices in upload order, each with its lines in document order."""
+        invoices = (await connection.execute(_job_invoices_query(job_id))).all()
+        lines = await _lines_by_invoice(connection, [str(row.id) for row in invoices])
+        return [_export_invoice(row, lines.get(str(row.id), ())) for row in invoices]
+
 
 def _job_lines_query(job_id: str, limit: int, offset: int) -> Select[tuple[object, ...]]:
     lines, header = INVOICE_LINE_TABLE, INVOICE_HEADER_TABLE
@@ -240,6 +250,60 @@ def _stored_invoice(
             )
             for line_id, line in zip(line_ids, normalized.lines, strict=True)
         ),
+    )
+
+
+def _job_invoices_query(job_id: str) -> Select[tuple[object, ...]]:
+    header = INVOICE_HEADER_TABLE
+    return (
+        select(
+            INVOICE_TABLE.c.id,
+            INVOICE_TABLE.c.status,
+            INVOICE_TABLE.c.status_reason,
+            INVOICE_TABLE.c.content_digest,
+            header.c.supplier_name,
+            header.c.supplier_nif,
+            header.c.invoice_number,
+            header.c.billed_entities,
+            header.c.entity_verdict,
+        )
+        .select_from(INVOICE_TABLE)
+        .outerjoin(header, header.c.invoice_id == INVOICE_TABLE.c.id)
+        .where(INVOICE_TABLE.c.job_id == job_id)
+        .order_by(INVOICE_TABLE.c.created_at, INVOICE_TABLE.c.id)
+    )
+
+
+async def _lines_by_invoice(
+    connection: AsyncConnection, invoice_ids: list[str]
+) -> dict[str, tuple[ExportLine, ...]]:
+    table = INVOICE_LINE_TABLE
+    query = (
+        select(table.c.invoice_id, table.c.id, table.c.position, table.c.description)
+        .where(table.c.invoice_id.in_(invoice_ids))
+        .order_by(table.c.invoice_id, table.c.position)
+    )
+    grouped: dict[str, list[ExportLine]] = {}
+    for row in (await connection.execute(query)).all():
+        line = ExportLine(str(row.id), int(row.position), str(row.description))
+        grouped.setdefault(str(row.invoice_id), []).append(line)
+    return {invoice_id: tuple(lines) for invoice_id, lines in grouped.items()}
+
+
+def _export_invoice(row: Row[tuple[object, ...]], lines: tuple[ExportLine, ...]) -> ExportInvoice:
+    blocks = json.loads(str(row.billed_entities)) if row.billed_entities else []
+    return ExportInvoice(
+        invoice_id=str(row.id),
+        status=str(row.status),
+        status_reason=row.status_reason,
+        content_digest=str(row.content_digest),
+        supplier_name=row.supplier_name,
+        supplier_nif=row.supplier_nif,
+        invoice_number=row.invoice_number,
+        billed_entity=_detected_entity(str(row.billed_entities)) if blocks else None,
+        care_of=tuple(text for block in blocks for text in block["care_of"]),
+        entity_verdict=row.entity_verdict,
+        lines=lines,
     )
 
 

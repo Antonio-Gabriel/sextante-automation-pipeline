@@ -16,6 +16,8 @@ from sextante.catalog.contracts import FALLBACK_ITEM_NUMBER, Catalog, CatalogIte
 from sextante.catalog.domain.catalog_builder import BuiltCatalog
 from sextante.catalog.domain.errors import CatalogValidationError
 from sextante.catalog.infrastructure.xlsx_catalog_reader import XlsxCatalogWorkbookReader
+from sextante.export.api.routes import export_router
+from sextante.export.application.build_job_export import BuildJobExport
 from sextante.ingestion.api.routes import ingestion_router
 from sextante.ingestion.application.read_job_status import JobNotFoundError, ReadJobStatus
 from sextante.ingestion.application.upload_invoices import (
@@ -105,7 +107,7 @@ def create_app(
     app.state.catalog = catalog
     app.add_middleware(CorrelationIdMiddleware)
     install_error_handlers(app, HTTP_STATUS_BY_ERROR)
-    for router in (health_router, ingestion_router, review_router):
+    for router in (health_router, ingestion_router, review_router, export_router):
         app.include_router(router)
     return app
 
@@ -146,6 +148,10 @@ def _wire_use_cases(
     app.state.list_job_results = ListJobResults(
         engine, app.state.read_job_status, ingestion, MatchingRepository()
     )
+    app.state.build_job_export = BuildJobExport(
+        engine, app.state.read_job_status, ingestion, MatchingRepository()
+    )
+    app.state.csv_separator = settings.csv_separator
     app.state.worker = _build_worker(engine, settings, reference, adapters, store)
 
 

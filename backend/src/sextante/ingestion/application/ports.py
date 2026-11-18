@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sextante.ingestion.application.records import (
     ClaimedJob,
     EntityCheckRecord,
+    ExportInvoice,
     JobLine,
     JobSummary,
     NewInvoice,
@@ -95,4 +96,14 @@ class JobLinesReader(Protocol):
         self, connection: AsyncConnection, job_id: str, limit: int, offset: int
     ) -> list[JobLine]:
         """Return one page of the job's lines, by upload order then document position."""
+        ...
+
+
+class InvoiceExportReader(Protocol):
+    """Port, published to other modules: every invoice of a job, with its lines."""
+
+    async def read_job_invoices(
+        self, connection: AsyncConnection, job_id: str
+    ) -> list[ExportInvoice]:
+        """Return the job's invoices in upload order, each with its lines in document order."""
         ...

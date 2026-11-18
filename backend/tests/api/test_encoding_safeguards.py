@@ -18,6 +18,7 @@ from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fakes.fixed_clock import FixedClock, SequentialIdentifierGenerator
 from tests.fixtures.synthetic_invoices import (
     SyntheticInvoice,
+    extraction_of,
     hotel_stay_to_amt,
     synthetic_pdf_bytes,
     taag_air_ticket_to_amt,
@@ -29,8 +30,8 @@ def _database_file(environment: dict[str, str]) -> Path:
 
 
 def _with_first_description(invoice: SyntheticInvoice, description: str) -> SyntheticInvoice:
-    first_line = dataclasses.replace(invoice.extraction.lines[0], description=description)
-    extraction = dataclasses.replace(invoice.extraction, lines=(first_line,))
+    first_line = dataclasses.replace(extraction_of(invoice).lines[0], description=description)
+    extraction = dataclasses.replace(extraction_of(invoice), lines=(first_line,))
     return SyntheticInvoice(invoice.file_name, synthetic_pdf_bytes("injection"), extraction)
 
 

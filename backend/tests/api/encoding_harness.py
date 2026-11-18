@@ -75,3 +75,14 @@ def running_application(
     )
     with TestClient(create_app(environment, dependencies)) as client:
         yield EncodingHarness(client=client, extractor=extractor, classifier=classifier)
+
+
+def export_bytes(harness: EncodingHarness, job_id: object, export_format: str) -> bytes:
+    """Download the job's export in the given format.
+
+    Example:
+        content = export_bytes(app, job_id, "csv")
+    """
+    response = harness.client.get(f"/api/exports/{job_id}", params={"format": export_format})
+    assert response.status_code == 200, response.text
+    return response.content

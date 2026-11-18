@@ -4,13 +4,14 @@ Automatic coding of supplier invoice lines for AMT, Advanced Maritime Transports
 
 For each line of a supplier invoice, Sextante assigns the exact item number from the catalog, computes a confidence rating, and flags for human review any line where the decision is not safe.
 
-**Status:** under construction. This version delivers tickets 01 to 04 of `.scratch/nucleo-codificacao/`:
+**Status:** under construction. This version delivers tickets 01 to 06 of `.scratch/nucleo-codificacao/`:
 
 - application startup with a validated catalog;
 - upload of invoices into a background job;
 - an entity check with no language model: MATCH codes against OUTLAYS, NO_MATCH against OUTLAYSP, and an ambiguous entity is left for a reviewer;
 - a computed confidence (`HIGH`, `MEDIUM`, `LOW`), the `O00999` fallback in OUTLAYSP only, and review flags;
-- the coded results, read back through the API.
+- line types: VAT and discount lines are recorded without code, and only services reach the model;
+- the coded results, read back through the API, and exported as CSV or XLSX with the nine columns of the brief.
 
 Two parts are not wired yet. Until they are, an uploaded invoice is refused with the reason `extractor_not_configured` and is never coded.
 
@@ -44,6 +45,7 @@ The response gives the SHA-256 of the loaded catalog.
 | `POST /api/invoices` | Upload PDF or XLSX invoices (multipart field `files`). Answers at once with a job id |
 | `GET /api/jobs/{job_id}` | Job status, with its invoices counted by status |
 | `GET /api/jobs/{job_id}/results` | Coded lines in document order, paginated (`limit` up to 100, `offset`) |
+| `GET /api/exports/{job_id}?format=csv` | Export with the nine columns: CSV in UTF-8 with BOM, or `format=xlsx` |
 
 The application refuses to start, with a message naming the problem, in either of these cases:
 
