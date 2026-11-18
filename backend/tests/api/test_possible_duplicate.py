@@ -6,10 +6,11 @@ import io
 
 import pytest
 
-from tests.api.encoding_harness import export_bytes, running_application
+from tests.api.encoding_harness import export_bytes, idempotency_headers, running_application
 from tests.api.test_encoding_safeguards import _query
 from tests.fakes.fake_item_classifier import FakeItemClassifier
 from tests.fixtures.synthetic_invoices import (
+    billed_to,
     extraction_of,
     hotel_stay_to_amt,
     reexported,
@@ -107,3 +108,32 @@ def test_the_same_number_from_another_supplier_is_not_a_duplicate(
     assert isinstance(lines, list)
 
     assert all("possible_duplicate" not in _flag_codes(line) for line in lines)
+
+
+@pytest.mark.requirement("REQ-ING-011", "REQ-REV-006")
+def test_a_duplicate_coded_again_after_resolution_is_audited_once(
+    valid_environment: dict[str, str],
+) -> None:
+    """The resolved copy keeps its flag; the detection is recorded a single time."""
+    original = billed_to("DUP", "Advanced Maritime Transports Moçambique Limitada")
+    copy = reexported(original, "DUP-again")
+    with running_application(
+        valid_environment, [original, copy], FakeItemClassifier({1: "O00004"})
+    ) as app:
+        app.wait_for_job(app.upload(original)["job_id"])
+        job_id = app.upload(copy)["job_id"]
+        app.wait_for_job(job_id)
+        invoice_id = app.lines(job_id)[0]["invoice_id"]
+        app.client.post(
+            f"/api/invoices/{invoice_id}/entity-resolution",
+            json={"resolution": "MATCH", "note": "Confirmado."},
+            headers=idempotency_headers("dup-resolve"),
+        )
+        app.wait_for_job(job_id)
+        [line] = app.lines(job_id)
+
+    assert (line["target_sheet"], _flag_codes(line)) == ("OUTLAYS", ["possible_duplicate"])
+    assert _query(
+        valid_environment,
+        "SELECT count(*) FROM audit_event WHERE event_type = 'possible_duplicate_detected'",
+    ) == [(1,)]

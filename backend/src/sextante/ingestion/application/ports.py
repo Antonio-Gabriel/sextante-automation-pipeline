@@ -108,8 +108,8 @@ class IngestionRepositoryPort(Protocol):
 
     async def record_possible_duplicate(
         self, connection: AsyncConnection, invoice_id: str, earlier_invoice_id: str
-    ) -> None:
-        """Point the invoice at the earlier one it may duplicate."""
+    ) -> bool:
+        """Point the invoice at the earlier one; False when it already pointed there."""
         ...
 
 
@@ -127,6 +127,10 @@ class ReprocessingRepositoryPort(Protocol):
     ) -> None:
         """Queue the invoice again and reopen its job."""
         ...
+
+
+class EntityResolutionRepositoryPort(ReprocessingRepositoryPort, Protocol):
+    """Port: reprocessing, plus storing a reviewer's entity resolution (REQ-REV-006)."""
 
     async def record_entity_resolution(
         self, connection: AsyncConnection, invoice_id: str, resolution: EntityResolutionRecord

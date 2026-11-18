@@ -38,6 +38,7 @@ from sextante.ingestion.infrastructure.tables import (
     INVOICE_TABLE,
     JOB_TABLE,
 )
+from sextante.platform.insert_if_absent import insert_if_absent
 from sextante.platform.supplier_key import supplier_key
 from sextante.platform.text_normalization import normalize_for_comparison
 
@@ -249,18 +250,14 @@ class IngestionRepository:
         self, connection: AsyncConnection, invoice_id: str, resolution: EntityResolutionRecord
     ) -> bool:
         """Store the resolution; False when the invoice already had one (REQ-REV-006)."""
-        statement = (
-            ENTITY_RESOLUTION_TABLE.insert()
-            .prefix_with("OR IGNORE")
-            .values(
-                invoice_id=invoice_id,
-                verdict=resolution.verdict,
-                note=resolution.note,
-                resolved_by=resolution.resolved_by,
-                resolved_at=resolution.resolved_at.isoformat(),
-            )
-        )
-        return (await connection.execute(statement)).rowcount == 1
+        values = {
+            "invoice_id": invoice_id,
+            "verdict": resolution.verdict,
+            "note": resolution.note,
+            "resolved_by": resolution.resolved_by,
+            "resolved_at": resolution.resolved_at.isoformat(),
+        }
+        return await insert_if_absent(connection, ENTITY_RESOLUTION_TABLE, values, ("invoice_id",))
 
     async def entity_resolution(self, connection: AsyncConnection, invoice_id: str) -> str | None:
         """Return the verdict a reviewer chose for this invoice, or None."""
@@ -272,7 +269,7 @@ class IngestionRepository:
     async def earlier_invoice_with_same_number(
         self, connection: AsyncConnection, invoice_id: str
     ) -> str | None:
-        """Return the first other invoice of the same supplier and number, or None.
+        """Return the first invoice uploaded before this one with its supplier and number.
 
         An invoice without number, or without supplier, never matches (REQ-ING-011).
         """
@@ -281,13 +278,15 @@ class IngestionRepository:
 
     async def record_possible_duplicate(
         self, connection: AsyncConnection, invoice_id: str, earlier_invoice_id: str
-    ) -> None:
-        """Point the invoice at the earlier one it may duplicate."""
-        await connection.execute(
-            update(INVOICE_HEADER_TABLE)
-            .where(INVOICE_HEADER_TABLE.c.invoice_id == invoice_id)
+    ) -> bool:
+        """Point the invoice at the earlier one; False when it already pointed there."""
+        header = INVOICE_HEADER_TABLE
+        result = await connection.execute(
+            update(header)
+            .where(header.c.invoice_id == invoice_id, header.c.possible_duplicate_of.is_(None))
             .values(possible_duplicate_of=earlier_invoice_id)
         )
+        return result.rowcount == 1
 
     async def requeue_invoice(
         self, connection: AsyncConnection, invoice_id: str, job_id: str

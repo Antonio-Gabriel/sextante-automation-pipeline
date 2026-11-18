@@ -34,6 +34,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                     └── CHG-0025  fix       Correcções da revisão dos tickets 07 e 08
                                                                                         └── CHG-0026  docs      Isenção do carregamento e reprocessamento só de falhas
                                                                                             └── CHG-0027  feat      Resolução de entidade e duplicado provável
+                                                                                                └── CHG-0028  fix       Correcções da revisão dos tickets 09 e 10
 ```
 
 ## Regras
@@ -98,6 +99,35 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0028 · Correcções da revisão dos tickets 09 e 10
+
+- **Data:** 2026-11-18
+- **Tipo:** fix
+- **Pai:** CHG-0027
+- **Estado:** activa
+- **Requisitos:** REQ-REV-006, REQ-ING-011, REQ-CNF-001, REQ-AUD-002, SEC-19
+- **Commit:** pendente
+- **Migração:** `0007` alterada antes de sair deste ramo: índice parcial também com condição para PostgreSQL, e descida sem trabalho manual
+- **Ficheiros:**
+  - `backend/src/sextante/platform/insert_if_absent.py` (novo), `idempotency.py`
+  - `backend/src/sextante/ingestion/` (porta da resolução, mensagens de erro, duplicado gravado uma vez)
+  - `backend/src/sextante/worker.py`, `matching/infrastructure/tables.py`, migração 0007
+  - testes: `test_entity_resolution.py`, `test_possible_duplicate.py`
+  - spec (tipo de auditoria `possible_duplicate_detected`), ticket 14
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit. A migração 0007 volta à forma de CHG-0027.
+- **Verificação:** 261 testes. O teste da auditoria única falha sem a correcção. A descida da 0007 é testada com codificações substituídas presentes. `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+**SQL portável.** A reserva da chave de idempotência e a gravação da resolução deixam de usar `INSERT OR IGNORE`, que só existe em SQLite (02 §5), e passam a `INSERT ... SELECT ... WHERE NOT EXISTS`. O índice único parcial de `encoded_line` declara a condição para SQLite e para PostgreSQL.
+
+**Migração 0007.** A descida apaga primeiro as codificações substituídas, e as suas sinalizações e revisões, porque a restrição da 0006 só admite uma por linha. O histórico fica em `audit_event`. A Reversão de CHG-0027 deixa de exigir trabalho manual.
+
+**Duplicado.** `possible_duplicate_detected` é gravado uma só vez, mesmo quando a factura é codificada de novo depois de uma resolução. O tipo fica declarado na spec.
+
+**Resolução.** Uma resolução repetida e uma factura não ambígua têm mensagens de erro distintas, cada uma com a condição que falhou. A resolução tem uma porta própria, que estende a do reprocessamento. Um teste prova que uma factura resolvida chega a `HIGH` sem sinalização.
+
+**Pendente para o ticket 14.** `lexical_score` não está ligado a uma codificação. Recodificar uma linha que já tem scores falharia na chave primária. Hoje não acontece, porque a factura ambígua não grava scores.
 
 ### CHG-0027 · Resolução de entidade e duplicado provável
 

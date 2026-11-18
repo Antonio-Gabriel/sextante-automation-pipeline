@@ -195,10 +195,10 @@ class EncodingWorker:
 
         async def write(connection: AsyncConnection) -> None:
             await repository.record_entity_check(connection, invoice_id, record)
-            if earlier_invoice_id is not None:
-                await repository.record_possible_duplicate(
-                    connection, invoice_id, earlier_invoice_id
-                )
+            # Audited once: coding the invoice again, after a resolution, finds it recorded.
+            if earlier_invoice_id is not None and await repository.record_possible_duplicate(
+                connection, invoice_id, earlier_invoice_id
+            ):
                 await self._audit_duplicate(connection, invoice_id, earlier_invoice_id)
 
         return write

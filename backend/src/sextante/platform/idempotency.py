@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from sextante.platform.clock import Clock
 from sextante.platform.errors import DomainError
+from sextante.platform.insert_if_absent import insert_if_absent
 from sextante.platform.schema import SCHEMA_METADATA
 
 logger = logging.getLogger(__name__)
@@ -133,19 +134,17 @@ class IdempotentExecutor:
     async def _reserve(
         self, connection: AsyncConnection, scope: str, key: str, fingerprint: str
     ) -> bool:
-        statement = (
-            IDEMPOTENCY_TABLE.insert()
-            .prefix_with("OR IGNORE")
-            .values(
-                scope=scope,
-                idempotency_key=key,
-                fingerprint=fingerprint,
-                status_code=RESERVED_STATUS_CODE,
-                response_body="",
-                created_at=self._clock.now().isoformat(),
-            )
+        values = {
+            "scope": scope,
+            "idempotency_key": key,
+            "fingerprint": fingerprint,
+            "status_code": RESERVED_STATUS_CODE,
+            "response_body": "",
+            "created_at": self._clock.now().isoformat(),
+        }
+        return await insert_if_absent(
+            connection, IDEMPOTENCY_TABLE, values, ("scope", "idempotency_key")
         )
-        return (await connection.execute(statement)).rowcount == 1
 
 
 async def _store_answer(

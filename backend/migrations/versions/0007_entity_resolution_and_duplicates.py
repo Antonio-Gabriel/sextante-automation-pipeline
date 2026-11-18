@@ -36,6 +36,7 @@ def upgrade() -> None:
         ["invoice_line_id"],
         unique=True,
         sqlite_where=sa.text("superseded_at IS NULL"),
+        postgresql_where=sa.text("superseded_at IS NULL"),
     )
     with op.batch_alter_table("invoice_header") as batch:
         # NIF when extracted, normalized name otherwise. Rows stored before this revision
@@ -48,11 +49,23 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Drop what this revision added. Superseded codings must be removed by hand first."""
+    """Drop what this revision added.
+
+    The unique constraint of 0006 allows one coding per line, so the superseded codings,
+    and their flags, are deleted first. Their history stays in audit_event.
+    """
     op.drop_index("ix_invoice_header_supplier_number", "invoice_header")
     with op.batch_alter_table("invoice_header") as batch:
         batch.drop_column("possible_duplicate_of")
         batch.drop_column("supplier_key")
+    for dependant in (
+        "DELETE FROM line_flag WHERE encoded_line_id IN "
+        "(SELECT id FROM encoded_line WHERE superseded_at IS NOT NULL)",
+        "DELETE FROM line_review WHERE encoded_line_id IN "
+        "(SELECT id FROM encoded_line WHERE superseded_at IS NOT NULL)",
+    ):
+        op.execute(dependant)
+    op.execute("DELETE FROM encoded_line WHERE superseded_at IS NOT NULL")
     op.drop_index("uq_encoded_line_in_force", "encoded_line")
     with op.batch_alter_table("encoded_line") as batch:
         batch.create_unique_constraint("uq_encoded_line_invoice_line", ["invoice_line_id"])

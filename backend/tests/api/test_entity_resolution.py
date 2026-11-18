@@ -6,11 +6,15 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import create_engine
 
+from sextante.platform.database import MIGRATIONS_DIRECTORY
 from tests.api.encoding_harness import EncodingHarness, idempotency_headers, running_application
 from tests.api.test_encoding_safeguards import _query
 from tests.fakes.fake_item_classifier import FakeItemClassifier
-from tests.fixtures.synthetic_invoices import billed_to, taag_air_ticket_to_amt
+from tests.fixtures.synthetic_invoices import billed_to, taag_air_ticket_to_amt, with_description
 
 SISTER_COMPANY = "Advanced Maritime Transports Moçambique Limitada"
 
@@ -181,3 +185,45 @@ def test_a_resolution_changes_neither_the_denylist_nor_the_next_check(
 
     assert denylist.read_bytes() == before
     assert line["target_sheet"] is None
+
+
+@pytest.mark.requirement("REQ-REV-006", "REQ-CNF-001")
+def test_a_resolved_invoice_is_not_capped_and_can_reach_high(
+    valid_environment: dict[str, str],
+) -> None:
+    """The human decision lifts the entity doubt: the confidence rule applies unchanged."""
+    invoice = with_description(billed_to("AMBIG-HIGH", SISTER_COMPANY), "Bilhete Avião", "hi")
+    with running_application(
+        valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
+    ) as app:
+        job_id = app.upload(invoice)["job_id"]
+        app.wait_for_job(job_id)
+        invoice_id = str(app.lines(job_id)[0]["invoice_id"])
+        _resolve(app, invoice_id, {"resolution": "MATCH", "note": "Confirmado."})
+        app.wait_for_job(job_id)
+        [line] = app.lines(job_id)
+
+    assert (line["confidence"], line["flags"], line["review_status"]) == ("HIGH", [], "accepted")
+
+
+@pytest.mark.requirement("REQ-REV-006", "REQ-AUD-002")
+def test_migration_0007_goes_down_with_superseded_codings(
+    valid_environment: dict[str, str],
+) -> None:
+    """Reverting the change needs no hand work, even after a resolution (CHANGELOG rule)."""
+    with _ambiguous_invoice(valid_environment, {1: "O00004"}) as (app, job_id, invoice_id):
+        _resolve(app, invoice_id, {"resolution": "MATCH", "note": "Confirmado."})
+        app.wait_for_job(job_id)
+
+    url = valid_environment["SEXTANTE_DATABASE_URL"].replace("+aiosqlite", "")
+    engine = create_engine(url)
+    with engine.begin() as connection:
+        config = Config()
+        config.set_main_option("script_location", str(MIGRATIONS_DIRECTORY))
+        config.attributes["connection"] = connection
+        command.downgrade(config, "0006")
+    engine.dispose()
+
+    assert _query(valid_environment, "SELECT count(*), target_sheet FROM encoded_line") == [
+        (1, "OUTLAYS")
+    ]

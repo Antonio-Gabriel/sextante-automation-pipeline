@@ -9,7 +9,7 @@ from typing import Final
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from sextante.ingestion.application.ports import ReprocessingRepositoryPort
+from sextante.ingestion.application.ports import EntityResolutionRepositoryPort
 from sextante.ingestion.application.records import EntityResolutionRecord, InvoiceState
 from sextante.ingestion.application.reprocess_invoice import (
     InvoiceNotFoundError,
@@ -34,7 +34,7 @@ class InvoiceNotAmbiguousError(DomainError):
 class ResolutionCollaborators:
     """Everything ResolveEntity needs, injected (04-padroes-de-codigo.md §4)."""
 
-    repository: ReprocessingRepositoryPort
+    repository: EntityResolutionRepositoryPort
     audit: AuditEventRepository
     clock: Clock
     identifiers: IdentifierGenerator
@@ -91,16 +91,17 @@ class ResolveEntity:
         state: InvoiceState,
         resolution: EntityResolutionRecord,
     ) -> None:
-        ambiguous = (
-            state.entity_verdict == AMBIGUOUS_VERDICT and state.status is InvoiceStatus.NOT_CODED
-        )
+        if state.entity_verdict != AMBIGUOUS_VERDICT or state.status is not InvoiceStatus.NOT_CODED:
+            raise InvoiceNotAmbiguousError(
+                f"Invoice {invoice_id!r} has verdict {state.entity_verdict} and status "
+                f"{state.status.value}. Expected verdict {AMBIGUOUS_VERDICT}, not coded."
+            )
         # The primary key on the resolution decides a race between two reviewers.
-        if not ambiguous or not await self._deps.repository.record_entity_resolution(
+        if not await self._deps.repository.record_entity_resolution(
             connection, invoice_id, resolution
         ):
             raise InvoiceNotAmbiguousError(
-                f"Invoice {invoice_id!r} is not an unresolved ambiguous invoice. Expected "
-                f"verdict {AMBIGUOUS_VERDICT}, found {state.entity_verdict}."
+                f"Invoice {invoice_id!r} already has an entity resolution. Expected none."
             )
 
 

@@ -329,7 +329,7 @@ Uma linha sinalizada começa no estado de revisão `pending`, e uma linha não s
 |---|---|
 | `invoice_header` | Passa a guardar o resultado da verificação, o motivo de ambiguidade, a aba de destino (que pode ficar vazia), o identificador do fornecedor e o identificador exportado |
 | `retrieval_candidate` | Passa a chamar-se `lexical_score`: um registo por linha e por item da aba, com o score e a posição lexical |
-| `audit_event` | Ganha os tipos `entity_resolved`, `line_accepted`, `line_corrected` e `summary_rows_extracted` |
+| `audit_event` | Ganha os tipos `entity_resolved`, `line_accepted`, `line_corrected`, `summary_rows_extracted` e `possible_duplicate_detected` (este acrescentado em 18-11-2026, CHG-0028, com a factura anterior a que um duplicado provável aponta) |
 
 Existe um índice não único sobre (fornecedor, número da factura), para a detecção de duplicados prováveis.
 

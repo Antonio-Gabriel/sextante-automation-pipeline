@@ -40,6 +40,7 @@ ENCODED_LINE_TABLE = Table(
         "invoice_line_id",
         unique=True,
         sqlite_where=text("superseded_at IS NULL"),
+        postgresql_where=text("superseded_at IS NULL"),
     ),
 )
 
