@@ -72,6 +72,17 @@ The API counts requests per time window (SEC-12). Over a quota the answer is `42
 
 Windows are fixed, so up to twice a quota can pass across the boundary between two windows. The counters live in the memory of the server process. With one process that is enough. With two or more instances each one allows the full quota: running more than one instance needs a shared counter, such as Redis or Valkey.
 
+## PDF extraction limits
+
+Every PDF is read in a separate process, with a memory limit and a time limit (SEC-16). A file built to expand on decompression, or to take long to read, stops at a limit: the document is refused as `unsupported_document_type`, the log records `pdf_extraction_limit_reached` with the limit reached and never the file's content, and the worker goes on with the other invoices. Reading happens off the event loop, so the API keeps answering meanwhile.
+
+| Limit | Default | Variable | Range |
+|---|---|---|---|
+| Memory per PDF, in MiB | 512 | `SEXTANTE_PDF_EXTRACTION_MEMORY_MIB` | 128 to 8192 |
+| Time per PDF, in seconds | 30 | `SEXTANTE_PDF_EXTRACTION_TIMEOUT_SECONDS` | 1 to 600 |
+
+Raise the memory limit if valid invoices are refused with `limit: memory` in the log; raise the time limit if they are refused with `limit: time`. The memory limit is the child process's address space, which Linux enforces, with or without Docker. On a platform that does not enforce it, such as macOS, the child logs `pdf_memory_limit_unavailable` and only the time limit applies.
+
 ## Model call ceiling
 
 The worker makes at most `SEXTANTE_MODEL_CALL_CEILING` model calls per `SEXTANTE_MODEL_CALL_WINDOW_SECONDS` (SEC-12). The default is 200 calls per hour, provisional until the real volume is known. Every call counts, retries included, because every attempt is paid. A call over the ceiling waits for the next window: its invoice is never refused nor failed, it stays `queued`, the job shows `waiting_model`, and the invoice is coded when the window opens. An invoice that needs no model call, such as a refused document, never waits. The log records `model_call_ceiling_reached`, with the job and the seconds to wait, and `model_call_ceiling_released`.

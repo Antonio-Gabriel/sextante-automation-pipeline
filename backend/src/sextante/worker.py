@@ -134,7 +134,11 @@ class EncodingWorker:
         if stored is not None:
             return await self._encode(stored)
         content = self._collaborators.store.read(invoice.storage_name)
-        extraction = self._collaborators.extractor.extract(content, FileFormat(invoice.file_format))
+        # Off the event loop: reading a PDF may take up to its time limit, and the API
+        # keeps answering meanwhile (SEC-16).
+        extraction = await asyncio.to_thread(
+            self._collaborators.extractor.extract, content, FileFormat(invoice.file_format)
+        )
         if isinstance(extraction, ExtractionRejection):
             return InvoiceStatus.REJECTED, extraction.reason.value
         return await self._encode(await self._store(invoice.invoice_id, extraction))

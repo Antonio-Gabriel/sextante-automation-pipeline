@@ -59,6 +59,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                         └── CHG-0050  fix       Correcções da revisão dos limites de taxa
                                                                                                                                                                                             └── CHG-0051  security  Tecto de chamadas ao modelo no trabalhador
                                                                                                                                                                                                 └── CHG-0052  fix       Correcções da revisão do tecto de chamadas ao modelo
+                                                                                                                                                                                                    └── CHG-0053  security  Extracção de PDF isolada com limites
 ```
 
 ## Regras
@@ -123,6 +124,24 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0053 · Extracção de PDF isolada com limites
+
+- **Data:** 2026-11-19
+- **Tipo:** security
+- **Pai:** CHG-0052
+- **Estado:** activa
+- **Requisitos:** SEC-16, SEC-15, REQ-PLT-002, REQ-ING-003, REQ-ING-009
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `backend/src/sextante/ingestion/infrastructure/isolated_extractor.py`, `ingestion/infrastructure/pdf_invoice_extractor.py` (`MemoryError` reconhecido sob a excepção do pdfplumber), `worker.py` (extracção fora do ciclo de eventos), `main.py`, `platform/settings.py`, `tests/extraction/test_isolated_extraction.py`, `tests/fixtures/synthetic_pdf.py` (PDF sintético com bomba de descompressão e PDF lento), `README.md`, `config/.env.example`, `docs/02-arquitectura.md` §4.3, `docs/03-seguranca.md` (SEC-16), ticket de operação 03
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 354 testes e o `xfail` estrito. Testes novos: um PDF válido e um digitalizado dão o mesmo resultado lidos à parte e no processo; um PDF sintético de 1 MiB que expande para 1 GiB é recusado pelo limite de memória; um PDF sintético com cinco milhões de operadores é recusado pelo limite de tempo em menos de 5 s; o log regista o limite sem conteúdo; um XLSX é recusado sem abrir processo; pela API, o trabalhador recusa a bomba e codifica a factura seguinte; valores por omissão e limites fora do intervalo recusam o arranque. `make golden` com 12 amostras sem divergências. `mypy`, `ruff`, 8 contratos do `import-linter`, licenças, funções com 20 linhas ou menos.
+
+**Comportamento.** Cada PDF é lido num processo filho, com limite de espaço de endereçamento (`SEXTANTE_PDF_EXTRACTION_MEMORY_MIB`, 512 por omissão) e de tempo (`SEXTANTE_PDF_EXTRACTION_TIMEOUT_SECONDS`, 30 por omissão). Acima de um limite o filho é parado, o documento é recusado como `unsupported_document_type`, e o log regista `pdf_extraction_limit_reached` com o limite atingido. Um filho que morre sem responder, como o kernel faz a um processo sem memória, conta como limite de memória. Outra falha do filho falha a factura, como antes, nunca é engolida.
+
+**Decisões.** Os filhos partem de um servidor de processos (`forkserver`) com o extractor já importado: nem `fork` a partir de um processo com threads, nem um interpretador novo por PDF. A extracção corre fora do ciclo de eventos (`asyncio.to_thread`), para que a API continue a responder durante uma leitura de até 30 s. O limite de memória é `RLIMIT_AS`, aplicado pelo Linux, com ou sem Docker; noutra plataforma o filho regista `pdf_memory_limit_unavailable` e só o limite de tempo se aplica.
 
 ### CHG-0052 · Correcções da revisão do tecto de chamadas ao modelo
 

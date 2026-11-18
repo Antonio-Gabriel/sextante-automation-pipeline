@@ -166,6 +166,8 @@ Concorrência das chamadas ao modelo controlada por um semáforo, com valor em c
 
 Porta `InvoiceExtractor`, escolhida pelo tipo real.
 
+**Leitura isolada.** *Acrescentado em 19-11-2026 (CHG-0053).* Cada PDF é lido num processo filho, com limite de memória (espaço de endereçamento, 512 MiB por omissão) e de tempo (30 s por omissão), fora do ciclo de eventos. Acima de um limite, o filho é parado e o documento é recusado como `unsupported_document_type`. Os filhos partem de um servidor de processos com o extractor já importado.
+
 **PDF nativo no modelo das amostras, com `pdfplumber`.** *Revisto em 18-11-2026.* A extracção usa as coordenadas das palavras, não o texto corrido:
 
 - **Cabeçalho.** Os blocos "FROM / FORNECEDOR" e "BILL TO / CLIENTE" estão lado a lado. O texto corrido mistura-os na mesma linha, por isso são separados por coordenada horizontal.

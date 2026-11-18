@@ -11,6 +11,8 @@ reproduces what the extractor must handle in the samples:
 No PDF library is needed: the file is a few objects with text placed at coordinates.
 """
 
+import functools
+import zlib
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Final
@@ -242,6 +244,51 @@ def _serialize(objects: list[str]) -> bytes:
     body += b"".join(f"{offset:010d} 00000 n \n".encode() for offset in offsets)
     trailer = f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R /Info 5 0 R >>\n"
     return body + trailer.encode() + f"startxref\n{xref}\n%%EOF\n".encode()
+
+
+@functools.cache
+def decompression_bomb_pdf(decompressed_mib: int = 1024) -> bytes:
+    """A small PDF whose one content stream expands to ``decompressed_mib`` MiB.
+
+    About a thousandth of the size on disk: built to exhaust memory when read.
+
+    Example:
+        decompression_bomb_pdf()  # about 1 MiB, expands to 1 GiB
+    """
+    compressor = zlib.compressobj(1)
+    chunk = b"\0" * (1 << 20)
+    data = b"".join(compressor.compress(chunk) for _ in range(decompressed_mib))
+    return _flate_document(data + compressor.flush())
+
+
+@functools.cache
+def slow_to_read_pdf(operators: int = 5_000_000) -> bytes:
+    """A small PDF whose content stream holds ``operators`` empty save/restore pairs.
+
+    Tiny in memory, but every operator is parsed one by one: built to take long to read.
+
+    Example:
+        slow_to_read_pdf()
+    """
+    return _flate_document(zlib.compress(b"q Q\n" * operators, 9))
+
+
+def _flate_document(stream: bytes) -> bytes:
+    # The same objects as _document, with one compressed content stream.
+    font = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"
+    objects = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [7 0 R] /Count 1 >>",
+        font,
+        font,
+        f"<< /Title ({SYNTHETIC_TITLE}) /Producer (sextante synthetic fixtures) >>",
+        f"<< /Length {len(stream)} /Filter /FlateDecode >>\nstream\n"
+        + stream.decode("latin-1")
+        + "\nendstream",
+        f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {PAGE_WIDTH} {PAGE_HEIGHT}] "
+        "/Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>",
+    ]
+    return _serialize(objects)
 
 
 AMT_BILL_TO: Final = (

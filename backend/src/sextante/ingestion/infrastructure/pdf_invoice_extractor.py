@@ -57,6 +57,10 @@ class PdfInvoiceExtractor:
             with pdfplumber.open(io.BytesIO(content)) as pdf:
                 return self._extract_pages(pdf.pages)
         except (PDFSyntaxError, PdfminerException) as error:
+            # Memory ran out while pdfminer read the file: pdfplumber wraps it, and the
+            # isolated extractor must see it as the limit it is (SEC-16).
+            if _out_of_memory(error):
+                raise MemoryError("PDF extraction ran out of memory.") from error
             # The file starts like a PDF but cannot be read as one: refused, not failed,
             # because retrying would read it the same way.
             logger.warning("pdf_unreadable", extra={"error_type": type(error).__name__})
@@ -79,6 +83,15 @@ class PdfInvoiceExtractor:
         if missing:
             logger.info("extraction_fields_missing", extra={"missing_fields": list(missing)})
         return invoice
+
+
+def _out_of_memory(error: BaseException) -> bool:
+    cause: BaseException | None = error
+    while cause is not None:
+        if isinstance(cause, MemoryError) or any(isinstance(a, MemoryError) for a in cause.args):
+            return True
+        cause = cause.__cause__ or cause.__context__
+    return False
 
 
 def _stacked_text(pages: list[Page]) -> tuple[list[Word], list[Glyph]]:

@@ -4,11 +4,13 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] A extracção corre num processo separado, com limite de memória e de tempo configuráveis
-- [ ] Ultrapassar um limite recusa o documento como não suportado, nunca derruba o trabalhador
-- [ ] Os resultados da extracção de um PDF válido são os mesmos de antes
-- [ ] O log regista o limite atingido, sem conteúdo do ficheiro
-- [ ] O `README.md` explica os limites e como os ajustar
-- [ ] Testes com um PDF sintético que expande na descompressão e com um que excede o tempo
+- [x] A extracção corre num processo separado, com limite de memória e de tempo configuráveis
+- [x] Ultrapassar um limite recusa o documento como não suportado, nunca derruba o trabalhador
+- [x] Os resultados da extracção de um PDF válido são os mesmos de antes
+- [x] O log regista o limite atingido, sem conteúdo do ficheiro
+- [x] O `README.md` explica os limites e como os ajustar
+- [x] Testes com um PDF sintético que expande na descompressão e com um que excede o tempo
+
+Resolved on 2026-11-19 (CHG-0053): each PDF is read in a child process started from a forkserver, with an address-space limit and a time limit, off the event loop. Over a limit the document is refused as `unsupported_document_type` and the log records the limit. Defaults 512 MiB and 30 s.

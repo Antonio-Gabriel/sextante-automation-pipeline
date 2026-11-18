@@ -45,8 +45,12 @@ from sextante.ingestion.application.upload_invoices import (
     UploadInvoices,
 )
 from sextante.ingestion.contracts import InvoiceExtractor
+from sextante.ingestion.infrastructure.isolated_extractor import (
+    MIB,
+    ExtractionLimits,
+    IsolatedPdfExtractor,
+)
 from sextante.ingestion.infrastructure.local_file_store import LocalInvoiceFileStore
-from sextante.ingestion.infrastructure.pdf_invoice_extractor import PdfInvoiceExtractor
 from sextante.ingestion.infrastructure.repository import IngestionRepository
 from sextante.matching.application.ceiling_classifier import CeilingItemClassifier
 from sextante.matching.application.encode_invoice import EncodeInvoice, EncodingCollaborators
@@ -194,6 +198,14 @@ def create_app(
     app.state.costly_endpoints = COSTLY_ENDPOINTS
     _include_routers(app, settings)
     return app
+
+
+def _pdf_extractor(settings: Settings) -> IsolatedPdfExtractor:
+    # Every PDF is read in its own process, within limits (SEC-16).
+    limits = ExtractionLimits(
+        settings.pdf_extraction_memory_mib * MIB, float(settings.pdf_extraction_timeout_seconds)
+    )
+    return IsolatedPdfExtractor(settings.pdf_min_chars_per_page, limits)
 
 
 def model_call_limit(settings: Settings) -> RateLimit:
@@ -374,7 +386,7 @@ def _build_worker(
             engine=engine,
             repository=IngestionRepository(),
             store=store,
-            extractor=adapters.extractor or PdfInvoiceExtractor(settings.pdf_min_chars_per_page),
+            extractor=adapters.extractor or _pdf_extractor(settings),
             encoder=_build_encoder(engine, reference.catalog, settings, adapters, ceiled),
             audit=AuditEventRepository(),
             clock=adapters.clock,
