@@ -107,7 +107,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0027
 - **Estado:** activa
 - **Requisitos:** REQ-REV-006, REQ-ING-011, REQ-CNF-001, REQ-AUD-002, SEC-19
-- **Commit:** pendente
+- **Commit:** `ad6665f`
 - **Migração:** `0007` alterada antes de sair deste ramo: índice parcial também com condição para PostgreSQL, e descida sem trabalho manual
 - **Ficheiros:**
   - `backend/src/sextante/platform/insert_if_absent.py` (novo), `idempotency.py`
@@ -136,7 +136,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0026
 - **Estado:** activa
 - **Requisitos:** REQ-REV-006, REQ-ING-011, REQ-REV-004, REQ-AUD-002, SEC-08, SEC-19, D-3.10, D-3.15
-- **Commit:** pendente
+- **Commit:** `c557b98`
 - **Migração:** `0007_entity_resolution_and_duplicates` (tabela `entity_resolution`; `encoded_line.superseded_at` com índice único parcial no lugar da restrição única; `invoice_header.supplier_key` e `possible_duplicate_of`, com índice não único sobre fornecedor e número)
 - **Ficheiros:**
   - `backend/src/sextante/ingestion/` (caso de uso `ResolveEntity`, rota, repositório, tabelas)
