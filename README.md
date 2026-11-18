@@ -14,7 +14,7 @@ For each line of a supplier invoice, Sextante assigns the exact item number from
 - line types: a line made only of VAT or discount wording is recorded without code, and only services reach the model;
 - the coded results, read back through the API, and exported as CSV or XLSX with the nine columns of the brief;
 - review of coded lines, entity resolution and possible duplicates;
-- the item choice by Claude, with the approved prompt `item-choice-v1` (ticket 11). The model is `SEXTANTE_MODEL_ID`, `claude-opus-5-5` by default; it answers only an index of the target sheet's list, or none, and the server validates it.
+- the item choice by Claude, with the approved prompt `item-choice-v1` (ticket 11). The model is `SEXTANTE_MODEL_ID`, `claude-sonnet-5-5` by default; it answers only an index of the target sheet's list, or none, and the server validates it.
 
 ## Requirements
 

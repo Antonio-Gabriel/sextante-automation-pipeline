@@ -35,8 +35,8 @@ class ModelCallSettings(BaseModel):
     generic_items: tuple[str, ...] = ("O00052",)
     # Attempts per model call, the first included, for transient failures (REQ-PLT-003).
     model_max_attempts: int = Field(default=3, ge=1, le=10)
-    # Claude model of the item choice; the latest suitable one by default (D-3.22).
-    model_id: str = Field(default="claude-opus-5-5", pattern=r"^[a-z0-9.-]{1,64}$")
+    # Claude model of the item choice: Sonnet by default, for cost (D-3.22, revised).
+    model_id: str = Field(default="claude-sonnet-5-5", pattern=r"^[a-z0-9.-]{1,64}$")
 
     @field_validator("generic_items", mode="before")
     @classmethod

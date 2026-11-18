@@ -22,7 +22,7 @@ from sextante.matching.domain.item_choice import (
 from sextante.matching.infrastructure.claude_classifier import ClaudeItemClassifier
 from sextante.prompts import item_choice_prompt
 
-MODEL_ID = "claude-opus-5-5"
+MODEL_ID = "claude-sonnet-5-5"
 REQUEST = ItemChoiceRequest(
     context=InvoiceContext(supplier_name="Fornecedor Sintético", currency="AOA"),
     lines=(
@@ -43,7 +43,7 @@ def _answer(text: str, stop_reason: str = "end_turn") -> dict[str, Any]:
         "id": "msg_synthetic",
         "type": "message",
         "role": "assistant",
-        "model": "claude-opus-5-5",
+        "model": "claude-sonnet-5-5",
         "content": [{"type": "text", "text": text}],
         "stop_reason": stop_reason,
         "stop_sequence": None,
@@ -116,7 +116,7 @@ async def test_the_answer_becomes_indexes_with_model_prompt_version_and_tokens()
     response = await _classifier(_replying(_answer(CHOICES))).choose(REQUEST)
 
     assert [(c.line_position, c.candidate_index) for c in response.choices] == [(1, 0), (2, None)]
-    assert (response.model_id, response.prompt_version) == ("claude-opus-5-5", "item-choice-v1")
+    assert (response.model_id, response.prompt_version) == ("claude-sonnet-5-5", "item-choice-v1")
     assert (response.input_tokens, response.output_tokens) == (1234, 56)
 
 

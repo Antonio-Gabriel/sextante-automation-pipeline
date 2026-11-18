@@ -47,6 +47,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                         └── CHG-0038  docs      Fornecedor e moeda no pedido ao modelo (REQ-MAP-005)
                                                                                                                                             └── CHG-0039  security  Repositório e histórico sem dados das amostras
                                                                                                                                                 └── CHG-0040  infra     Catálogo no repositório, sem metadados pessoais
+                                                                                                                                                    └── CHG-0041  improve   Modelo por omissão passa a Sonnet
 ```
 
 ## Regras
@@ -111,6 +112,22 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0041 · Modelo por omissão passa a Sonnet
+
+- **Data:** 2026-11-18
+- **Tipo:** improve
+- **Pai:** CHG-0040
+- **Estado:** activa
+- **Requisitos:** REQ-MAP-005, REQ-AUD-003
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `backend/src/sextante/platform/settings.py`, `config/.env.example`, `README.md`, `docs/00-decisoes-e-lacunas.md` (§3.22), `backend/tests/adapters/test_claude_classifier.py`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit, ou definir `SEXTANTE_MODEL_ID=claude-opus-5-5`.
+- **Verificação:** 306 testes. `make golden-model` com `claude-sonnet-5-5` e o prompt v1: 12 linhas, 12 com o código esperado, 3 sinalizadas, 23 094 tokens de entrada e 304 de saída, o mesmo resultado do Opus.
+
+**Pedido do responsável.** O modelo por omissão passa de `claude-opus-5-5` a `claude-sonnet-5-5`, por custo: 2 USD por milhão de tokens de entrada e 10 de saída, contra 4 e 20. A configuração aprovada em §3.22 continua válida no Sonnet: sem parâmetros de amostragem, saída por esquema, esforço baixo e o recurso de servidor `"default"`, que é a forma que o Sonnet aceita. O modelo que respondeu continua registado em cada decisão.
 
 ### CHG-0040 · Catálogo no repositório, sem metadados pessoais
 

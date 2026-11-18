@@ -340,7 +340,7 @@ Decisão tomada pelo responsável em 18-11-2026, ao aprovar a proposta do ticket
 
 - **Sem `temperature`.** A API recusa `temperature`, `top_p` e `top_k` em todos os modelos desde 21-10-2026. A reprodutibilidade que importa vive em código: a confiança, as sinalizações e o recurso não dependem da amostragem (3.8).
 - **Saída por esquema, não por ferramenta forçada.** Os modelos actuais recusam `tool_choice` forçado. A resposta é JSON restringido por `output_config.format`, com o esquema declarado, e continua validada no servidor antes de qualquer efeito (SEC-14).
-- **Modelo.** `SEXTANTE_MODEL_ID`, por omissão `claude-opus-5-5`, o mais recente adequado. O modelo que respondeu fica registado em cada decisão.
+- **Modelo.** `SEXTANTE_MODEL_ID`, por omissão `claude-sonnet-5-5`. *Revisto em 18-11-2026, por pedido do responsável:* o Sonnet substitui o `claude-opus-5-5` por custo, a metade do preço por token. Mede-se com `make golden-model` antes de se dar por adquirido que acerta o mesmo. O modelo que respondeu fica registado em cada decisão.
 - **Esforço e limite.** `effort` baixo, por ser uma classificação. `max_tokens` de 2048 mais 64 por linha, porque o raciocínio, sempre ligado nestes modelos, conta para o limite.
 - **Recusa de segurança.** O recurso de servidor (`fallbacks: "default"`) tenta outro modelo. Se a recusa persistir, ou a resposta vier cortada ou ilegível, todas as linhas ficam com resposta inválida, `LOW` e sinalizadas, sem nova tentativa.
 - **Falhas transitórias.** Rede, tempo esgotado, 429 e 5xx são `ItemClassifierUnavailableError`, repetidas pelo caso de uso com recuo. O cliente da API não repete por si.
