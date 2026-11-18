@@ -74,9 +74,11 @@ Windows are fixed, so up to twice a quota can pass across the boundary between t
 
 ## Model call ceiling
 
-The worker makes at most `SEXTANTE_MODEL_CALL_CEILING` model calls per `SEXTANTE_MODEL_CALL_WINDOW_SECONDS` (SEC-12). The default is 200 calls per hour, provisional until the real volume is known. Every call counts, retries included, because every attempt is paid. Invoices over the ceiling are never refused nor failed: they stay `queued`, the job shows `waiting_model`, and the worker codes them when the window opens again. The log records `model_call_ceiling_reached`, with the job and the seconds to wait, and `model_call_ceiling_released`.
+The worker makes at most `SEXTANTE_MODEL_CALL_CEILING` model calls per `SEXTANTE_MODEL_CALL_WINDOW_SECONDS` (SEC-12). The default is 200 calls per hour, provisional until the real volume is known. Every call counts, retries included, because every attempt is paid. A call over the ceiling waits for the next window: its invoice is never refused nor failed, it stays `queued`, the job shows `waiting_model`, and the invoice is coded when the window opens. An invoice that needs no model call, such as a refused document, never waits. The log records `model_call_ceiling_reached`, with the job and the seconds to wait, and `model_call_ceiling_released`.
 
-To code faster, raise the ceiling; to spend less per hour, lower it. Both values must be at least 1. Like the rate limits, the count lives in the memory of the process: two workers would each allow the full ceiling.
+If the server stops while a job waits, nothing is lost: at startup the worker queues again every job it had claimed, and codes its invoices still queued. An invoice reprocessed while its job waits is coded again too.
+
+To code faster, raise the ceiling; to spend less per hour, lower it. Both values must be at least 1. Like the rate limits, the count lives in the memory of the process: it starts again at zero after a restart, and two workers would each allow the full ceiling.
 
 ## Golden set
 

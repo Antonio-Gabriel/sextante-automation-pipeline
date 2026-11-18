@@ -14,3 +14,5 @@
 - [x] Testes com o `FakeItemClassifier` e um relógio controlado, que provam que o tecto atrasa e não perde trabalho
 
 Resolved on 2026-11-19 (CHG-0051): the worker counts every model call, retries included, in fixed windows; over the ceiling it waits before the next invoice, which stays `queued`, and the job shows `waiting_model`. Default 200 calls per hour, provisional.
+
+Review fixes on 2026-11-19 (CHG-0052): the wait now happens at the model call, so retries mark the job and invoices without a model call never wait; job status changes are conditional, so a reprocessing during a wait is coded; at startup the jobs a stopped process left claimed are queued again; window maths shared with the rate limits; unit tests for the ceiling.

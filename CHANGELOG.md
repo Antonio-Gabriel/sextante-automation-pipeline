@@ -58,6 +58,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                     └── CHG-0049  security  Limites de taxa por endpoint
                                                                                                                                                                                         └── CHG-0050  fix       Correcções da revisão dos limites de taxa
                                                                                                                                                                                             └── CHG-0051  security  Tecto de chamadas ao modelo no trabalhador
+                                                                                                                                                                                                └── CHG-0052  fix       Correcções da revisão do tecto de chamadas ao modelo
 ```
 
 ## Regras
@@ -123,6 +124,26 @@ Três casos estão sempre limitados:
 
 ## Alterações
 
+### CHG-0052 · Correcções da revisão do tecto de chamadas ao modelo
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0051
+- **Estado:** activa
+- **Requisitos:** SEC-12, NFR-REL-001, NFR-REL-002, REQ-PLT-003, SEC-15
+- **Commit:** pendente
+- **Migração:** nenhuma (o esquema continua na revisão `0009`)
+- **Ficheiros:** `backend/src/sextante/platform/model_call_ceiling.py` (`CeilingObserver`), `platform/rate_limit.py` (`RateLimit.window_at`, `seconds_left`), `worker.py` (`JobCeilingStatus`, reposição no arranque), `ingestion/domain/statuses.py`, `ingestion/application/ports.py` e `ingestion/infrastructure/repository.py` (`change_job_status`, `finish_job` condicional, `requeue_interrupted_jobs`), `main.py` (`model_call_limit`), `tests/api/test_model_call_ceiling.py`, `tests/platform/test_model_call_ceiling.py`, `tests/fakes/held_clock.py`, `tests/fakes/fixed_clock.py`, `README.md`, `docs/03-seguranca.md` (SEC-12), ticket de operação 02
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 345 testes e o `xfail` estrito. Testes novos: uma nova tentativa acima do tecto marca o trabalho como `waiting_model`; uma factura recusada não espera; uma factura reprocessada durante a espera é codificada de novo; um trabalho deixado em espera por um processo parado é codificado depois do reinício; testes unitários das janelas do tecto. `make golden` com 12 amostras sem divergências. `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+**Onde se espera.** A espera passa da verificação antes de cada factura para a própria chamada ao modelo. Um observador (`JobCeilingStatus`) marca o trabalho reivindicado e regista o log. Assim, uma nova tentativa a meio de uma factura também marca o trabalho, e uma factura que não chama o modelo nunca espera.
+
+**Estado do trabalho.** As mudanças entre `running` e `waiting_model`, e o fecho do trabalho, passam a ser condicionais. Um trabalho que um reprocessamento repôs em `queued` fica em `queued`, e o trabalhador reivindica-o de novo. Antes, o fecho sobrescrevia-o com `completed`, e a factura reposta ficava em `queued` para sempre. No arranque, os trabalhos em `running` ou `waiting_model` voltam a `queued`: há um só trabalhador, no único processo (D-3.4), e um trabalho reivindicado no arranque foi interrompido.
+
+**Normas.** A aritmética da janela fixa passa a viver em `RateLimit`, partilhada pelos limites de taxa e pelo tecto. O duplo de relógio passa para `tests/fakes/`. O teste deixa de usar `Any`. As docstrings novas têm exemplo.
+
 ### CHG-0051 · Tecto de chamadas ao modelo no trabalhador
 
 - **Data:** 2026-11-19
@@ -130,7 +151,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0050
 - **Estado:** activa
 - **Requisitos:** SEC-12, REQ-PLT-002, REQ-PLT-003, SEC-15
-- **Commit:** pendente
+- **Commit:** `3517ee5`
 - **Migração:** nenhuma (o estado do trabalho é texto; o esquema continua na revisão `0009`)
 - **Ficheiros:** `backend/src/sextante/platform/model_call_ceiling.py`, `matching/application/ceiling_classifier.py`, `worker.py`, `main.py`, `platform/settings.py`, `ingestion/domain/statuses.py` (`waiting_model`), `ingestion/application/ports.py` e `ingestion/infrastructure/repository.py` (`set_job_status`), `tests/api/test_model_call_ceiling.py`, `README.md`, `config/.env.example`, `docs/02-arquitectura.md`, `docs/03-seguranca.md` (SEC-12), ticket de operação 02
 - **Reversibilidade:** total

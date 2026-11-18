@@ -61,16 +61,20 @@ class IngestionRepositoryPort(Protocol):
         """Move an invoice to a status."""
         ...
 
-    async def set_job_status(
-        self, connection: AsyncConnection, job_id: str, status: JobStatus
-    ) -> None:
-        """Move a claimed job between running and waiting for the model call ceiling."""
+    async def change_job_status(
+        self, connection: AsyncConnection, job_id: str, current: JobStatus, new: JobStatus
+    ) -> bool:
+        """Move a job from ``current`` to ``new``; False when it was no longer ``current``."""
         ...
 
     async def finish_job(
         self, connection: AsyncConnection, job_id: str, status: JobStatus, now: datetime
-    ) -> None:
-        """Close the job."""
+    ) -> bool:
+        """Close a claimed job; False when it was queued again meanwhile."""
+        ...
+
+    async def requeue_interrupted_jobs(self, connection: AsyncConnection) -> int:
+        """Queue again the jobs a stopped process left claimed; return how many."""
         ...
 
     async def store_extraction(

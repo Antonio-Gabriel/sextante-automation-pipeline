@@ -32,7 +32,7 @@ from sextante.ingestion.domain.model import (
     StoredLine,
 )
 from sextante.ingestion.domain.normalization import normalize_extraction
-from sextante.ingestion.domain.statuses import InvoiceStatus, JobStatus
+from sextante.ingestion.domain.statuses import CLAIMED_JOB_STATUSES, InvoiceStatus, JobStatus
 from sextante.ingestion.infrastructure.tables import (
     ENTITY_RESOLUTION_TABLE,
     INVOICE_HEADER_TABLE,
@@ -141,23 +141,56 @@ class IngestionRepository:
             .values(status=status, status_reason=reason)
         )
 
-    async def set_job_status(
-        self, connection: AsyncConnection, job_id: str, status: JobStatus
-    ) -> None:
-        """Move a claimed job between running and waiting for the model call ceiling."""
-        await connection.execute(
-            update(JOB_TABLE).where(JOB_TABLE.c.id == job_id).values(status=status)
+    async def change_job_status(
+        self, connection: AsyncConnection, job_id: str, current: JobStatus, new: JobStatus
+    ) -> bool:
+        """Move a job from ``current`` to ``new``; False when it was no longer ``current``.
+
+        Conditional, so a job a reprocessing queued again is never moved back.
+
+        Example:
+            await repository.change_job_status(connection, job_id, RUNNING, WAITING_MODEL)
+        """
+        result = await connection.execute(
+            update(JOB_TABLE)
+            .where(JOB_TABLE.c.id == job_id, JOB_TABLE.c.status == current)
+            .values(status=new)
         )
+        return result.rowcount == 1
 
     async def finish_job(
         self, connection: AsyncConnection, job_id: str, status: JobStatus, now: datetime
-    ) -> None:
-        """Close the job with its final status."""
-        await connection.execute(
+    ) -> bool:
+        """Close a claimed job; False when it was queued again meanwhile.
+
+        A job queued again while it ran keeps its queued status, so the worker claims it
+        again and codes the invoice that was queued after the list was read.
+
+        Example:
+            await repository.finish_job(connection, job_id, JobStatus.COMPLETED, now)
+        """
+        result = await connection.execute(
             update(JOB_TABLE)
-            .where(JOB_TABLE.c.id == job_id)
+            .where(JOB_TABLE.c.id == job_id, JOB_TABLE.c.status.in_(CLAIMED_JOB_STATUSES))
             .values(status=status, finished_at=now.isoformat())
         )
+        return result.rowcount == 1
+
+    async def requeue_interrupted_jobs(self, connection: AsyncConnection) -> int:
+        """Queue again the jobs a stopped process left claimed; return how many.
+
+        There is one worker, in the one process (D-3.4), so a claimed job at startup was
+        interrupted: its invoices still queued are coded when it is claimed again.
+
+        Example:
+            await repository.requeue_interrupted_jobs(connection)  # 1
+        """
+        result = await connection.execute(
+            update(JOB_TABLE)
+            .where(JOB_TABLE.c.status.in_(CLAIMED_JOB_STATUSES))
+            .values(status=JobStatus.QUEUED)
+        )
+        return result.rowcount
 
     async def store_extraction(
         self,

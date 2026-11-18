@@ -109,7 +109,7 @@ from sextante.review.domain.review_state import (
     ReviewNotPendingError,
 )
 from sextante.review.infrastructure.repository import ReviewRepository
-from sextante.worker import EncodingWorker, WorkerCollaborators
+from sextante.worker import EncodingWorker, JobCeilingStatus, WorkerCollaborators
 
 # The first retry waits 1 s, the next 2 s, and so on (REQ-PLT-003).
 MODEL_RETRY_BASE_SECONDS = 1.0
@@ -196,11 +196,11 @@ def create_app(
     return app
 
 
-def model_call_ceiling(settings: Settings) -> RateLimit:
-    """The ceiling on model calls per window (SEC-12), from the settings.
+def model_call_limit(settings: Settings) -> RateLimit:
+    """The ceiling's limit on model calls per window (SEC-12), from the settings.
 
     Example:
-        ModelCallCeiling(model_call_ceiling(settings), time.monotonic, asyncio.sleep)
+        ModelCallCeiling(model_call_limit(settings), time.monotonic, asyncio.sleep, observer)
     """
     return RateLimit(settings.model_call_ceiling, float(settings.model_call_window_seconds))
 
@@ -364,7 +364,10 @@ def _build_worker(
     classifier: ItemClassifier,
 ) -> EncodingWorker:
     # Every model call of the worker, retries included, takes room under the ceiling.
-    ceiling = ModelCallCeiling(model_call_ceiling(settings), adapters.monotonic, adapters.sleep)
+    status = JobCeilingStatus(engine, IngestionRepository())
+    ceiling = ModelCallCeiling(
+        model_call_limit(settings), adapters.monotonic, adapters.sleep, status
+    )
     ceiled = CeilingItemClassifier(classifier, ceiling)
     return EncodingWorker(
         WorkerCollaborators(
@@ -379,7 +382,6 @@ def _build_worker(
             target_entity=reference.target_entity,
             denylist=reference.denylist,
             poll_seconds=adapters.worker_poll_seconds,
-            ceiling=ceiling,
         )
     )
 

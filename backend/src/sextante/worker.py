@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass
 
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
@@ -32,10 +33,12 @@ from sextante.matching.contracts import (
 )
 from sextante.platform.audit import AuditEventRepository
 from sextante.platform.clock import Clock, IdentifierGenerator
-from sextante.platform.model_call_ceiling import ModelCallCeiling
 from sextante.platform.structured_logging import correlation_id_var
 
 logger = logging.getLogger(__name__)
+
+# The job the worker is coding, for the ceiling observer to mark (SEC-12).
+claimed_job_var: ContextVar[str | None] = ContextVar("claimed_job", default=None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,7 +56,6 @@ class WorkerCollaborators:
     target_entity: TargetEntity
     denylist: EntityDenylist
     poll_seconds: float
-    ceiling: ModelCallCeiling
 
 
 class EncodingWorker:
@@ -68,7 +70,11 @@ class EncodingWorker:
         self._worker_id = collaborators.identifiers.new_id()
 
     async def run_forever(self) -> None:
-        """Process jobs until cancelled at shutdown."""
+        """Queue again what a stopped process left claimed, then process jobs until cancelled."""
+        async with self._collaborators.engine.begin() as connection:
+            requeued = await self._collaborators.repository.requeue_interrupted_jobs(connection)
+        if requeued:
+            logger.warning("interrupted_jobs_requeued", extra={"job_count": requeued})
         while True:
             if not await self.process_next_job():
                 await asyncio.sleep(self._collaborators.poll_seconds)
@@ -82,9 +88,11 @@ class EncodingWorker:
         if job is None:
             return False
         token = correlation_id_var.set(job.correlation_id)
+        job_token = claimed_job_var.set(job.job_id)
         try:
             await self._process_job(job)
         finally:
+            claimed_job_var.reset(job_token)
             correlation_id_var.reset(token)
         return True
 
@@ -92,32 +100,14 @@ class EncodingWorker:
         async with self._collaborators.engine.connect() as connection:
             invoices = await self._collaborators.repository.queued_invoices(connection, job.job_id)
         for invoice in invoices:
-            await self._wait_for_ceiling(job.job_id)
             await self._process_invoice_isolated(invoice)
         async with self._collaborators.engine.begin() as connection:
-            await self._collaborators.repository.finish_job(
+            finished = await self._collaborators.repository.finish_job(
                 connection, job.job_id, JobStatus.COMPLETED, self._collaborators.clock.now()
             )
-        logger.info("job_completed", extra={"job_id": job.job_id, "invoice_count": len(invoices)})
-
-    async def _wait_for_ceiling(self, job_id: str) -> None:
-        # Over the model call ceiling the next invoice stays queued and the job shows it
-        # is waiting; the work is delayed, never failed (SEC-12).
-        deps = self._collaborators
-        wait_seconds = deps.ceiling.wait_seconds()
-        if wait_seconds == 0:
-            return
-        logger.info(
-            "model_call_ceiling_reached", extra={"job_id": job_id, "wait_seconds": wait_seconds}
-        )
-        await self._set_job_status(job_id, JobStatus.WAITING_MODEL)
-        await deps.ceiling.wait_for_room()
-        await self._set_job_status(job_id, JobStatus.RUNNING)
-        logger.info("model_call_ceiling_released", extra={"job_id": job_id})
-
-    async def _set_job_status(self, job_id: str, status: JobStatus) -> None:
-        async with self._collaborators.engine.begin() as connection:
-            await self._collaborators.repository.set_job_status(connection, job_id, status)
+        # A job queued again while it ran stays queued: the worker claims it again.
+        event = "job_completed" if finished else "job_queued_again_while_running"
+        logger.info(event, extra={"job_id": job.job_id, "invoice_count": len(invoices)})
 
     async def _process_invoice_isolated(self, invoice: QueuedInvoice) -> None:
         # One invoice failing does not stop the job (REQ-PLT-002). The failure is recorded
@@ -250,6 +240,40 @@ class EncodingWorker:
             {"earlier_invoice_id": earlier_invoice_id},
             deps.clock.now(),
         )
+
+
+class JobCeilingStatus:
+    """CeilingObserver that shows on the claimed job when a model call waits (SEC-12).
+
+    The invoice being coded stays queued while it waits; the job goes to
+    ``waiting_model`` and back. Both moves are conditional, so a job a reprocessing
+    queued again keeps its queued status.
+
+    Example:
+        ModelCallCeiling(limit, time.monotonic, asyncio.sleep, JobCeilingStatus(engine, repo))
+    """
+
+    def __init__(self, engine: AsyncEngine, repository: IngestionRepositoryPort) -> None:
+        self._engine = engine
+        self._repository = repository
+
+    async def waiting(self, seconds: float) -> None:
+        """Mark the job as waiting, and log the job and the wait, never invoice content."""
+        job_id = claimed_job_var.get()
+        logger.info("model_call_ceiling_reached", extra={"job_id": job_id, "wait_seconds": seconds})
+        await self._change(job_id, JobStatus.RUNNING, JobStatus.WAITING_MODEL)
+
+    async def released(self) -> None:
+        """Mark the job as running again."""
+        job_id = claimed_job_var.get()
+        logger.info("model_call_ceiling_released", extra={"job_id": job_id})
+        await self._change(job_id, JobStatus.WAITING_MODEL, JobStatus.RUNNING)
+
+    async def _change(self, job_id: str | None, current: JobStatus, new: JobStatus) -> None:
+        if job_id is None:
+            return
+        async with self._engine.begin() as connection:
+            await self._repository.change_job_status(connection, job_id, current, new)
 
 
 def _entity_record(

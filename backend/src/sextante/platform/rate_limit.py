@@ -44,10 +44,26 @@ class RateRule(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class RateLimit:
-    """At most ``requests`` per ``window_seconds`` for one caller."""
+    """At most ``requests`` per fixed window of ``window_seconds``, on a monotonic clock."""
 
     requests: int
     window_seconds: float
+
+    def window_at(self, now: float) -> int:
+        """The number of the fixed window that holds ``now``.
+
+        Example:
+            RateLimit(10, 60.0).window_at(1000.0)  # 16
+        """
+        return int(now // self.window_seconds)
+
+    def seconds_left(self, now: float) -> float:
+        """Seconds from ``now`` to the end of its window.
+
+        Example:
+            RateLimit(10, 60.0).seconds_left(1000.0)  # 20.0
+        """
+        return (self.window_at(now) + 1) * self.window_seconds - now
 
 
 class RateLimitExceededError(DomainError):
@@ -94,11 +110,11 @@ class RateLimiter:
             RateLimitExceededError: naming the first full rule and the seconds to wait.
         """
         now = self._monotonic()
-        windows = {rule: int(now // self._limits[rule].window_seconds) for rule in rules}
+        windows = {rule: self._limits[rule].window_at(now) for rule in rules}
         for rule in rules:
-            if self._used(rule, caller, windows[rule]) >= self._limits[rule].requests:
-                window_end = (windows[rule] + 1) * self._limits[rule].window_seconds
-                raise RateLimitExceededError(rule, max(1, math.ceil(window_end - now)))
+            limit = self._limits[rule]
+            if self._used(rule, caller, windows[rule]) >= limit.requests:
+                raise RateLimitExceededError(rule, max(1, math.ceil(limit.seconds_left(now))))
         for rule in rules:
             used = self._used(rule, caller, windows[rule])
             self._counts[(rule, caller)] = (windows[rule], used + 1)

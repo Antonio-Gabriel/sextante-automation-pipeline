@@ -21,14 +21,17 @@ class FixedClock:
 
 
 class SequentialIdentifierGenerator:
-    """Identifiers id-0001, id-0002, ... in call order.
+    """Identifiers id-0001, id-0002, ... in call order, after ``start``.
+
+    A restarted application in the same test gives a later ``start``, so its
+    identifiers never collide with those already stored.
 
     Example:
         ids = SequentialIdentifierGenerator()
     """
 
-    def __init__(self) -> None:
-        self._count = 0
+    def __init__(self, start: int = 0) -> None:
+        self._count = start
 
     def new_id(self) -> str:
         """Return the next identifier."""

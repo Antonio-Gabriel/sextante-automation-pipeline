@@ -17,6 +17,10 @@ class CeilingItemClassifier:
         self._ceiling = ceiling
 
     async def choose(self, request: ItemChoiceRequest) -> ItemChoiceResponse:
-        """Wait for room under the ceiling, then ask the classifier."""
+        """Wait for room under the ceiling, then ask the classifier.
+
+        Example:
+            (await classifier.choose(request)).choices
+        """
         await self._ceiling.acquire()
         return await self._classifier.choose(request)

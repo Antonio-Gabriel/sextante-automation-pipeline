@@ -1,6 +1,7 @@
 """Closed sets of job and invoice states."""
 
 from enum import StrEnum
+from typing import Final
 
 
 class JobStatus(StrEnum):
@@ -12,6 +13,10 @@ class JobStatus(StrEnum):
     WAITING_MODEL = "waiting_model"
     COMPLETED = "completed"
     FAILED = "failed"
+
+
+# A job a worker holds: running, or waiting for the model call ceiling.
+CLAIMED_JOB_STATUSES: Final = frozenset({JobStatus.RUNNING, JobStatus.WAITING_MODEL})
 
 
 class InvoiceStatus(StrEnum):
