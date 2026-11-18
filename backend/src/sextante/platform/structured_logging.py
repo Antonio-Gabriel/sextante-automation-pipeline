@@ -8,6 +8,8 @@ from datetime import UTC, datetime
 from typing import Final, TextIO
 
 APPLICATION_LOGGER: Final = "sextante"
+# The server's own loggers, so that startup and access lines are JSON as well.
+SERVER_LOGGERS: Final = ("uvicorn", "uvicorn.error", "uvicorn.access")
 STARTUP_CORRELATION_ID: Final = "startup"
 REDACTED: Final = "[redacted]"
 
@@ -31,8 +33,11 @@ REDACTED_FIELDS: Final = frozenset(
 
 correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default=STARTUP_CORRELATION_ID)
 
-_STANDARD_RECORD_FIELDS: Final = frozenset(
-    vars(logging.LogRecord("", 0, "", 0, "", None, None)).keys() | {"message", "asctime"}
+# Standard LogRecord attributes are not extras; color_message is uvicorn's terminal-colour
+# copy of the message, display noise in a JSON log.
+_NON_EXTRA_FIELDS: Final = frozenset(
+    vars(logging.LogRecord("", 0, "", 0, "", None, None)).keys()
+    | {"message", "asctime", "color_message"}
 )
 
 
@@ -40,11 +45,15 @@ class JsonLogFormatter(logging.Formatter):
     """Format a record as one JSON object: event, level, timestamp, correlation id, extras.
 
     Example:
-        handler.setFormatter(JsonLogFormatter())
+        stream_output.setFormatter(JsonLogFormatter())
     """
 
     def format(self, record: logging.LogRecord) -> str:
-        """Render the record as a single JSON line."""
+        """Render the record as a single JSON line, with forbidden fields redacted.
+
+        Example:
+            JsonLogFormatter().format(record)  # '{"event": "catalog_item_warning", ...}'
+        """
         entry: dict[str, object] = {
             "timestamp": datetime.fromtimestamp(record.created, UTC).isoformat(),
             "level": record.levelname,
@@ -60,21 +69,26 @@ def _extra_fields(record: logging.LogRecord) -> dict[str, object]:
     return {
         key: REDACTED if key in REDACTED_FIELDS else value
         for key, value in vars(record).items()
-        if key not in _STANDARD_RECORD_FIELDS
+        if key not in _NON_EXTRA_FIELDS
     }
 
 
 def configure_logging(stream: TextIO | None = None) -> None:
-    """Send the application's records to stdout as JSON. Safe to call more than once.
+    """Send application and server records to stdout as JSON. Safe to call more than once.
+
+    Records do not propagate further: the JSON stream is the only place they are written,
+    so no other handler can write a record without redaction (SEC-15).
 
     Example:
         configure_logging()
     """
-    logger = logging.getLogger(APPLICATION_LOGGER)
-    for existing in list(logger.handlers):
-        if isinstance(existing.formatter, JsonLogFormatter):
-            logger.removeHandler(existing)
-    handler = logging.StreamHandler(stream if stream is not None else sys.stdout)
-    handler.setFormatter(JsonLogFormatter())
-    logger.addHandler(handler)
+    for logger_name in (APPLICATION_LOGGER, *SERVER_LOGGERS):
+        _route_to_json_stream(logging.getLogger(logger_name), stream or sys.stdout)
+
+
+def _route_to_json_stream(logger: logging.Logger, stream: TextIO) -> None:
+    json_output = logging.StreamHandler(stream)
+    json_output.setFormatter(JsonLogFormatter())
+    logger.handlers = [json_output]
+    logger.propagate = False
     logger.setLevel(logging.INFO)

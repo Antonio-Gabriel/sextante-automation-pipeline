@@ -26,8 +26,8 @@ typecheck:
 	$(BIN)/mypy src tests
 
 lint:
-	$(BIN)/ruff check src tests scripts
-	$(BIN)/ruff format --check src tests scripts
+	$(BIN)/ruff check src tests scripts migrations
+	$(BIN)/ruff format --check src tests scripts migrations
 
 fmt:
 	$(BIN)/ruff format src tests scripts

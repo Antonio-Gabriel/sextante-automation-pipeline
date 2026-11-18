@@ -6,12 +6,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from sextante.api.health import health_router
-from sextante.catalog.application.load_catalog import load_catalog
+from sextante.catalog.application.load_catalog import CatalogFileError, load_catalog
 from sextante.catalog.domain.catalog_builder import BuiltCatalog
-from sextante.catalog.domain.errors import CatalogFileError, CatalogValidationError
+from sextante.catalog.domain.errors import CatalogValidationError
 from sextante.catalog.infrastructure.xlsx_catalog_reader import XlsxCatalogWorkbookReader
+from sextante.platform.correlation import CorrelationIdMiddleware
 from sextante.platform.database import apply_migrations, create_database_engine
+from sextante.platform.health import health_router
 from sextante.platform.settings import Settings, StartupConfigurationError
 from sextante.platform.structured_logging import configure_logging
 
@@ -43,6 +44,7 @@ def create_app(environ: Mapping[str, str] | None = None) -> FastAPI:
 
     app = FastAPI(title="Sextante", lifespan=lifespan)
     app.state.catalog = built_catalog.catalog
+    app.add_middleware(CorrelationIdMiddleware)
     app.include_router(health_router)
     return app
 

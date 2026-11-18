@@ -31,9 +31,6 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.setuptools.package-data]
-sextante = ["platform/migrations/*.mako", "platform/migrations/**/*.py"]
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src", "."]
@@ -82,6 +79,18 @@ layers = [
     "sextante.catalog.domain",
 ]
 containers = []
+
+[[tool.importlinter.contracts]]
+name = "other modules reach the catalog only through its contracts"
+type = "forbidden"
+source_modules = ["sextante.platform"]
+forbidden_modules = [
+    "sextante.catalog.domain",
+    "sextante.catalog.application",
+    "sextante.catalog.infrastructure",
+]
+# Reaching the domain through sextante.catalog.contracts is the allowed path.
+allow_indirect_imports = true
 
 [[tool.importlinter.contracts]]
 name = "domain does no I/O"

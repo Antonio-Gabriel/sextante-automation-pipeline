@@ -27,12 +27,20 @@ STATEMENT_RULE: Final = re.compile(r"^\| (R\d+) \|", re.MULTILINE)
 
 
 def declared_requirements() -> set[str]:
-    """Return the REQ- and NFR- identifiers declared in 01-requisitos.md."""
+    """Return the REQ- and NFR- identifiers declared in 01-requisitos.md.
+
+    Example:
+        "REQ-MAP-012" in declared_requirements()  # True
+    """
     return set(REQUIREMENT_HEADING.findall((DOCS / "01-requisitos.md").read_text()))
 
 
 def declared_identifiers() -> set[str]:
-    """Return every identifier a test may cite: REQ, NFR, SEC, D, L and R."""
+    """Return every identifier a test may cite: REQ, NFR, SEC, D, L and R.
+
+    Example:
+        {"SEC-15", "D-3.9", "L-07", "R4"} <= declared_identifiers()  # True
+    """
     decisions = (DOCS / "00-decisoes-e-lacunas.md").read_text()
     security = (DOCS / "03-seguranca.md").read_text()
     return (
@@ -45,17 +53,32 @@ def declared_identifiers() -> set[str]:
 
 
 def cited_identifiers() -> dict[str, set[str]]:
-    """Map each cited identifier to the test files that cite it."""
+    """Map each cited identifier to the test files that cite it.
+
+    Example:
+        cited_identifiers()["REQ-MAP-012"]  # {"tests/api/test_startup_catalog.py"}
+    """
     citations: dict[str, set[str]] = defaultdict(set)
     for test_file in (BACKEND / "tests").rglob("test_*.py"):
-        for arguments in MARKER.findall(test_file.read_text()):
-            for identifier in QUOTED_ID.findall(arguments):
-                citations[identifier].add(test_file.relative_to(BACKEND).as_posix())
+        for identifier in _identifiers_in(test_file):
+            citations[identifier].add(test_file.relative_to(BACKEND).as_posix())
     return citations
 
 
+def _identifiers_in(test_file: Path) -> list[str]:
+    return [
+        identifier
+        for arguments in MARKER.findall(test_file.read_text())
+        for identifier in QUOTED_ID.findall(arguments)
+    ]
+
+
 def main(strict: bool) -> int:
-    """Print the matrix and return the exit code."""
+    """Print the matrix and return the exit code.
+
+    Example:
+        sys.exit(main(strict=False))
+    """
     citations = cited_identifiers()
     unknown = sorted(set(citations) - declared_identifiers())
     uncovered = sorted(declared_requirements() - set(citations))

@@ -1,12 +1,13 @@
 """Shared test configuration: a valid environment pointing at a synthetic catalog."""
 
 from pathlib import Path
+from typing import Final
 
 import pytest
 
 from tests.fixtures.synthetic_catalog import SyntheticCatalog
 
-FAKE_API_KEY = "fake-test-key-not-a-secret"
+FAKE_API_KEY: Final = "fake-test-key-not-a-secret"
 
 
 @pytest.fixture

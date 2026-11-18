@@ -1,8 +1,8 @@
 """The single home of text normalization (04-padroes-de-codigo.md §1.5).
 
-Two normalizations live here, and only here:
-- input normalization (SEC-09.3), applied before validating or persisting external text;
-- comparison normalization, applied to text that is scored or compared, never displayed.
+Comparison normalization is applied to text that is scored or compared, never displayed.
+Input normalization of external text (SEC-09.3) joins this module with the first ticket
+that persists invoice text.
 """
 
 import re
@@ -10,22 +10,8 @@ import unicodedata
 from typing import Final
 
 _WHITESPACE_RUN: Final = re.compile(r"\s+")
-_FORMAT_CHARACTER: Final = "Cf"
-_CONTROL_CHARACTER: Final = "Cc"
-
-
-def normalize_text_input(value: str) -> str:
-    """Normalize to NFC and strip control and format characters, keeping tabs and newlines.
-
-    Example:
-        normalize_text_input("Taxa\\u0000 de movimentação")  # "Taxa de movimentação"
-    """
-    return "".join(
-        character
-        for character in unicodedata.normalize("NFC", value)
-        if unicodedata.category(character) not in {_CONTROL_CHARACTER, _FORMAT_CHARACTER}
-        or character in "\n\t"
-    )
+_INVISIBLE_CATEGORIES: Final = frozenset({"Cc", "Cf"})
+_NON_BREAKING_SPACE: Final = "\xa0"
 
 
 def normalize_for_comparison(value: str) -> str:
@@ -38,11 +24,7 @@ def normalize_for_comparison(value: str) -> str:
         normalize_for_comparison(" Sea \\u200bPassage  Ticket")  # "Sea Passage Ticket"
     """
     folded = unicodedata.normalize("NFKC", value)
-    visible = "".join(
-        character
-        for character in folded
-        if unicodedata.category(character) not in {_CONTROL_CHARACTER, _FORMAT_CHARACTER}
-    )
+    visible = "".join(character for character in folded if not _is_invisible(character))
     return _WHITESPACE_RUN.sub(" ", visible).strip()
 
 
@@ -52,8 +34,8 @@ def has_invisible_characters(value: str) -> bool:
     Example:
         has_invisible_characters("Certificado\\xa0de")  # True
     """
-    return any(
-        unicodedata.category(character) in {_CONTROL_CHARACTER, _FORMAT_CHARACTER}
-        or character == "\xa0"
-        for character in value
-    )
+    return any(_is_invisible(character) or character == _NON_BREAKING_SPACE for character in value)
+
+
+def _is_invisible(character: str) -> bool:
+    return unicodedata.category(character) in _INVISIBLE_CATEGORIES

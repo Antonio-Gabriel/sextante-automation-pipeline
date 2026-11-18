@@ -8,8 +8,8 @@ from typing import Protocol
 
 from openpyxl import load_workbook
 
+from sextante.catalog.application.load_catalog import CatalogFileError
 from sextante.catalog.domain.catalog_builder import CellValue, RawCatalogRow, RawCatalogSheet
-from sextante.catalog.domain.errors import CatalogFileError
 from sextante.catalog.domain.model import CatalogDigest
 
 
@@ -29,7 +29,11 @@ class XlsxCatalogWorkbookReader:
     """
 
     def digest(self, path: Path) -> CatalogDigest:
-        """Return the SHA-256 of the catalog file content."""
+        """Return the SHA-256 of the catalog file content.
+
+        Example:
+            XlsxCatalogWorkbookReader().digest(Path("catalog.xlsx")).hex_value  # "14fc36a5..."
+        """
         return CatalogDigest(hashlib.sha256(path.read_bytes()).hexdigest())
 
     def read_sheets(self, path: Path) -> dict[str, RawCatalogSheet]:
@@ -38,16 +42,31 @@ class XlsxCatalogWorkbookReader:
         data_only reads computed values and never evaluates formulas; read_only streams
         rows instead of loading the whole workbook (03-seguranca.md SEC-09.5).
 
+        Example:
+            XlsxCatalogWorkbookReader().read_sheets(Path("catalog.xlsx"))["OUTLAYS"].header
+
         Raises:
-            CatalogFileError: when the file is not an xlsx workbook.
+            CatalogFileError: when the file does not exist or is not an xlsx workbook.
         """
-        if not zipfile.is_zipfile(path):
-            raise CatalogFileError(f"Catalog file {path.name!r} is not a valid xlsx workbook.")
+        _require_workbook_file(path)
         workbook = load_workbook(path, read_only=True, data_only=True)
         try:
             return {sheet.title: _read_sheet(sheet) for sheet in workbook.worksheets}
         finally:
             workbook.close()
+
+
+def _require_workbook_file(path: Path) -> None:
+    if not path.is_file():
+        raise CatalogFileError(
+            f"Catalog file {path.name!r} does not exist. Expected the path of the catalog "
+            "workbook, for example ../sources/catalog.xlsx."
+        )
+    if not zipfile.is_zipfile(path):
+        raise CatalogFileError(
+            f"Catalog file {path.name!r} is not a valid xlsx workbook. Expected an Excel "
+            "workbook with sheets OUTLAYS and OUTLAYSP."
+        )
 
 
 def _read_sheet(sheet: _Worksheet) -> RawCatalogSheet:

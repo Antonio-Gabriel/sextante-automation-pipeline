@@ -2,6 +2,7 @@
 
 import hashlib
 from pathlib import Path
+from typing import Final
 
 import pytest
 from fastapi.testclient import TestClient
@@ -23,7 +24,7 @@ def test_application_with_valid_configuration_answers_health_check(
     assert response.json()["status"] == "ok"
 
 
-MANDATORY_VARIABLES = (
+MANDATORY_VARIABLES: Final = (
     "SEXTANTE_ANTHROPIC_API_KEY",
     "SEXTANTE_CATALOG_PATH",
     "SEXTANTE_DATABASE_URL",
@@ -80,3 +81,32 @@ def test_health_reports_the_digest_of_the_loaded_catalog(
         response = client.get("/api/health")
 
     assert response.json()["catalog_digest"] == expected_digest
+
+
+@pytest.mark.requirement("REQ-PLT-007")
+@pytest.mark.parametrize("blank_value", ["", "   "])
+@pytest.mark.parametrize("variable", MANDATORY_VARIABLES)
+def test_application_refuses_to_start_when_mandatory_setting_is_blank(
+    valid_environment: dict[str, str], variable: str, blank_value: str
+) -> None:
+    """An empty or whitespace-only value counts as missing, not as configured."""
+    valid_environment[variable] = blank_value
+
+    with pytest.raises(StartupConfigurationError) as refusal:
+        create_app(valid_environment)
+
+    assert variable in str(refusal.value)
+
+
+@pytest.mark.requirement("REQ-PLT-007", "D-3.5")
+def test_application_refuses_a_database_url_that_is_not_sqlite(
+    valid_environment: dict[str, str],
+) -> None:
+    """The SQLite pragmas assume SQLite: another engine is a configuration error for now."""
+    valid_environment["SEXTANTE_DATABASE_URL"] = "postgresql+asyncpg://host/sextante"
+
+    with pytest.raises(StartupConfigurationError) as refusal:
+        create_app(valid_environment)
+
+    assert "SEXTANTE_DATABASE_URL" in str(refusal.value)
+    assert "sqlite+aiosqlite:///" in str(refusal.value)

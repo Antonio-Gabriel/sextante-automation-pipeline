@@ -1,9 +1,9 @@
-"""Catalog errors. Messages name the sheet, the offending value and the expected form."""
+"""Catalog domain errors. Messages name the sheet, the offending value and the expected form."""
+
+from sextante.platform.errors import DomainError
 
 
-class CatalogValidationError(ValueError):
+class CatalogValidationError(DomainError):
     """Raised when the catalog content breaks a startup rule (REQ-MAP-012)."""
 
-
-class CatalogFileError(ValueError):
-    """Raised when the catalog file cannot be read as an xlsx workbook."""
+    user_message_key = "errors.catalog.invalid"

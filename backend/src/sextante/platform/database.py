@@ -5,12 +5,14 @@ from typing import Final
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import Engine, create_engine, event
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine.interfaces import DBAPIConnection
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import ConnectionPoolEntry
 
-MIGRATIONS_DIRECTORY: Final = Path(__file__).parent / "migrations"
+# backend/migrations, as laid out in 02-arquitectura.md §2.4. This file sits at
+# backend/src/sextante/platform/, three levels below backend/.
+MIGRATIONS_DIRECTORY: Final = Path(__file__).resolve().parents[3] / "migrations"
 ASYNC_DRIVER: Final = "+aiosqlite"
 
 # The three SQLite conditions that are not optional (D-3.5). foreign_keys is the most
@@ -29,7 +31,7 @@ def create_database_engine(database_url: str) -> AsyncEngine:
         engine = create_database_engine("sqlite+aiosqlite:///./sextante.db")
     """
     engine = create_async_engine(database_url)
-    _apply_pragmas_on_connect(engine.sync_engine)
+    event.listen(engine.sync_engine, "connect", _set_sqlite_pragmas)
     return engine
 
 
@@ -40,7 +42,7 @@ def apply_migrations(database_url: str) -> None:
         apply_migrations("sqlite+aiosqlite:///./sextante.db")
     """
     sync_engine = create_engine(database_url.replace(ASYNC_DRIVER, ""))
-    _apply_pragmas_on_connect(sync_engine)
+    event.listen(sync_engine, "connect", _set_sqlite_pragmas)
     try:
         with sync_engine.begin() as connection:
             config = Config()
@@ -49,10 +51,6 @@ def apply_migrations(database_url: str) -> None:
             command.upgrade(config, "head")
     finally:
         sync_engine.dispose()
-
-
-def _apply_pragmas_on_connect(engine: Engine) -> None:
-    event.listen(engine, "connect", _set_sqlite_pragmas)
 
 
 def _set_sqlite_pragmas(dbapi_connection: DBAPIConnection, _record: ConnectionPoolEntry) -> None:

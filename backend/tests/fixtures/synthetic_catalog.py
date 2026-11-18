@@ -7,12 +7,13 @@ description with an invisible character.
 """
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Final
 
 from openpyxl import Workbook
 
-HEADER: tuple[str, ...] = (
+HEADER: Final[tuple[str, ...]] = (
     "No.",
     "Description",
     "Description 2",
@@ -24,7 +25,7 @@ HEADER: tuple[str, ...] = (
 
 CatalogRow = tuple[str | None, str | None, str | None]
 
-DEFAULT_OUTLAYS: tuple[CatalogRow, ...] = (
+DEFAULT_OUTLAYS: Final[tuple[CatalogRow, ...]] = (
     ("O00004", "Bilhete Avião", "Air ticket"),
     ("O00015", "Despesas ", "Storage fees"),
     ("O00051", "Correio Express", "Express Courier"),
@@ -34,7 +35,7 @@ DEFAULT_OUTLAYS: tuple[CatalogRow, ...] = (
     ("S00109", "Transporte rodoviario", "Road freight"),
 )
 
-DEFAULT_OUTLAYSP: tuple[CatalogRow, ...] = (
+DEFAULT_OUTLAYSP: Final[tuple[CatalogRow, ...]] = (
     ("O00002", "Alfândegas", "Customs"),
     ("O00010", "Certificado\xa0de\xa0desratização", "Certificate of desratization"),
     ("O00031", "Sobrestadia Contentor", "Container demurrage"),
@@ -54,17 +55,18 @@ class SyntheticCatalog:
     outlaysp: Sequence[CatalogRow] = DEFAULT_OUTLAYSP
     sheet_names: tuple[str, ...] = ("OUTLAYS", "OUTLAYSP")
     header: tuple[str, ...] = HEADER
-    extra_sheets: dict[str, Sequence[CatalogRow]] = field(default_factory=dict)
 
     def write(self, path: Path) -> Path:
-        """Write the workbook to ``path`` and return it."""
+        """Write the workbook to ``path`` and return it.
+
+        Example:
+            SyntheticCatalog().write(tmp_path / "synthetic-catalog.xlsx")
+        """
         workbook = Workbook()
         workbook.remove(workbook.active)
         rows_by_sheet = {"OUTLAYS": self.outlays, "OUTLAYSP": self.outlaysp}
         for sheet_name in self.sheet_names:
             self._write_sheet(workbook, sheet_name, rows_by_sheet.get(sheet_name, ()))
-        for sheet_name, rows in self.extra_sheets.items():
-            self._write_sheet(workbook, sheet_name, rows)
         workbook.save(path)
         return path
 

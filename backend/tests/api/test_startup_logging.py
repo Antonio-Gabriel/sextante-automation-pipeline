@@ -4,6 +4,7 @@ import json
 import logging
 
 import pytest
+from fastapi.testclient import TestClient
 
 from sextante.main import create_app
 
@@ -41,3 +42,67 @@ def test_forbidden_fields_are_redacted_even_when_a_developer_logs_them(
     record = _json_lines(capsys.readouterr().out)[-1]
     assert record["description"] == "[redacted]"
     assert record["supplier_name"] == "[redacted]"
+
+
+@pytest.mark.requirement("SEC-15")
+def test_application_records_never_reach_other_handlers_unredacted(
+    valid_environment: dict[str, str], caplog: pytest.LogCaptureFixture
+) -> None:
+    """Records stop at the application's own JSON handler, so no root handler sees raw fields."""
+    create_app(valid_environment)
+
+    with caplog.at_level(logging.WARNING):
+        logging.getLogger("sextante.test").warning("line_encoded", extra={"description": "X"})
+
+    assert caplog.records == []
+
+
+@pytest.mark.requirement("NFR-OBS-001")
+def test_server_records_are_json_too(
+    valid_environment: dict[str, str], capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The server's own startup and access records follow the same JSON format."""
+    create_app(valid_environment)
+    capsys.readouterr()
+
+    logging.getLogger("uvicorn.error").info("Application startup complete.")
+
+    record = _json_lines(capsys.readouterr().out)[-1]
+    assert record["event"] == "Application startup complete."
+    assert "correlation_id" in record
+
+
+@pytest.mark.requirement("NFR-OBS-001", "REQ-PLT-005")
+def test_each_request_gets_its_own_correlation_id_in_header_and_logs(
+    valid_environment: dict[str, str], capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The id returned to the client is the one on every record written during the request."""
+    app = create_app(valid_environment)
+
+    def log_something() -> dict[str, str]:
+        logging.getLogger("sextante.test").info("probe_request_logged")
+        return {}
+
+    app.add_api_route("/api/probe", log_something)
+    with TestClient(app) as client:
+        first = client.get("/api/probe").headers["X-Correlation-ID"]
+        second = client.get("/api/probe").headers["X-Correlation-ID"]
+
+    probes = [
+        r for r in _json_lines(capsys.readouterr().out) if r["event"] == "probe_request_logged"
+    ]
+    assert first != second
+    assert [r["correlation_id"] for r in probes] == [first, second]
+
+
+@pytest.mark.requirement("NFR-OBS-001")
+def test_server_colour_codes_do_not_reach_the_json_log(
+    valid_environment: dict[str, str], capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Terminal colour variants of a message are display noise, not log content."""
+    create_app(valid_environment)
+    capsys.readouterr()
+
+    logging.getLogger("uvicorn.error").info("Started", extra={"color_message": "\x1b[36mS\x1b[0m"})
+
+    assert "color_message" not in _json_lines(capsys.readouterr().out)[-1]

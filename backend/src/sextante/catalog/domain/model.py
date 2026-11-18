@@ -5,8 +5,10 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final
 
+# The item number format of 03-seguranca.md SEC-09.2. It also refuses a code with
+# surrounding spaces, which would break the exact-value rule R1 without being visible.
 ITEM_NUMBER_PATTERN: Final = re.compile(r"^[A-Z0-9][A-Z0-9._/-]{0,31}$")
-FALLBACK_ITEM_NUMBER: Final = "O00999"
+SHA256_HEX_PATTERN: Final = re.compile(r"^[0-9a-f]{64}$")
 
 
 class TargetSheet(StrEnum):
@@ -19,6 +21,8 @@ class TargetSheet(StrEnum):
 @dataclass(frozen=True, slots=True)
 class ItemNumber:
     """The exact value of column No. of the catalog (R1, REQ-MAP-003).
+
+    Raises ValueError when the value does not match ITEM_NUMBER_PATTERN.
 
     Example:
         ItemNumber("O00999")
@@ -37,11 +41,25 @@ class ItemNumber:
         return self.value
 
 
+FALLBACK_ITEM_NUMBER: Final = ItemNumber("O00999")
+
+
 @dataclass(frozen=True, slots=True)
 class CatalogDigest:
-    """SHA-256 of the catalog file, recorded on every encoded line (D-3.9, REQ-MAP-011)."""
+    """SHA-256 of the catalog file, recorded on every encoded line (D-3.9, REQ-MAP-011).
+
+    Example:
+        CatalogDigest(hashlib.sha256(content).hexdigest())
+    """
 
     hex_value: str
+
+    def __post_init__(self) -> None:
+        if not SHA256_HEX_PATTERN.fullmatch(self.hex_value):
+            raise ValueError(
+                f"Catalog digest {self.hex_value!r} is not a SHA-256. "
+                "Expected 64 lowercase hexadecimal characters."
+            )
 
     def __str__(self) -> str:
         return self.hex_value
@@ -53,6 +71,9 @@ class CatalogItem:
 
     The catalog is never corrected in code (L-05): presentation values keep the source
     text, trimmed only at the ends.
+
+    Example:
+        catalog_item.description_pt  # "Bilhete Avião", as exported
     """
 
     item_number: ItemNumber
@@ -65,7 +86,11 @@ class CatalogItem:
 
 @dataclass(frozen=True, slots=True)
 class Catalog:
-    """The loaded catalog, kept in memory for the life of the process (NFR-PRF-003)."""
+    """The loaded catalog, kept in memory for the life of the process (NFR-PRF-003).
+
+    Example:
+        catalog.items_of(TargetSheet.OUTLAYS)
+    """
 
     digest: CatalogDigest
     outlays: tuple[CatalogItem, ...]
