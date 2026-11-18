@@ -54,6 +54,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                     └── CHG-0045  docs      Pasta sources fora do .gitignore e regra dos pedidos repetidos confirmada
                                                                                                                                                                         └── CHG-0046  fix       Idempotency-Key declarado na documentação da API
                                                                                                                                                                             └── CHG-0047  security  Chave da API em todo o /api excepto health
+                                                                                                                                                                                └── CHG-0048  docs      Tickets do frontend, da operação e do deploy
 ```
 
 ## Regras
@@ -118,6 +119,27 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0048 · Tickets do frontend, da operação e do deploy
+
+- **Data:** 2026-11-19
+- **Tipo:** docs
+- **Pai:** CHG-0047
+- **Estado:** activa
+- **Requisitos:** SEC-06, SEC-11, SEC-12, SEC-19, L-07, L-11, REQ-PLT-008
+- **Commit:** pendente
+- **Migração:** nenhuma (o esquema continua na revisão `0009`)
+- **Ficheiros:** `.scratch/frontend/issues/` (6 tickets), `.scratch/operacao/issues/` (4), `.scratch/deploy/issues/` (2)
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** a divisão foi aprovada pelo responsável em 19-11-2026.
+
+**Tickets.** Doze fatias verticais, numa pasta por grupo, aprovadas pelo responsável:
+- **frontend:** esqueleto e login por token, carregamento, resultados, revisão de linha, factura e resolução de entidade, exportação e reprocessamento;
+- **operação:** limites de taxa, tecto de chamadas ao modelo, extracção isolada com limites, retenção e purga;
+- **deploy:** contentor da API e compose, contentor do frontend.
+
+**Decisões do responsável.** O frontend entra com um token de acesso definido numa variável de ambiente do backend, comparado no servidor, em vez de email e palavra-passe. Os tickets que dependiam de respostas da AMT ficam de fora. Tudo tem de correr com e sem Docker e ficar documentado no `README.md`. Retenção e purga fica em `needs-info`, à espera dos prazos de L-11.
 
 ### CHG-0047 · Chave da API em todo o /api excepto health
 
