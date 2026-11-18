@@ -125,7 +125,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0045
 - **Estado:** activa
 - **Requisitos:** SEC-19, NFR-DOC-001
-- **Commit:** pendente
+- **Commit:** `84872fc`
 - **Migração:** nenhuma (o esquema continua na revisão `0009`)
 - **Ficheiros:** `backend/src/sextante/platform/idempotent_route.py`, rotas de `ingestion` e `review`, `tests/api/test_upload_and_listing_contracts.py`, `config/.env.example`, `README.md`
 - **Reversibilidade:** total
