@@ -110,7 +110,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0030
 - **Estado:** activa
 - **Requisitos:** NFR-TST-001, D-3.18, L-02, SEC-15
-- **Commit:** pendente
+- **Commit:** `72e0e9c`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/src/sextante/golden_set.py` (novo), `backend/scripts/golden.py`, `backend/Makefile`
@@ -134,7 +134,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0029
 - **Estado:** activa
 - **Requisitos:** REQ-ING-001, REQ-ING-002, REQ-ING-003, REQ-ING-004, REQ-ING-005, REQ-ING-006, REQ-ING-008, REQ-ING-009, D-3.6, L-01, L-14, SEC-16
-- **Commit:** pendente
+- **Commit:** `44d25bd`
 - **Migração:** nenhuma
 - **Dependência nova:** `pdfplumber` 0.11 (MIT), com `pdfminer.six` (MIT), `pypdfium2` (BSD-3-Clause ou Apache-2.0) e `Pillow` (MIT-CMU). `make licenses` passa.
 - **Ficheiros:**
