@@ -113,7 +113,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0033
 - **Estado:** activa
 - **Requisitos:** REQ-ING-001, REQ-ING-009, NFR-TST-001, D-3.6, D-3.18
-- **Commit:** pendente
+- **Commit:** `5aa494c`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `backend/tests/fixtures/synthetic_invoices.py` e os testes que usam as suas réplicas; `tests/domain/test_entity_check.py`, `test_export_rules.py`, `test_lexical_scoring.py`, `test_line_type.py`, `tests/api/test_startup_logging.py`
@@ -136,7 +136,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0032
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** pendente
+- **Commit:** `134b07c`
 - **Migração:** nenhuma
 - **Ficheiros:** `CHANGELOG.md`, tickets 01 e 02 (hashes citados)
 - **Reversibilidade:** não
