@@ -120,7 +120,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0040
 - **Estado:** activa
 - **Requisitos:** REQ-MAP-005, REQ-AUD-003
-- **Commit:** pendente
+- **Commit:** `920ad15`
 - **Migração:** nenhuma
 - **Ficheiros:** `backend/src/sextante/platform/settings.py`, `config/.env.example`, `README.md`, `docs/00-decisoes-e-lacunas.md` (§3.22), `backend/tests/adapters/test_claude_classifier.py`
 - **Reversibilidade:** total
@@ -136,7 +136,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0039
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-007, SEC-03
-- **Commit:** pendente
+- **Commit:** `9dcf0d4`
 - **Migração:** nenhuma
 - **Ficheiros:** `sources/catalog.xlsx` (novo), `.gitignore`, `README.md`, `OPEN-ITEMS.md` (item 17)
 - **Reversibilidade:** parcial
