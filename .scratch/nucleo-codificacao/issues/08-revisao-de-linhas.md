@@ -19,3 +19,5 @@
 ## Comments
 
 Resolved on 2026-11-18 (CHG-0024). The review state lives in its own table, `line_review`, so the coding record of `encoded_line` is never overwritten; the history is in `audit_event`, with the reviewer of `SEXTANTE_REVIEWER_ID` as author. A correction is allowed from any review state; an acceptance only from `pending`. Both are refused for a line without target sheet, which is unblocked by resolving the invoice's entity (ticket 09). Filters apply before pagination. `Idempotency-Key` is required on the review writes and on reprocessing; the upload is exempt, because the content digest already makes it idempotent (REQ-ING-007). Stored answers are kept 24 hours.
+
+Review fixes on 2026-11-18 (CHG-0025): concurrent requests with one key act once, the 24-hour purge runs as a periodic task, audit events carry previous and new item, status and note. Open for the human: whether the upload must also require `Idempotency-Key` (SEC-19 says every POST), and rate limiting per key (SEC-19, SEC-12), which no ticket covers yet.

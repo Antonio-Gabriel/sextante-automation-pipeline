@@ -18,3 +18,5 @@
 ## Comments
 
 Resolved on 2026-11-18 (CHG-0023). Only `ItemClassifierUnavailableError` is retried; the Claude adapter of ticket 11 must raise it for timeouts, overload and network errors, and nothing else. Reprocessing accepts failed invoices only; an invoice already queued is left as it is, so a repeated request queues it once.
+
+Review fixes on 2026-11-18 (CHG-0025): tokens are now shown per invoice in the job status, as the ticket text asks. Open for the human: NFR-REL-002 gives recalibration as the reason for reprocessing, and SEC-19 says a reprocessing writes a new result line; this ticket reprocesses failed invoices only, so re-coding an already coded invoice, with its history kept, is not built.

@@ -44,8 +44,11 @@ class TokenUsageReader(Protocol):
 
     async def read_token_usage(
         self, connection: "AsyncConnection", invoice_ids: Sequence[str]
-    ) -> tuple[int, int]:
-        """Return the input and output tokens of every model call of these invoices."""
+    ) -> dict[str, tuple[int, int]]:
+        """Return, by invoice, the input and output tokens of its model calls.
+
+        An invoice without a model call is absent.
+        """
         ...
 
 

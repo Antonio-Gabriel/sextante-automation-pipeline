@@ -43,7 +43,7 @@ The response gives the SHA-256 of the loaded catalog.
 | Endpoint | What it does |
 |---|---|
 | `POST /api/invoices` | Upload PDF or XLSX invoices (multipart field `files`). Answers at once with a job id |
-| `GET /api/jobs/{job_id}` | Job status, invoices counted by status and in total, and the tokens spent |
+| `GET /api/jobs/{job_id}` | Job status, invoices counted by status and in total, and the tokens spent, per invoice and in total |
 | `POST /api/invoices/{invoice_id}/reprocess` | Queue a failed invoice again; it is coded from its stored text, without a new upload. Needs `Idempotency-Key` |
 | `GET /api/jobs/{job_id}/results` | Coded lines in document order, with the reviewed values in force, paginated (`limit` up to 100, `offset`). Filters: `confidence`, `target_sheet`, `flagged`, `invoice_id` |
 | `GET /api/invoices/{invoice_id}/lines/{line_id}/candidates` | Every item of the line's target sheet, best lexical score first, with the model's choice marked |

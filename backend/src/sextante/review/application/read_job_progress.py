@@ -21,6 +21,8 @@ class JobProgress:
     invoice_total: int
     input_tokens: int
     output_tokens: int
+    # Tokens of each invoice that had a model call, by invoice identifier (REQ-AUD-004).
+    invoice_tokens: dict[str, tuple[int, int]]
 
 
 class ReadJobProgress:
@@ -48,14 +50,13 @@ class ReadJobProgress:
         """
         summary = await self._job_status.execute(job_id)
         async with self._engine.connect() as connection:
-            input_tokens, output_tokens = await self._usage_reader.read_token_usage(
-                connection, summary.invoice_ids
-            )
+            usage = await self._usage_reader.read_token_usage(connection, summary.invoice_ids)
         return JobProgress(
             job_id=summary.job_id,
             status=summary.status,
             invoice_counts=summary.invoice_counts,
             invoice_total=len(summary.invoice_ids),
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
+            input_tokens=sum(tokens[0] for tokens in usage.values()),
+            output_tokens=sum(tokens[1] for tokens in usage.values()),
+            invoice_tokens=usage,
         )

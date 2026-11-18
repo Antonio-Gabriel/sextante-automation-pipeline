@@ -31,6 +31,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                         └── CHG-0022  fix       Correcções da revisão dos tickets 05 e 06
                                                                             └── CHG-0023  feat      Trabalhador robusto e reprocessamento
                                                                                 └── CHG-0024  feat      Revisão de linhas
+                                                                                    └── CHG-0025  fix       Correcções da revisão dos tickets 07 e 08
 ```
 
 ## Regras
@@ -95,6 +96,33 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0025 · Correcções da revisão dos tickets 07 e 08
+
+- **Data:** 2026-11-18
+- **Tipo:** fix
+- **Pai:** CHG-0024
+- **Estado:** activa
+- **Requisitos:** SEC-19, REQ-REV-003, REQ-REV-004, REQ-AUD-004
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `backend/src/sextante/platform/idempotency.py`, `idempotent_route.py`, `http_params.py` (novo), `limits.py`
+  - `backend/src/sextante/review/` (auditoria, docstrings, mensagens de erro, progresso com tokens por factura)
+  - `backend/src/sextante/matching/` (tokens por factura), rotas de `ingestion` e `export`, `main.py`
+  - testes: `test_idempotency.py` (novo), `test_line_review.py`, `test_worker_resilience.py`, contratos
+  - `README.md`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit. O esquema não mudou.
+- **Verificação:** 243 testes. O teste de concorrência falha contra uma versão que verifica e depois escreve (`IntegrityError`) e passa com a reserva como primeira escrita. `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+**Idempotência.** A reserva da chave é a primeira escrita da transacção (`INSERT OR IGNORE`). Um pedido simultâneo com a mesma chave espera pelo primeiro e recebe a resposta guardada, nunca um 500. A purga das respostas com mais de 24 horas passa para uma tarefa periódica, de hora a hora, como SEC-19 pede, em vez de correr dentro de cada escrita. O código de estado guardado é o que se devolve na repetição. Um pedido recusado não guarda nada, e a mesma chave pode ser reenviada. Os erros de chave e de item fora da aba têm estado explícito.
+
+**Auditoria.** `line_accepted` e `line_corrected` registam o valor anterior e o novo do item, do estado de revisão e da nota (REQ-REV-004).
+
+**Tokens.** `GET /api/jobs/{id}` mostra os tokens de cada factura, além do total (ticket 07).
+
+**Normas.** Exemplos e `Raises` por erro nas docstrings da revisão. Mensagens de erro com o valor e a forma esperada. O limite da nota vai para `platform/limits.py`. O parâmetro de identificador fica num só sítio, o que também aplica o padrão ao `job_id` dos resultados, que não o tinha. Os contratos de entrada da revisão aparam espaços (SEC-08).
 
 ### CHG-0024 · Revisão de linhas
 

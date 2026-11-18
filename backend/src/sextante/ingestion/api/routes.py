@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, File, Path, Request, UploadFile
+from fastapi import APIRouter, File, Request, Response, UploadFile
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -13,9 +13,10 @@ from sextante.ingestion.application.upload_invoices import (
     UploadInvoices,
     check_file_count,
 )
+from sextante.platform.http_params import IdentifierPath
 from sextante.platform.idempotency import JsonBody
 from sextante.platform.idempotent_route import run_idempotently
-from sextante.platform.limits import IDENTIFIER_MAX_LENGTH, IDENTIFIER_PATTERN, MAX_UPLOAD_BYTES
+from sextante.platform.limits import MAX_UPLOAD_BYTES
 from sextante.platform.structured_logging import correlation_id_var
 
 ingestion_router = APIRouter(prefix="/api")
@@ -70,7 +71,8 @@ async def upload_invoices(
 )
 async def reprocess_invoice(
     request: Request,
-    invoice_id: Annotated[str, Path(max_length=IDENTIFIER_MAX_LENGTH, pattern=IDENTIFIER_PATTERN)],
+    response: Response,
+    invoice_id: IdentifierPath,
 ) -> ReprocessResponse:
     """Queue a failed invoice again; it is coded from its stored text (NFR-REL-002).
 
@@ -83,7 +85,7 @@ async def reprocess_invoice(
         receipt = await use_case.execute(connection, invoice_id)
         return 202, {"invoice_id": receipt.invoice_id, "job_id": receipt.job_id}
 
-    answer = await run_idempotently(request, {}, operation)
+    answer = await run_idempotently(request, response, {}, operation)
     return ReprocessResponse.model_validate(answer)
 
 

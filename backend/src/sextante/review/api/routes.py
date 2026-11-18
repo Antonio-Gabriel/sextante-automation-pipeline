@@ -2,24 +2,28 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Path, Query, Request
+from fastapi import APIRouter, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from sextante.catalog.contracts import ITEM_NUMBER_PATTERN, TargetSheet
 from sextante.matching.contracts import Confidence
+from sextante.platform.http_params import IdentifierPath
 from sextante.platform.idempotency import JsonBody
 from sextante.platform.idempotent_route import run_idempotently
-from sextante.platform.limits import IDENTIFIER_MAX_LENGTH, IDENTIFIER_PATTERN, MAX_PAGE_SIZE
+from sextante.platform.limits import (
+    IDENTIFIER_MAX_LENGTH,
+    IDENTIFIER_PATTERN,
+    MAX_PAGE_SIZE,
+    MAX_REVIEW_NOTE_LENGTH,
+)
 from sextante.platform.user_messages import USER_MESSAGES_PT
 from sextante.review.application.codings_in_force import CodingInForce
 from sextante.review.application.list_job_results import ListJobResults, ResultFilters, ResultLine
 from sextante.review.application.read_job_progress import ReadJobProgress
 from sextante.review.application.read_line_candidates import ReadLineCandidates
 from sextante.review.application.review_line import ReviewLine
-from sextante.review.domain.review_state import MAX_REVIEW_NOTE_LENGTH
 
-Identifier = Annotated[str, Path(max_length=IDENTIFIER_MAX_LENGTH, pattern=IDENTIFIER_PATTERN)]
 ReviewNote = Annotated[str | None, Field(max_length=MAX_REVIEW_NOTE_LENGTH)]
 ITEM_NUMBER_MAX_LENGTH = 32
 
@@ -69,6 +73,15 @@ class ResultsPageResponse(BaseModel):
     limit_truncated: bool
 
 
+class TokenUsageResponse(BaseModel):
+    """Tokens spent on one invoice's model calls (REQ-AUD-004)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    input_tokens: int
+    output_tokens: int
+
+
 class JobProgressResponse(BaseModel):
     """Output contract of a job's progress (REQ-PLT-001, REQ-AUD-004)."""
 
@@ -80,12 +93,13 @@ class JobProgressResponse(BaseModel):
     invoice_total: int
     input_tokens: int
     output_tokens: int
+    invoice_tokens: dict[str, TokenUsageResponse]
 
 
 @review_router.get("/jobs/{job_id}", response_model=JobProgressResponse)
 async def read_job_progress(
     request: Request,
-    job_id: Annotated[str, Path(max_length=IDENTIFIER_MAX_LENGTH, pattern=IDENTIFIER_PATTERN)],
+    job_id: IdentifierPath,
 ) -> JobProgressResponse:
     """Return the job status, its invoices counted by status and in total, and its tokens.
 
@@ -101,13 +115,17 @@ async def read_job_progress(
         invoice_total=progress.invoice_total,
         input_tokens=progress.input_tokens,
         output_tokens=progress.output_tokens,
+        invoice_tokens={
+            invoice_id: TokenUsageResponse(input_tokens=used[0], output_tokens=used[1])
+            for invoice_id, used in progress.invoice_tokens.items()
+        },
     )
 
 
 @review_router.get("/jobs/{job_id}/results", response_model=ResultsPageResponse)
 async def read_results(
     request: Request,
-    job_id: Annotated[str, Path(max_length=IDENTIFIER_MAX_LENGTH)],
+    job_id: IdentifierPath,
     limit: Annotated[int, Query(ge=1)] = MAX_PAGE_SIZE,
     offset: Annotated[int, Query(ge=0)] = 0,
     confidence: Annotated[Confidence | None, Query()] = None,
@@ -159,7 +177,7 @@ def _line_response(line: ResultLine) -> ResultLineResponse:
 class CorrectionRequest(BaseModel):
     """Input contract of a correction: an item and a note, never a control field (SEC-08)."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
 
     item_number: str = Field(max_length=ITEM_NUMBER_MAX_LENGTH, pattern=ITEM_NUMBER_PATTERN.pattern)
     note: ReviewNote = None
@@ -168,7 +186,7 @@ class CorrectionRequest(BaseModel):
 class AcceptanceRequest(BaseModel):
     """Input contract of an acceptance: an optional note only (SEC-08)."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
 
     note: ReviewNote = None
 
@@ -189,7 +207,7 @@ class ReviewResponse(BaseModel):
 
 @review_router.patch("/encoded-lines/{encoded_line_id}", response_model=ReviewResponse)
 async def correct_line(
-    request: Request, encoded_line_id: Identifier, body: CorrectionRequest
+    request: Request, response: Response, encoded_line_id: IdentifierPath, body: CorrectionRequest
 ) -> ReviewResponse:
     """Assign another item of the line's target sheet (REQ-REV-002). Needs Idempotency-Key.
 
@@ -202,13 +220,13 @@ async def correct_line(
         coding = await review_line.correct(connection, encoded_line_id, body.item_number, body.note)
         return 200, _review_body(coding)
 
-    answer = await run_idempotently(request, body.model_dump(), operation)
+    answer = await run_idempotently(request, response, body.model_dump(), operation)
     return ReviewResponse.model_validate(answer)
 
 
 @review_router.post("/encoded-lines/{encoded_line_id}/accept", response_model=ReviewResponse)
 async def accept_line(
-    request: Request, encoded_line_id: Identifier, body: AcceptanceRequest
+    request: Request, response: Response, encoded_line_id: IdentifierPath, body: AcceptanceRequest
 ) -> ReviewResponse:
     """Accept a pending line without changing its code (REQ-REV-007). Needs Idempotency-Key.
 
@@ -221,7 +239,7 @@ async def accept_line(
         coding = await review_line.accept(connection, encoded_line_id, body.note)
         return 200, _review_body(coding)
 
-    answer = await run_idempotently(request, body.model_dump(), operation)
+    answer = await run_idempotently(request, response, body.model_dump(), operation)
     return ReviewResponse.model_validate(answer)
 
 
@@ -263,7 +281,7 @@ class CandidatesResponse(BaseModel):
     "/invoices/{invoice_id}/lines/{invoice_line_id}/candidates", response_model=CandidatesResponse
 )
 async def read_candidates(
-    request: Request, invoice_id: Identifier, invoice_line_id: Identifier
+    request: Request, invoice_id: IdentifierPath, invoice_line_id: IdentifierPath
 ) -> CandidatesResponse:
     """Return every item of the line's target sheet, with the model's choice marked.
 

@@ -59,10 +59,15 @@ class ReviewLine:
     ) -> CodingInForce:
         """Move a pending line to accepted, keeping its code.
 
+        Example:
+            await review_line.accept(connection, "3f2a...", "Confirmado com o fornecedor.")
+
         Raises:
-            EncodedLineNotFoundError, LineWithoutSheetError, ReviewNotPendingError.
+            EncodedLineNotFoundError: when no coded line has this identifier.
+            LineWithoutSheetError: when the line has no target sheet.
+            ReviewNotPendingError: when the line is not pending.
         """
-        coding, current = await self._current(connection, encoded_line_id)
+        coding, current, _ = await self._current(connection, encoded_line_id)
         if current.review_status != ReviewStatus.PENDING:
             raise ReviewNotPendingError(
                 f"Line {encoded_line_id!r} is {current.review_status}. Expected a pending line."
@@ -72,10 +77,9 @@ class ReviewLine:
             ReviewStatus.ACCEPTED,
             current.item_number,
             current.catalog_description,
-            note if note is not None else current.review_note,
+            _note_in_force(note, current),
         )
-        payload = {"item_number": current.item_number, "note": review.note}
-        await self._record(connection, review, "line_accepted", payload)
+        await self._record(connection, current, review, "line_accepted")
         return in_force(coding, review)
 
     async def correct(
@@ -83,30 +87,29 @@ class ReviewLine:
     ) -> CodingInForce:
         """Assign another item of the line's target sheet; the line becomes corrected.
 
+        Example:
+            await review_line.correct(connection, "3f2a...", "O00051", "Correio, não outras.")
+
         Raises:
-            EncodedLineNotFoundError, LineWithoutSheetError, ItemNotInSheetError.
+            EncodedLineNotFoundError: when no coded line has this identifier.
+            LineWithoutSheetError: when the line has no target sheet.
+            ItemNotInSheetError: when the item is malformed or not in the line's sheet.
         """
-        coding, current = await self._current(connection, encoded_line_id)
-        catalog_item = self._item_of_sheet(item_number, TargetSheet(str(coding.target_sheet)))
+        coding, current, sheet = await self._current(connection, encoded_line_id)
+        catalog_item = self._item_of_sheet(item_number, sheet)
         review = LineReview(
             encoded_line_id,
             ReviewStatus.CORRECTED,
             catalog_item.item_number.value,
             catalog_item.description_pt,
-            note if note is not None else current.review_note,
+            _note_in_force(note, current),
         )
-        payload = {
-            "previous_item_number": current.item_number,
-            "new_item_number": review.item_number,
-            "previous_review_status": current.review_status,
-            "note": review.note,
-        }
-        await self._record(connection, review, "line_corrected", payload)
+        await self._record(connection, current, review, "line_corrected")
         return in_force(coding, review)
 
     async def _current(
         self, connection: AsyncConnection, encoded_line_id: str
-    ) -> tuple[LineCoding, CodingInForce]:
+    ) -> tuple[LineCoding, CodingInForce, TargetSheet]:
         coding = await self._deps.codings.read_encoded_line(connection, encoded_line_id)
         if coding is None:
             raise EncodedLineNotFoundError(f"Coded line {encoded_line_id!r} does not exist.")
@@ -118,7 +121,8 @@ class ReviewLine:
                 "of its invoice to be resolved first."
             )
         reviews = await self._deps.reviews.read_reviews(connection, [encoded_line_id])
-        return coding, in_force(coding, reviews.get(encoded_line_id))
+        sheet = TargetSheet(coding.target_sheet)
+        return coding, in_force(coding, reviews.get(encoded_line_id)), sheet
 
     def _item_of_sheet(self, item_number: str, sheet: TargetSheet) -> CatalogItem:
         # Validated on the server against the line's own sheet: the review cannot route
@@ -126,20 +130,25 @@ class ReviewLine:
         try:
             number = ItemNumber(item_number)
         except ValueError:
-            raise ItemNotInSheetError("Item number is malformed.") from None
+            raise ItemNotInSheetError(
+                f"Item number {item_number!r} is malformed. Expected a value of column No., "
+                "for example 'O00051'."
+            ) from None
         found = next(
             (c for c in self._deps.catalog.items_of(sheet) if c.item_number == number), None
         )
         if found is None:
-            raise ItemNotInSheetError(f"Item {number} is not in sheet {sheet.value}.")
+            raise ItemNotInSheetError(
+                f"Item {number} is not in sheet {sheet.value}. Expected an item of that sheet."
+            )
         return found
 
     async def _record(
         self,
         connection: AsyncConnection,
+        previous: CodingInForce,
         review: LineReview,
         event_type: str,
-        payload: Mapping[str, object],
     ) -> None:
         deps = self._deps
         now = deps.clock.now()
@@ -149,7 +158,24 @@ class ReviewLine:
             deps.identifiers.new_id(),
             event_type,
             ("encoded_line", review.encoded_line_id),
-            payload,
+            _audit_payload(previous, review),
             now,
             author=deps.reviewer_id,
         )
+
+
+def _note_in_force(note: str | None, current: CodingInForce) -> str | None:
+    # A review without a note keeps the note already in force.
+    return note if note is not None else current.review_note
+
+
+def _audit_payload(previous: CodingInForce, review: LineReview) -> Mapping[str, object]:
+    # The previous and the new value of everything the review can change (REQ-REV-004).
+    return {
+        "previous_item_number": previous.item_number,
+        "new_item_number": review.item_number,
+        "previous_review_status": previous.review_status,
+        "new_review_status": review.review_status.value,
+        "previous_note": previous.review_note,
+        "new_note": review.note,
+    }

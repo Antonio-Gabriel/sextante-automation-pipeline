@@ -117,6 +117,7 @@ def test_responses_carry_exactly_their_declared_fields(valid_environment: dict[s
         "invoice_total",
         "input_tokens",
         "output_tokens",
+        "invoice_tokens",
     }
     assert set(page) == {"lines", "limit", "offset", "limit_truncated"}
     lines = page["lines"]

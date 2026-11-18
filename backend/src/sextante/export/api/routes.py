@@ -2,12 +2,12 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Path, Query, Request
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import Response
 
 from sextante.export.application.export_job import ExportJob
 from sextante.export.application.ports import ExportFormat
-from sextante.platform.limits import IDENTIFIER_MAX_LENGTH, IDENTIFIER_PATTERN
+from sextante.platform.http_params import IdentifierPath
 
 export_router = APIRouter(prefix="/api")
 
@@ -15,7 +15,7 @@ export_router = APIRouter(prefix="/api")
 @export_router.get("/exports/{job_id}")
 async def export_job(
     request: Request,
-    job_id: Annotated[str, Path(max_length=IDENTIFIER_MAX_LENGTH, pattern=IDENTIFIER_PATTERN)],
+    job_id: IdentifierPath,
     export_format: Annotated[ExportFormat, Query(alias="format")],
 ) -> Response:
     """Download the job's coding as CSV or XLSX, always as an attachment (SEC-16).

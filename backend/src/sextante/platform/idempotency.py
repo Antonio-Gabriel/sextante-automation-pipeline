@@ -5,8 +5,10 @@ The record is written in the same transaction as the operation, so two concurren
 requests with the same key cannot both act; the same key with another body is refused.
 """
 
+import asyncio
 import hashlib
 import json
+import logging
 import re
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import timedelta
@@ -19,9 +21,13 @@ from sextante.platform.clock import Clock
 from sextante.platform.errors import DomainError
 from sextante.platform.schema import SCHEMA_METADATA
 
+logger = logging.getLogger(__name__)
+
 IDEMPOTENCY_RETENTION: Final = timedelta(hours=24)
+PURGE_INTERVAL_SECONDS: Final = 3600.0
 IDEMPOTENCY_KEY_PATTERN: Final = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
-PENDING_STATUS: Final = 0
+# Status of a reservation whose answer is not stored yet; never seen outside its transaction.
+RESERVED_STATUS_CODE: Final = 0
 
 IDEMPOTENCY_TABLE = Table(
     "idempotency_record",
@@ -77,6 +83,9 @@ def body_fingerprint(body: JsonBody) -> str:
 class IdempotentExecutor:
     """Run an operation once per (scope, key), and replay its answer afterwards.
 
+    Only an answer that was produced is stored: an operation that raises rolls back with
+    its reservation, so nothing happened and the same key may be sent again.
+
     Example:
         status, body = await executor.run(scope, key, fingerprint, operation)
     """
@@ -90,37 +99,53 @@ class IdempotentExecutor:
     ) -> tuple[int, JsonBody]:
         """Return the stored answer for a repeated request, or run the operation now.
 
+        Example:
+            status, body = await executor.run("reviewer:POST:/api/x", "k-1", print_, operation)
+
         Raises:
             IdempotencyKeyReusedError: when the key was used with another body.
         """
         async with self._engine.begin() as connection:
-            await self._purge_expired(connection)
-            stored = await _stored(connection, scope, key)
-            if stored is not None:
-                return _replay(stored, fingerprint)
-            # The reservation comes first: a concurrent request with the same key fails on
-            # the primary key instead of acting a second time.
-            await connection.execute(
-                IDEMPOTENCY_TABLE.insert().values(
-                    scope=scope,
-                    idempotency_key=key,
-                    fingerprint=fingerprint,
-                    status_code=PENDING_STATUS,
-                    response_body="",
-                    created_at=self._clock.now().isoformat(),
-                )
-            )
+            # The reservation is the transaction's first write, so it takes the write lock:
+            # a concurrent request with the same key waits, then finds the stored answer
+            # instead of acting a second time (SEC-19).
+            if not await self._reserve(connection, scope, key, fingerprint):
+                return _replay(await _stored(connection, scope, key), fingerprint)
             status, body = await operation(connection)
             await _store_answer(connection, scope, key, (status, body))
         return status, body
 
-    async def _purge_expired(self, connection: AsyncConnection) -> None:
-        # Stored answers are kept 24 hours: keeping them longer would keep invoice data
-        # without need (SEC-19).
+    async def purge_expired(self) -> int:
+        """Delete stored answers older than 24 hours; return how many (SEC-19).
+
+        Keeping them longer would keep invoice data without need.
+
+        Example:
+            await executor.purge_expired()
+        """
         cutoff = (self._clock.now() - IDEMPOTENCY_RETENTION).isoformat()
-        await connection.execute(
-            delete(IDEMPOTENCY_TABLE).where(IDEMPOTENCY_TABLE.c.created_at < cutoff)
+        async with self._engine.begin() as connection:
+            result = await connection.execute(
+                delete(IDEMPOTENCY_TABLE).where(IDEMPOTENCY_TABLE.c.created_at < cutoff)
+            )
+        return result.rowcount
+
+    async def _reserve(
+        self, connection: AsyncConnection, scope: str, key: str, fingerprint: str
+    ) -> bool:
+        statement = (
+            IDEMPOTENCY_TABLE.insert()
+            .prefix_with("OR IGNORE")
+            .values(
+                scope=scope,
+                idempotency_key=key,
+                fingerprint=fingerprint,
+                status_code=RESERVED_STATUS_CODE,
+                response_body="",
+                created_at=self._clock.now().isoformat(),
+            )
         )
+        return (await connection.execute(statement)).rowcount == 1
 
 
 async def _store_answer(
@@ -135,14 +160,14 @@ async def _store_answer(
     )
 
 
-async def _stored(connection: AsyncConnection, scope: str, key: str) -> tuple[str, int, str] | None:
+async def _stored(connection: AsyncConnection, scope: str, key: str) -> tuple[str, int, str]:
     query = select(
         IDEMPOTENCY_TABLE.c.fingerprint,
         IDEMPOTENCY_TABLE.c.status_code,
         IDEMPOTENCY_TABLE.c.response_body,
     ).where(IDEMPOTENCY_TABLE.c.scope == scope, IDEMPOTENCY_TABLE.c.idempotency_key == key)
-    row = (await connection.execute(query)).first()
-    return (str(row[0]), int(row[1]), str(row[2])) if row else None
+    row = (await connection.execute(query)).one()
+    return str(row[0]), int(row[1]), str(row[2])
 
 
 def _replay(stored: tuple[str, int, str], fingerprint: str) -> tuple[int, JsonBody]:
@@ -153,3 +178,21 @@ def _replay(stored: tuple[str, int, str], fingerprint: str) -> tuple[int, JsonBo
         )
     loaded: JsonBody = json.loads(body)
     return status, loaded
+
+
+async def purge_periodically(executor: IdempotentExecutor, interval_seconds: float) -> None:
+    """Purge expired answers now and then every interval, until cancelled (SEC-19).
+
+    A failed purge is logged and retried at the next interval: it must never stop the
+    application.
+
+    Example:
+        task = asyncio.create_task(purge_periodically(executor, PURGE_INTERVAL_SECONDS))
+    """
+    while True:
+        try:
+            purged = await executor.purge_expired()
+            logger.info("idempotency_records_purged", extra={"purged_count": purged})
+        except Exception as error:
+            logger.error("idempotency_purge_failed", extra={"error_type": type(error).__name__})
+        await asyncio.sleep(interval_seconds)

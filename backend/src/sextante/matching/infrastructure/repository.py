@@ -67,8 +67,8 @@ class MatchingRepository:
 
     async def read_token_usage(
         self, connection: AsyncConnection, invoice_ids: Sequence[str]
-    ) -> tuple[int, int]:
-        """Return the input and output tokens of every model call of these invoices."""
+    ) -> dict[str, tuple[int, int]]:
+        """Return, by invoice, the input and output tokens of its model calls."""
         return await _token_usage(connection, invoice_ids)
 
     async def read_codings(
@@ -136,14 +136,17 @@ async def _scores_of(
     return tuple(ScoredCandidate(str(r[0]), float(r[1]), int(r[2])) for r in rows)
 
 
-async def _token_usage(connection: AsyncConnection, invoice_ids: Sequence[str]) -> tuple[int, int]:
+async def _token_usage(
+    connection: AsyncConnection, invoice_ids: Sequence[str]
+) -> dict[str, tuple[int, int]]:
     table = MODEL_CALL_TABLE
-    query = select(
-        func.coalesce(func.sum(table.c.input_tokens), 0),
-        func.coalesce(func.sum(table.c.output_tokens), 0),
-    ).where(table.c.invoice_id.in_(list(invoice_ids)))
-    row = (await connection.execute(query)).one()
-    return int(str(row[0])), int(str(row[1]))
+    query = (
+        select(table.c.invoice_id, func.sum(table.c.input_tokens), func.sum(table.c.output_tokens))
+        .where(table.c.invoice_id.in_(list(invoice_ids)))
+        .group_by(table.c.invoice_id)
+    )
+    rows = (await connection.execute(query)).all()
+    return {str(r[0]): (int(str(r[1])), int(str(r[2]))) for r in rows}
 
 
 async def _flags_of(

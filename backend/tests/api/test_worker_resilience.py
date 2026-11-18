@@ -6,7 +6,11 @@ from sextante.matching.contracts import ItemClassifierUnavailableError
 from tests.api.encoding_harness import idempotency_headers, running_application
 from tests.api.test_encoding_safeguards import _query
 from tests.fakes.fake_item_classifier import FakeItemClassifier
-from tests.fixtures.synthetic_invoices import billed_to, taag_air_ticket_to_amt
+from tests.fixtures.synthetic_invoices import (
+    billed_to,
+    hotel_stay_to_amt,
+    taag_air_ticket_to_amt,
+)
 
 
 def _unavailable() -> ItemClassifierUnavailableError:
@@ -61,7 +65,7 @@ def test_a_permanent_failure_is_not_retried(valid_environment: dict[str, str]) -
     assert len(classifier.calls) == 1
 
 
-@pytest.mark.requirement("NFR-REL-001", "NFR-REL-002")
+@pytest.mark.requirement("NFR-REL-001", "NFR-REL-002", "SEC-19")
 def test_a_failed_invoice_is_reprocessed_from_its_stored_text_without_new_extraction(
     valid_environment: dict[str, str],
 ) -> None:
@@ -78,9 +82,17 @@ def test_a_failed_invoice_is_reprocessed_from_its_stored_text_without_new_extrac
             f"/api/invoices/{invoice_id}/reprocess", headers=idempotency_headers("r-1")
         )
         job = app.wait_for_job(job_id)
+        repeated = app.client.post(
+            f"/api/invoices/{invoice_id}/reprocess", headers=idempotency_headers("r-1")
+        )
         line = app.results(job_id)["lines"][0]  # type: ignore[index]
 
-    assert response.status_code == 202
+    assert (response.status_code, repeated.status_code) == (202, 202)
+    assert repeated.json() == response.json()
+    assert _query(
+        valid_environment,
+        "SELECT count(*) FROM audit_event WHERE event_type = 'invoice_reprocess_requested'",
+    ) == [(1,)]
     assert job["invoice_counts"] == {"encoded": 1}
     assert line["item_number"] == "O00004"
     assert len(app.extractor.calls) == 1
@@ -108,18 +120,22 @@ def test_only_a_failed_invoice_can_be_reprocessed(valid_environment: dict[str, s
 
 
 @pytest.mark.requirement("REQ-AUD-004", "L-12")
-def test_job_status_reports_the_tokens_of_its_model_calls(
+def test_job_status_reports_the_tokens_of_each_invoice_and_their_sum(
     valid_environment: dict[str, str],
 ) -> None:
-    """Tokens are recorded per invoice and summed per job, to measure the real cost."""
-    invoice = taag_air_ticket_to_amt()
+    """Tokens are shown per invoice and summed per job, to measure the real cost."""
+    first, second = taag_air_ticket_to_amt(), hotel_stay_to_amt()
+    classifier = FakeItemClassifier({1: "O00004", 2: "O00004"})
 
-    with running_application(
-        valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
-    ) as app:
-        job = app.wait_for_job(app.upload(invoice)["job_id"])
+    with running_application(valid_environment, [first, second], classifier) as app:
+        files = [("files", (i.file_name, i.content, "application/pdf")) for i in (first, second)]
+        job = app.wait_for_job(app.client.post("/api/invoices", files=files).json()["job_id"])
+        lines = app.results(job["job_id"])["lines"]
+    assert isinstance(lines, list)
+    first_id, second_id = lines[0]["invoice_id"], lines[-1]["invoice_id"]
 
-    assert (job["input_tokens"], job["output_tokens"]) == (100, 10)
-    assert _query(valid_environment, "SELECT input_tokens, output_tokens FROM model_call") == [
-        (100, 10)
-    ]
+    assert (job["input_tokens"], job["output_tokens"]) == (300, 30)
+    assert job["invoice_tokens"] == {
+        first_id: {"input_tokens": 100, "output_tokens": 10},
+        second_id: {"input_tokens": 200, "output_tokens": 20},
+    }

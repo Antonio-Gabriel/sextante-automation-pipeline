@@ -13,6 +13,8 @@ MAX_FILE_NAME_LENGTH: Final = 255
 MAX_LINES_PER_INVOICE: Final = 500
 MAX_PAGE_SIZE: Final = 100
 MAX_RATIONALE_LENGTH: Final = 500
+# A note is free text from the reviewer; its limit is declared (REQ-REV-003).
+MAX_REVIEW_NOTE_LENGTH: Final = 500
 IDENTIFIER_MAX_LENGTH: Final = 64
 # Identifiers are server-generated; this keeps client text out of headers and names.
 IDENTIFIER_PATTERN: Final = r"^[A-Za-z0-9_-]+$"

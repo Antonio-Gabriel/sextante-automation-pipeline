@@ -48,7 +48,13 @@ from sextante.platform.correlation import CorrelationIdMiddleware
 from sextante.platform.database import apply_migrations, create_database_engine
 from sextante.platform.health import health_router
 from sextante.platform.http_errors import install_error_handlers
-from sextante.platform.idempotency import IdempotentExecutor
+from sextante.platform.idempotency import (
+    PURGE_INTERVAL_SECONDS,
+    IdempotencyKeyRequiredError,
+    IdempotencyKeyReusedError,
+    IdempotentExecutor,
+    purge_periodically,
+)
 from sextante.platform.retry import RetryPolicy, Sleep
 from sextante.platform.settings import Settings, StartupConfigurationError
 from sextante.platform.structured_logging import configure_logging
@@ -65,7 +71,11 @@ from sextante.review.application.review_line import (
     ReviewCollaborators,
     ReviewLine,
 )
-from sextante.review.domain.review_state import LineWithoutSheetError, ReviewNotPendingError
+from sextante.review.domain.review_state import (
+    ItemNotInSheetError,
+    LineWithoutSheetError,
+    ReviewNotPendingError,
+)
 from sextante.review.infrastructure.repository import ReviewRepository
 from sextante.worker import EncodingWorker, WorkerCollaborators
 
@@ -90,6 +100,9 @@ HTTP_STATUS_BY_ERROR = {
     InvoiceLineNotFoundError: 404,
     LineWithoutSheetError: 409,
     ReviewNotPendingError: 409,
+    ItemNotInSheetError: 422,
+    IdempotencyKeyRequiredError: 422,
+    IdempotencyKeyReusedError: 422,
     UnsupportedFileTypeError: 415,
     FileTooLargeError: 413,
 }
@@ -152,13 +165,17 @@ def _lifespan(
         engine = create_database_engine(settings.database_url.get_secret_value())
         app.state.database_engine = engine
         _wire_use_cases(app, engine, settings, reference, adapters)
-        worker_task = asyncio.create_task(app.state.worker.run_forever())
+        tasks = [
+            asyncio.create_task(app.state.worker.run_forever()),
+            asyncio.create_task(purge_periodically(app.state.idempotency, PURGE_INTERVAL_SECONDS)),
+        ]
         try:
             yield
         finally:
-            worker_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await worker_task
+            for task in tasks:
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
             await engine.dispose()
 
     return lifespan

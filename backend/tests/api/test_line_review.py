@@ -134,7 +134,7 @@ def test_a_line_without_target_sheet_cannot_be_corrected(valid_environment: dict
     assert response.json()["code"] == "errors.review.line_without_sheet"
 
 
-@pytest.mark.requirement("REQ-REV-007", "REQ-REV-005")
+@pytest.mark.requirement("REQ-REV-007", "REQ-REV-005", "REQ-REV-004")
 def test_accepting_a_pending_line_moves_it_to_accepted(valid_environment: dict[str, str]) -> None:
     """A flagged line leaves the queue without a code change."""
     with _coded_job(valid_environment, {1: "O00052", 2: "O00004"}) as (app, job_id, lines):
@@ -148,9 +148,19 @@ def test_accepting_a_pending_line_moves_it_to_accepted(valid_environment: dict[s
 
     assert response.status_code == 200
     assert (after["review_status"], after["item_number"]) == ("accepted", "O00052")
-    assert _query(
-        valid_environment, "SELECT count(*) FROM audit_event WHERE event_type = 'line_accepted'"
-    ) == [(1,)]
+    [(payload_text, author)] = _query(
+        valid_environment,
+        "SELECT payload, author FROM audit_event WHERE event_type = 'line_accepted'",
+    )
+    assert json.loads(str(payload_text)) == {
+        "previous_item_number": "O00052",
+        "new_item_number": "O00052",
+        "previous_review_status": "pending",
+        "new_review_status": "accepted",
+        "previous_note": None,
+        "new_note": "Confirmado com o fornecedor.",
+    }
+    assert author == "synthetic-reviewer"
 
 
 @pytest.mark.requirement("SEC-19")

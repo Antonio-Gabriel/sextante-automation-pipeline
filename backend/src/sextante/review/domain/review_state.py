@@ -2,12 +2,8 @@
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Final
 
 from sextante.platform.errors import DomainError
-
-# A note is free text from the reviewer; its limit is declared (REQ-REV-003).
-MAX_REVIEW_NOTE_LENGTH: Final = 500
 
 
 class ReviewStatus(StrEnum):
