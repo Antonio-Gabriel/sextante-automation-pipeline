@@ -25,6 +25,10 @@ DESCRIPTION_WRAP: Final = 52
 SYNTHETIC_TITLE: Final = "SYNTHETIC TEST INVOICE - not a real document"
 # A grey area where a scanned image would be: shapes, no text.
 SCANNED_SHAPE: Final = "0.8 g 40 400 515 400 re f"
+# Hostile PDFs for the extraction limits (SEC-16).
+FLATE: Final = " /Filter /FlateDecode"
+BOMB_EXPANDED_MIB: Final = 1024
+SLOW_OPERATORS: Final = 5_000_000
 
 # Helvetica advance widths (1/1000 em) of digits and separators, which right-aligned
 # values are made of. Other characters get an average width, so right-aligned headings
@@ -210,6 +214,11 @@ def _escape(text: str) -> str:
 
 
 def _document(pages: Sequence[Sequence[str]]) -> bytes:
+    return _document_of_streams(["\n".join(operations).encode("latin-1") for operations in pages])
+
+
+def _document_of_streams(streams: Sequence[bytes], stream_filter: str = "") -> bytes:
+    # One page per content stream; ``stream_filter`` names how each stream is encoded.
     font = "<< /Type /Font /Subtype /Type1 /BaseFont /{} /Encoding /WinAnsiEncoding >>"
     objects = [
         "<< /Type /Catalog /Pages 2 0 R >>",
@@ -219,10 +228,11 @@ def _document(pages: Sequence[Sequence[str]]) -> bytes:
         f"<< /Title ({SYNTHETIC_TITLE}) /Producer (sextante synthetic fixtures) >>",
     ]
     kids = []
-    for operations in pages:
-        stream = "\n".join(operations).encode("latin-1")
+    for stream in streams:
         objects.append(
-            f"<< /Length {len(stream)} >>\nstream\n" + stream.decode("latin-1") + "\nendstream"
+            f"<< /Length {len(stream)}{stream_filter} >>\nstream\n"
+            + stream.decode("latin-1")
+            + "\nendstream"
         )
         objects.append(
             f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {PAGE_WIDTH} {PAGE_HEIGHT}] "
@@ -247,48 +257,30 @@ def _serialize(objects: list[str]) -> bytes:
 
 
 @functools.cache
-def decompression_bomb_pdf(decompressed_mib: int = 1024) -> bytes:
-    """A small PDF whose one content stream expands to ``decompressed_mib`` MiB.
+def decompression_bomb_pdf() -> bytes:
+    """A PDF of about 1 MiB whose one content stream expands to 1 GiB of zeros.
 
-    About a thousandth of the size on disk: built to exhaust memory when read.
+    Built to exhaust memory when read.
 
     Example:
-        decompression_bomb_pdf()  # about 1 MiB, expands to 1 GiB
+        decompression_bomb_pdf()
     """
     compressor = zlib.compressobj(1)
-    chunk = b"\0" * (1 << 20)
-    data = b"".join(compressor.compress(chunk) for _ in range(decompressed_mib))
-    return _flate_document(data + compressor.flush())
+    zeros = b"\0" * (1 << 20)
+    compressed_stream = b"".join(compressor.compress(zeros) for _ in range(BOMB_EXPANDED_MIB))
+    return _document_of_streams([compressed_stream + compressor.flush()], FLATE)
 
 
 @functools.cache
-def slow_to_read_pdf(operators: int = 5_000_000) -> bytes:
-    """A small PDF whose content stream holds ``operators`` empty save/restore pairs.
+def slow_to_read_pdf() -> bytes:
+    """A small PDF whose content stream holds five million empty save/restore pairs.
 
     Tiny in memory, but every operator is parsed one by one: built to take long to read.
 
     Example:
         slow_to_read_pdf()
     """
-    return _flate_document(zlib.compress(b"q Q\n" * operators, 9))
-
-
-def _flate_document(stream: bytes) -> bytes:
-    # The same objects as _document, with one compressed content stream.
-    font = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"
-    objects = [
-        "<< /Type /Catalog /Pages 2 0 R >>",
-        "<< /Type /Pages /Kids [7 0 R] /Count 1 >>",
-        font,
-        font,
-        f"<< /Title ({SYNTHETIC_TITLE}) /Producer (sextante synthetic fixtures) >>",
-        f"<< /Length {len(stream)} /Filter /FlateDecode >>\nstream\n"
-        + stream.decode("latin-1")
-        + "\nendstream",
-        f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {PAGE_WIDTH} {PAGE_HEIGHT}] "
-        "/Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>",
-    ]
-    return _serialize(objects)
+    return _document_of_streams([zlib.compress(b"q Q\n" * SLOW_OPERATORS, 9)], FLATE)
 
 
 AMT_BILL_TO: Final = (

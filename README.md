@@ -81,7 +81,9 @@ Every PDF is read in a separate process, with a memory limit and a time limit (S
 | Memory per PDF, in MiB | 512 | `SEXTANTE_PDF_EXTRACTION_MEMORY_MIB` | 128 to 8192 |
 | Time per PDF, in seconds | 30 | `SEXTANTE_PDF_EXTRACTION_TIMEOUT_SECONDS` | 1 to 600 |
 
-Raise the memory limit if valid invoices are refused with `limit: memory` in the log; raise the time limit if they are refused with `limit: time`. The memory limit is the child process's address space, which Linux enforces, with or without Docker. On a platform that does not enforce it, such as macOS, the child logs `pdf_memory_limit_unavailable` and only the time limit applies.
+Raise the memory limit if valid invoices are refused with `limit: memory` in the log; raise the time limit if they are refused with `limit: time`. A refusal for a limit shows the same reason as a document of the wrong type, `unsupported_document_type`; the log tells them apart. A child that fails for another reason fails the invoice, and the log records `pdf_extraction_failed` with the error type.
+
+The memory limit is the child process's address space, which only Linux enforces: on Linux, if it cannot be set, the invoice fails rather than being read without it. On macOS or Windows the child logs `pdf_memory_limit_unavailable` and only the time limit applies; run on Linux for the full protection. The child also has a CPU time limit, the time limit plus 5 seconds, so it ends by itself if the server stops while it reads. Children start from a forkserver, which needs a writable temporary directory for its socket.
 
 ## Model call ceiling
 

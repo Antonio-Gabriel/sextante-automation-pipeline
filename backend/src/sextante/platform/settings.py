@@ -79,10 +79,10 @@ class Settings(ModelCallSettings):
     # Ceiling on model calls per window, in the worker: over it invoices wait queued
     # (SEC-12). Provisional default, to calibrate with the real volume (L-02).
     model_call_ceiling: int = Field(default=200, ge=1, le=RATE_LIMIT_MAXIMUM)
+    model_call_window_seconds: int = Field(default=3600, ge=1, le=MODEL_CALL_WINDOW_MAXIMUM_SECONDS)
     # Limits of reading one PDF in its own process (SEC-16): address space and time.
     pdf_extraction_memory_mib: int = Field(default=512, ge=128, le=8192)
     pdf_extraction_timeout_seconds: int = Field(default=30, ge=1, le=600)
-    model_call_window_seconds: int = Field(default=3600, ge=1, le=MODEL_CALL_WINDOW_MAXIMUM_SECONDS)
     # Characters per page below which a PDF counts as scanned (REQ-ING-002, L-01).
     pdf_min_chars_per_page: int = Field(
         default=PDF_MIN_CHARS_DEFAULT, ge=1, le=PDF_MIN_CHARS_MAXIMUM

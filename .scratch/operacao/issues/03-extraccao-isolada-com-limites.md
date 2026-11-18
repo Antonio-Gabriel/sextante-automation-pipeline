@@ -14,3 +14,5 @@
 - [x] Testes com um PDF sintético que expande na descompressão e com um que excede o tempo
 
 Resolved on 2026-11-19 (CHG-0053): each PDF is read in a child process started from a forkserver, with an address-space limit and a time limit, off the event loop. Over a limit the document is refused as `unsupported_document_type` and the log records the limit. Defaults 512 MiB and 30 s.
+
+Review fixes on 2026-11-19 (CHG-0054): closed sets for the limit and the child messages; a silent child death counts as memory only when it was SIGKILL, any other fails the invoice; CPU time limit in the child; memory limit fails closed on Linux and is declared unavailable elsewhere; process context built on first use; parity tests for refusals; Linux-only tests skip elsewhere; fixtures share one document builder.

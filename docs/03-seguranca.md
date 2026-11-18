@@ -657,7 +657,7 @@ Regras:
 - Carregar com nome `../../../etc/passwd` e confirmar que a escrita não escapa à raiz.
 - Carregar um XLSX com bomba de descompressão conhecida e confirmar rejeição sem esgotar memória.
 - Carregar um PDF digitalizado, sem camada de texto, e confirmar recusa com motivo `pdf_without_text_layer`, por REQ-ING-002.
-- Carregar um PDF com bomba de descompressão, e um que demora demais a ler, e confirmar recusa como `unsupported_document_type` sem esgotar memória nem parar o trabalhador. *Implementado em 19-11-2026 (CHG-0053):* a leitura de cada PDF corre num processo filho, com limite de espaço de endereçamento (`RLIMIT_AS`, aplicado pelo Linux) e de tempo, configuráveis. Noutra plataforma só o limite de tempo se aplica, e o log di-lo.
+- Carregar um PDF com bomba de descompressão, e um que demora demais a ler, e confirmar recusa como `unsupported_document_type` sem esgotar memória nem parar o trabalhador. *Implementado em 19-11-2026 (CHG-0053):* a leitura de cada PDF corre num processo filho, com limite de espaço de endereçamento (`RLIMIT_AS`, aplicado pelo Linux) e de tempo, configuráveis. Noutra plataforma só o limite de tempo se aplica, e o log di-lo. *Revisto (CHG-0054):* no Linux, um limite que não se consegue pôr falha a factura em vez de ler sem ele; o filho tem também limite de CPU, para terminar sozinho se o servidor morrer; um filho morto por SIGKILL conta como limite de memória, e outra morte falha a factura.
 - Carregar o mesmo ficheiro duas vezes e confirmar que devolve o trabalho existente, por REQ-ING-007.
 
 ---

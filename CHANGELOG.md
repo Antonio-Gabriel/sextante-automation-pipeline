@@ -60,6 +60,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                             └── CHG-0051  security  Tecto de chamadas ao modelo no trabalhador
                                                                                                                                                                                                 └── CHG-0052  fix       Correcções da revisão do tecto de chamadas ao modelo
                                                                                                                                                                                                     └── CHG-0053  security  Extracção de PDF isolada com limites
+                                                                                                                                                                                                        └── CHG-0054  fix       Correcções da revisão da extracção isolada
 ```
 
 ## Regras
@@ -125,6 +126,26 @@ Três casos estão sempre limitados:
 
 ## Alterações
 
+### CHG-0054 · Correcções da revisão da extracção isolada
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0053
+- **Estado:** activa
+- **Requisitos:** SEC-16, SEC-15, REQ-PLT-002, REQ-ING-003
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `backend/src/sextante/ingestion/infrastructure/isolated_extractor.py`, `platform/settings.py`, `tests/extraction/test_isolated_extraction.py`, `tests/fixtures/synthetic_pdf.py`, `README.md`, `docs/03-seguranca.md` (SEC-16), ticket de operação 03
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 356 testes e o `xfail` estrito. A paridade com a leitura no processo passa a cobrir também um documento de outro tipo e um ficheiro ilegível. Os testes que dependem do `RLIMIT_AS` só correm em Linux. `make golden` com 12 amostras sem divergências. `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+
+**Protocolo.** O limite atingido e as mensagens do filho passam a conjuntos fechados (`ExtractionLimit`, `StrEnum`), e cada tipo de mensagem é tratado pelo nome. Um filho que morre sem responder só conta como limite de memória quando morreu por SIGKILL, que é como o kernel termina um processo sem memória; outra morte falha a factura. Uma falha do filho regista `pdf_extraction_failed` com o tipo do erro, que a razão da factura (`PdfExtractionError`) já não mostra.
+
+**Limites.** No Linux, um limite que não se consegue pôr falha a factura: o controlo falha fechado, nunca lê sem limite. Noutra plataforma o limite de memória não é aplicado (o macOS aceita `RLIMIT_AS` sem o aplicar), e o filho di-lo no log. O filho tem também um limite de CPU, o tempo mais 5 s, para terminar sozinho se o servidor morrer durante a leitura. O contexto de processos é criado no primeiro uso, com `forkserver` onde exista e `spawn` onde não, em vez de falhar na importação.
+
+**Normas.** As fixtures hostis partilham o construtor de documentos, sem parâmetros que só os valores por omissão usavam. Os novos campos de configuração deixam de partir o par do tecto de chamadas.
+
 ### CHG-0053 · Extracção de PDF isolada com limites
 
 - **Data:** 2026-11-19
@@ -132,7 +153,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0052
 - **Estado:** activa
 - **Requisitos:** SEC-16, SEC-15, REQ-PLT-002, REQ-ING-003, REQ-ING-009
-- **Commit:** pendente
+- **Commit:** `43a496d`
 - **Migração:** nenhuma
 - **Ficheiros:** `backend/src/sextante/ingestion/infrastructure/isolated_extractor.py`, `ingestion/infrastructure/pdf_invoice_extractor.py` (`MemoryError` reconhecido sob a excepção do pdfplumber), `worker.py` (extracção fora do ciclo de eventos), `main.py`, `platform/settings.py`, `tests/extraction/test_isolated_extraction.py`, `tests/fixtures/synthetic_pdf.py` (PDF sintético com bomba de descompressão e PDF lento), `README.md`, `config/.env.example`, `docs/02-arquitectura.md` §4.3, `docs/03-seguranca.md` (SEC-16), ticket de operação 03
 - **Reversibilidade:** total

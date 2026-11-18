@@ -5,6 +5,7 @@ API to show the worker carries on with the other invoices.
 """
 
 import logging
+import sys
 import time
 from collections.abc import Iterator
 
@@ -13,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from sextante.ingestion.domain.model import ExtractionRejection, FileFormat, RejectionReason
 from sextante.ingestion.infrastructure.isolated_extractor import (
+    MIB,
     ExtractionLimits,
     IsolatedPdfExtractor,
 )
@@ -25,20 +27,19 @@ from tests.fixtures.synthetic_pdf import (
     air_ticket_pdf,
     decompression_bomb_pdf,
     model_invoice_pdf,
+    other_document_pdf,
     scanned_pdf,
     slow_to_read_pdf,
 )
 
 MIN_CHARS_PER_PAGE = 100
-LIMITS = ExtractionLimits(memory_bytes=512 * 1024 * 1024, timeout_seconds=30.0)
+LIMITS = ExtractionLimits(memory_bytes=512 * MIB, timeout_seconds=30.0)
+ISOLATED_LOGGER = "sextante.ingestion.infrastructure.isolated_extractor"
 UNSUPPORTED = ExtractionRejection(RejectionReason.UNSUPPORTED_DOCUMENT_TYPE)
 
 
 def _isolated(limits: ExtractionLimits = LIMITS) -> IsolatedPdfExtractor:
     return IsolatedPdfExtractor(MIN_CHARS_PER_PAGE, limits)
-
-
-ISOLATED_LOGGER = "sextante.ingestion.infrastructure.isolated_extractor"
 
 
 @pytest.fixture
@@ -58,7 +59,16 @@ def _limit_records(caplog: pytest.LogCaptureFixture) -> list[dict[str, object]]:
 
 
 @pytest.mark.requirement("REQ-ING-003", "SEC-16")
-@pytest.mark.parametrize("content", [model_invoice_pdf(air_ticket_pdf()), scanned_pdf()])
+@pytest.mark.parametrize(
+    "content",
+    [
+        model_invoice_pdf(air_ticket_pdf()),
+        scanned_pdf(),
+        other_document_pdf(),
+        b"%PDF-1.4\nnot a readable PDF",
+    ],
+    ids=["invoice", "scanned", "other_document", "unreadable"],
+)
 def test_a_pdf_read_apart_gives_what_it_gave_before(content: bytes) -> None:
     """The same extraction, or the same refusal, as reading in the process."""
     expected = PdfInvoiceExtractor(MIN_CHARS_PER_PAGE).extract(content, FileFormat.PDF)
@@ -67,6 +77,7 @@ def test_a_pdf_read_apart_gives_what_it_gave_before(content: bytes) -> None:
 
 
 @pytest.mark.requirement("SEC-16", "SEC-15")
+@pytest.mark.skipif(sys.platform != "linux", reason="Only Linux enforces RLIMIT_AS (SEC-16).")
 def test_a_decompression_bomb_is_refused_as_unsupported_by_the_memory_limit(
     limit_log: pytest.LogCaptureFixture,
 ) -> None:
@@ -105,6 +116,7 @@ def test_an_xlsx_is_refused_without_starting_a_process() -> None:
 
 
 @pytest.mark.requirement("SEC-16", "REQ-PLT-002")
+@pytest.mark.skipif(sys.platform != "linux", reason="Only Linux enforces RLIMIT_AS (SEC-16).")
 def test_the_worker_carries_on_after_a_hostile_pdf(valid_environment: dict[str, str]) -> None:
     """The bomb is refused with its reason; the next invoice of the job is coded."""
     files = [
