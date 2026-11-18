@@ -133,7 +133,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0053
 - **Estado:** activa
 - **Requisitos:** SEC-16, SEC-15, REQ-PLT-002, REQ-ING-003
-- **Commit:** pendente
+- **Commit:** `a576754`
 - **Migração:** nenhuma
 - **Ficheiros:** `backend/src/sextante/ingestion/infrastructure/isolated_extractor.py`, `platform/settings.py`, `tests/extraction/test_isolated_extraction.py`, `tests/fixtures/synthetic_pdf.py`, `README.md`, `docs/03-seguranca.md` (SEC-16), ticket de operação 03
 - **Reversibilidade:** total
