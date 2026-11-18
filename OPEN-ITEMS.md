@@ -387,6 +387,8 @@ The file `sources/catalog.xlsx` stores, in its metadata, a Windows path containi
 
 **Proposal.** Strip the metadata before the first commit, or confirm with AMT that the file can go into the repository as it is.
 
+**Resolved on 2026-11-18.** The catalog enters the repository at the owner's request. The committed copy has the author, the last editor and the Windows path removed; its two sheets read exactly as the original.
+
 ---
 
 ## Resolved

@@ -19,7 +19,7 @@ For each line of a supplier invoice, Sextante assigns the exact item number from
 ## Requirements
 
 - Python 3.12
-- The catalog file, `catalog.xlsx`. It is not in the repository: place it in `sources/`.
+- The catalog file, `sources/catalog.xlsx`, in the repository. It is the catalog received from AMT, with its file metadata (author and a local Windows path) removed and its data unchanged.
 
 ## Install and run
 

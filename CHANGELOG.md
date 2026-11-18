@@ -46,6 +46,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                     └── CHG-0037  fix       Correcções da revisão dos tickets 11 e 13
                                                                                                                                         └── CHG-0038  docs      Fornecedor e moeda no pedido ao modelo (REQ-MAP-005)
                                                                                                                                             └── CHG-0039  security  Repositório e histórico sem dados das amostras
+                                                                                                                                                └── CHG-0040  infra     Catálogo no repositório, sem metadados pessoais
 ```
 
 ## Regras
@@ -110,6 +111,22 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0040 · Catálogo no repositório, sem metadados pessoais
+
+- **Data:** 2026-11-18
+- **Tipo:** infra
+- **Pai:** CHG-0039
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-007, SEC-03
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `sources/catalog.xlsx` (novo), `.gitignore`, `README.md`, `OPEN-ITEMS.md` (item 17)
+- **Reversibilidade:** parcial
+- **Reversão:** reverter o commit retira o ficheiro da versão, mas ele continua no histórico de um repositório já publicado.
+- **Verificação:** as duas abas lidas com `openpyxl` são iguais às do original (45 e 21 linhas, cabeçalho incluído); o catálogo passa a validação de arranque (44 e 20 itens); nenhuma ocorrência do nome do autor nem do caminho do Windows no ficheiro.
+
+**Pedido do responsável.** O catálogo entra no repositório, para que quem receber o projecto o possa testar. A cópia versionada não tem o autor, o último editor nem o caminho local do Windows que o original guardava nos metadados (item 17 de `OPEN-ITEMS.md`); os dados são os mesmos. O digest do catálogo muda com os metadados, por isso codificações antigas citam outro digest.
 
 ### CHG-0039 · Repositório e histórico sem dados das amostras
 
