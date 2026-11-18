@@ -105,7 +105,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0025
 - **Estado:** activa
 - **Requisitos:** SEC-19, NFR-REL-002, REQ-ING-007
-- **Commit:** pendente
+- **Commit:** `52bb399`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `docs/00-decisoes-e-lacunas.md` (§3.19, §3.20)
