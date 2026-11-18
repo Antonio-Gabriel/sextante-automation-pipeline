@@ -16,7 +16,7 @@ from rapidfuzz import fuzz
 from sextante.ingestion.contracts import BilledEntityBlock
 from sextante.matching.domain.line_decision import FlagReason
 from sextante.platform.errors import DomainError
-from sextante.platform.text_normalization import fold_for_matching
+from sextante.platform.text_normalization import digits_only, fold_for_matching
 
 # Provisional until the golden set calibrates it (L-02). Measured on the samples: third
 # parties score below 40, names close to AMT's score above 70.
@@ -91,6 +91,17 @@ class EntityDenylist:
         return normalize_entity_name(name) in self.normalized_names
 
 
+def exact_entity_match_label(verdict: str | None) -> str:
+    """The Exact_Entity_Match value: YES only for MATCH (REQ-ENT-006, R6).
+
+    NO_MATCH and AMBIGUOUS are both "not AMT", and so is a verdict not yet given.
+
+    Example:
+        exact_entity_match_label("AMBIGUOUS")  # "NO"
+    """
+    return "YES" if verdict == EntityVerdict.MATCH.value else "NO"
+
+
 def normalize_entity_name(name: str) -> str:
     """Fold the name and drop a trailing corporate suffix (R5, REQ-ENT-002).
 
@@ -130,12 +141,8 @@ def check_billed_entity(
 def _nif_differs(extracted_nif: str | None, target_nif: str) -> bool:
     # Only an extracted NIF can veto. An absent one, or a placeholder with no digits such
     # as "N/D", neither vetoes nor confirms (REQ-ENT-007).
-    digits = _digits(extracted_nif or "")
-    return bool(digits) and digits != _digits(target_nif)
-
-
-def _digits(nif: str) -> str:
-    return "".join(character for character in nif if character.isdigit())
+    digits = digits_only(extracted_nif)
+    return bool(digits) and digits != digits_only(target_nif)
 
 
 def _by_similarity(name: str, target_name: str) -> EntityCheckResult:

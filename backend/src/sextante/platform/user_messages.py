@@ -32,6 +32,7 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
         "rejections.extractor_not_configured": (
             "Documento recusado: a leitura de facturas não está configurada."
         ),
+        "rejections.other": "Documento recusado.",
         "export.invoice_failed": "Falha no processamento: a factura pode ser reprocessada.",
         "export.line_not_coded": "Linha ainda por codificar.",
         "export.care_of": "Ao cuidado de: {}",

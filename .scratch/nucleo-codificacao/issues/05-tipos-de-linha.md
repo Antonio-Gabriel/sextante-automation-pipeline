@@ -18,4 +18,4 @@ Tudo o que não for reconhecido como IVA ou desconto é tratado como serviço e 
 
 ## Comments
 
-Resolved on 2026-11-18 (CHG-0020). VAT is recognised only when the description starts with it, so a service that mentions "(isento de IVA)" stays a service.
+Resolved on 2026-11-18 (CHG-0020). Revised by the code review (CHG-0022): a line is VAT, or a discount, when it names VAT or a discount and every one of its words belongs to that vocabulary, so "Valor do IVA", "14% IVA" and "I.V.A." are VAT, while "Vat handling fee" and "(isento de IVA)" stay services. "Position in the table" is played by the extractor, which keeps summary rows out of the lines.

@@ -21,6 +21,7 @@ from sextante.ingestion.application.records import (
 )
 from sextante.ingestion.domain.line_type import classify_line_type
 from sextante.ingestion.domain.model import (
+    BilledEntityBlock,
     ExtractedInvoice,
     ExtractedLine,
     StoredInvoice,
@@ -201,7 +202,7 @@ class IngestionRepository:
                 invoice_number=r.invoice_number,
                 position=int(r.position),
                 description=str(r.description),
-                billed_entity=_detected_entity(str(r.billed_entities)),
+                billed_entity=_detected_entity(_blocks(r.billed_entities)),
                 entity_verdict=r.entity_verdict,
             )
             for r in rows
@@ -246,7 +247,7 @@ def _stored_invoice(
         billed_entities=normalized.billed_entities,
         lines=tuple(
             StoredLine(
-                line_id, line.position, line.description, classify_line_type(line.description).value
+                line_id, line.position, line.description, classify_line_type(line.description)
             )
             for line_id, line in zip(line_ids, normalized.lines, strict=True)
         ),
@@ -291,27 +292,41 @@ async def _lines_by_invoice(
 
 
 def _export_invoice(row: Row[tuple[object, ...]], lines: tuple[ExportLine, ...]) -> ExportInvoice:
-    blocks = json.loads(str(row.billed_entities)) if row.billed_entities else []
+    blocks = _blocks(row.billed_entities)
     return ExportInvoice(
         invoice_id=str(row.id),
-        status=str(row.status),
+        status=InvoiceStatus(str(row.status)),
         status_reason=row.status_reason,
         content_digest=str(row.content_digest),
         supplier_name=row.supplier_name,
         supplier_nif=row.supplier_nif,
         invoice_number=row.invoice_number,
-        billed_entity=_detected_entity(str(row.billed_entities)) if blocks else None,
-        care_of=tuple(text for block in blocks for text in block["care_of"]),
+        billed_entity=_detected_entity(blocks),
+        care_of=tuple(text for block in blocks for text in block.care_of),
         entity_verdict=row.entity_verdict,
         lines=lines,
     )
 
 
-def _detected_entity(billed_entities_json: str) -> str | None:
+def _blocks(billed_entities_json: object) -> list[BilledEntityBlock]:
+    # Parsed once, into the domain type, from the JSON column written by store_extraction.
+    if not billed_entities_json:
+        return []
+    return [
+        BilledEntityBlock(
+            name=block["name"],
+            nif=block["nif"],
+            care_of=tuple(block["care_of"]),
+            address_lines=tuple(block["address_lines"]),
+        )
+        for block in json.loads(str(billed_entities_json))
+    ]
+
+
+def _detected_entity(blocks: list[BilledEntityBlock]) -> str | None:
     # The billed entity as extracted, never normalized for comparison (REQ-ENT-006).
     # Several blocks are shown together, so a reviewer sees why the entity is ambiguous.
-    names = [block["name"] for block in json.loads(billed_entities_json)]
-    return " | ".join(names) if names else None
+    return " | ".join(block.name for block in blocks) if blocks else None
 
 
 def _header_row(invoice_id: str, extraction: ExtractedInvoice) -> dict[str, object]:

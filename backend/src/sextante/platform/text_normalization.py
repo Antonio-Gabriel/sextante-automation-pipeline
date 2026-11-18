@@ -57,6 +57,15 @@ def fold_for_matching(value: str) -> str:
     return _WHITESPACE_RUN.sub(" ", _NON_WORD_RUN.sub(" ", unaccented.casefold())).strip()
 
 
+def digits_only(value: str | None) -> str:
+    """Keep only the digits: the comparable form of a tax number (NIF).
+
+    Example:
+        digits_only("NIF: 541 999 0001")  # "5419990001"
+    """
+    return "".join(character for character in value or "" if character.isdigit())
+
+
 def has_invisible_characters(value: str) -> bool:
     """Tell whether the text holds control or format characters, or non-breaking spaces.
 

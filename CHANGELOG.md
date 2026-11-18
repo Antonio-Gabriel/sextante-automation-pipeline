@@ -28,6 +28,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                             └── CHG-0019  fix       Correcções da revisão dos tickets 03 e 04
                                                                 └── CHG-0020  feat      Tipos de linha
                                                                     └── CHG-0021  feat      Exportação em CSV e XLSX
+                                                                        └── CHG-0022  fix       Correcções da revisão dos tickets 05 e 06
 ```
 
 ## Regras
@@ -92,6 +93,48 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0022 · Correcções da revisão dos tickets 05 e 06
+
+- **Data:** 2026-11-18
+- **Tipo:** fix
+- **Pai:** CHG-0021
+- **Estado:** activa
+- **Requisitos:** REQ-ING-006, REQ-EXP-003, REQ-EXP-006, REQ-EXP-007, SEC-17, D-3.17
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `backend/src/sextante/ingestion/domain/line_type.py`
+  - `backend/src/sextante/export/` (porta `SpreadsheetWriter`, caso de uso `ExportJob`)
+  - `backend/src/sextante/platform/text_normalization.py` (`digits_only`)
+  - `backend/src/sextante/matching/domain/entity_check.py` (`exact_entity_match_label`)
+  - `backend/pyproject.toml` (contrato que proíbe `export.api` de chegar à infraestrutura)
+  - os tickets 05 e 06
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:**
+  - Feito:
+    - 211 testes, incluindo 25 casos da classificação de linhas;
+    - a neutralização nas nove colunas;
+    - a cobertura das mensagens de recusa;
+    - `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos.
+  - Não verificado: o reflexo de uma correcção na exportação, que espera pelo ticket 08.
+
+Resolve os achados da revisão dos tickets 05 e 06.
+
+**Spec:**
+
+- **Classificação das linhas.** Uma linha só é IVA, ou desconto, quando nomeia o IVA ou o desconto e todas as suas palavras pertencem a esse vocabulário. Passam a ser IVA "Valor do IVA", "14% IVA" e "I.V.A.". Passam a ser descontos "Descontos" e "Desc.". "Vat handling fee" e "(isento de IVA)" ficam como serviços.
+- **`Invoice_ID`.** Um número só com espaços passa a dar lugar ao digest.
+- **Deferições declaradas no ticket 06.** O reflexo de uma correcção espera pelo ticket 08, e os identificadores são calculados na exportação.
+
+**Padrões:**
+
+- A rota de exportação passa a usar só a camada de aplicação, que escreve através de uma porta. O contrato do `import-linter` passa a cobri-la.
+- Os dígitos do NIF e o `Exact_Entity_Match` passam a viver num só sítio cada.
+- As mensagens de recusa saem de um mapa com valor por omissão, testado contra todos os motivos.
+- O tipo de linha, a nota e o estado da factura passam a ter tipos com nome.
+- O JSON da entidade passa a ser lido uma só vez.
 
 ### CHG-0021 · Exportação em CSV e XLSX
 

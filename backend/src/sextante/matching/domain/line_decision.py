@@ -58,7 +58,7 @@ class LineDecision:
     confidence: Confidence
     flags: tuple[FlagReason, ...]
     rule: str
-    note: str | None = None
+    note: "LineNote | None" = None
 
     @property
     def review_status(self) -> ReviewStatus:
@@ -107,7 +107,7 @@ def non_service_line_decision(note: LineNote) -> LineDecision:
     Example:
         non_service_line_decision(LineNote.LINE_TYPE_TAX).confidence  # Confidence.HIGH
     """
-    return LineDecision(None, Confidence.HIGH, (), note.value, note.value)
+    return LineDecision(None, Confidence.HIGH, (), "non_service_line", note)
 
 
 def uncoded_line_decision(reason: FlagReason) -> LineDecision:

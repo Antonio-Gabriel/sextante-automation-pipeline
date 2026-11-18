@@ -4,6 +4,8 @@ A read model that composes the published readers of ingestion and matching, so t
 export module reads no other module's tables (02-arquitectura.md §2.1).
 """
 
+from typing import Final
+
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from sextante.export.domain.export_rows import NOTES_SEPARATOR, ExportRow
@@ -12,12 +14,34 @@ from sextante.ingestion.contracts import (
     ExportInvoice,
     ExportLine,
     InvoiceExportReader,
+    InvoiceStatus,
     ReadJobStatus,
+    RejectionReason,
 )
-from sextante.matching.contracts import CodingsReader, EntityVerdict, LineCoding
+from sextante.matching.contracts import (
+    CodingsReader,
+    Confidence,
+    LineCoding,
+    exact_entity_match_label,
+)
 from sextante.platform.user_messages import USER_MESSAGES_PT
 
-LINELESS_STATUSES = {"rejected": "rejections.{reason}", "failed": "export.invoice_failed"}
+LINELESS_STATUSES: Final = frozenset({InvoiceStatus.REJECTED, InvoiceStatus.FAILED})
+UNKNOWN_REJECTION_KEY: Final = "rejections.other"
+
+
+def rejection_message(reason: str | None) -> str:
+    """Portuguese text of a refusal reason; an unknown reason gets a generic text.
+
+    An export must never fail because one refused document carries an unexpected
+    reason (REQ-EXP-007).
+
+    Example:
+        rejection_message("pdf_without_text_layer")  # "Documento recusado: PDF ..."
+    """
+    known = {member.value for member in RejectionReason}
+    key = f"rejections.{reason}" if reason in known else UNKNOWN_REJECTION_KEY
+    return USER_MESSAGES_PT[key]
 
 
 class BuildJobExport:
@@ -65,7 +89,11 @@ def _rows_for(invoice: ExportInvoice, codings: dict[str, LineCoding]) -> list[Ex
 
 
 def _lineless_row(invoice: ExportInvoice) -> ExportRow:
-    key = LINELESS_STATUSES[invoice.status].format(reason=invoice.status_reason)
+    notes = (
+        rejection_message(invoice.status_reason)
+        if invoice.status is InvoiceStatus.REJECTED
+        else USER_MESSAGES_PT["export.invoice_failed"]
+    )
     return ExportRow(
         invoice_id=_identifier(invoice),
         billed_entity_detected=invoice.billed_entity or "",
@@ -74,8 +102,9 @@ def _lineless_row(invoice: ExportInvoice) -> ExportRow:
         line_description="",
         assigned_item_no="",
         matched_catalog_description="",
-        confidence="LOW",
-        notes_or_flags=USER_MESSAGES_PT[key],
+        # REQ-EXP-007 sets LOW for a document that could not be coded at all.
+        confidence=Confidence.LOW.value,
+        notes_or_flags=notes,
     )
 
 
@@ -83,12 +112,12 @@ def _line_row(invoice: ExportInvoice, line: ExportLine, coding: LineCoding | Non
     return ExportRow(
         invoice_id=_identifier(invoice),
         billed_entity_detected=invoice.billed_entity or "",
-        exact_entity_match="YES" if invoice.entity_verdict == EntityVerdict.MATCH.value else "NO",
+        exact_entity_match=exact_entity_match_label(invoice.entity_verdict),
         target_sheet=(coding.target_sheet or "") if coding else "",
         line_description=line.description,
         assigned_item_no=(coding.item_number or "") if coding else "",
         matched_catalog_description=(coding.catalog_description or "") if coding else "",
-        confidence=coding.confidence if coding else "LOW",
+        confidence=coding.confidence if coding else Confidence.LOW.value,
         notes_or_flags=_notes(invoice, coding),
     )
 

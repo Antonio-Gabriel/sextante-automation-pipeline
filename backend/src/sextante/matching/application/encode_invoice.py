@@ -87,8 +87,12 @@ class EncodeInvoice:
         Example:
             await encoder.execute(stored_invoice, TargetSheet.OUTLAYS, record_header)
         """
-        services = [line for line in invoice.lines if line.line_type == LineType.SERVICE]
-        others = [_non_service_outcome(line) for line in invoice.lines if line not in services]
+        services = [line for line in invoice.lines if line.line_type is LineType.SERVICE]
+        others = [
+            _non_service_outcome(line)
+            for line in invoice.lines
+            if line.line_type is not LineType.SERVICE
+        ]
         call, coded = await self._code_services(invoice, services, target_sheet)
         outcomes = sorted(coded + others, key=lambda outcome: outcome.line.position)
         await self._persist(outcomes, target_sheet, call, also_write)
@@ -213,7 +217,7 @@ def _validated(choices: Sequence[ItemChoiceFromModel]) -> list[ItemChoiceFromMod
 
 
 def _non_service_outcome(line: StoredLine) -> _LineOutcome:
-    note = LineNote.LINE_TYPE_TAX if line.line_type == LineType.TAX else LineNote.LINE_TYPE_DISCOUNT
+    note = LineNote.LINE_TYPE_TAX if line.line_type is LineType.TAX else LineNote.LINE_TYPE_DISCOUNT
     return _LineOutcome(line, None, non_service_line_decision(note), ())
 
 

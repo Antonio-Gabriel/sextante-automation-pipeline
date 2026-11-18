@@ -113,6 +113,6 @@ def _encoded_line_row(record: EncodedLineRecord) -> dict[str, object]:
         "confidence": record.decision.confidence.value,
         "confidence_rule": record.decision.rule,
         "review_status": record.decision.review_status,
-        "note": record.decision.note,
+        "note": record.decision.note.value if record.decision.note else None,
         "encoded_at": record.encoded_at.isoformat(),
     }

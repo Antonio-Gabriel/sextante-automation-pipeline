@@ -61,7 +61,9 @@ class Settings(BaseModel):
     @classmethod
     def _known_separator(cls, value: str) -> str:
         if value not in CSV_SEPARATORS:
-            raise ValueError(f"unsupported separator. Expected one of {sorted(CSV_SEPARATORS)}")
+            raise ValueError(
+                f"unsupported separator {value!r}. Expected one of {sorted(CSV_SEPARATORS)}"
+            )
         return value
 
     @field_validator("database_url")

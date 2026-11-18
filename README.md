@@ -10,7 +10,7 @@ For each line of a supplier invoice, Sextante assigns the exact item number from
 - upload of invoices into a background job;
 - an entity check with no language model: MATCH codes against OUTLAYS, NO_MATCH against OUTLAYSP, and an ambiguous entity is left for a reviewer;
 - a computed confidence (`HIGH`, `MEDIUM`, `LOW`), the `O00999` fallback in OUTLAYSP only, and review flags;
-- line types: VAT and discount lines are recorded without code, and only services reach the model;
+- line types: a line made only of VAT or discount wording is recorded without code, and only services reach the model;
 - the coded results, read back through the API, and exported as CSV or XLSX with the nine columns of the brief.
 
 Two parts are not wired yet. Until they are, an uploaded invoice is refused with the reason `extractor_not_configured` and is never coded.

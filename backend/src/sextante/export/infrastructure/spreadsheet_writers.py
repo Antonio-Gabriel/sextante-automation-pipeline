@@ -7,11 +7,31 @@ from typing import Final
 
 from openpyxl import Workbook
 
+from sextante.export.application.ports import ExportFile, ExportFormat
 from sextante.export.domain.export_rows import EXPORT_COLUMNS, ExportRow, export_cells
 
 # Excel in a Portuguese locale opens UTF-8 without a BOM with broken accents (REQ-EXP-005).
 UTF8_WITH_BOM: Final = "utf-8-sig"
 XLSX_SHEET_TITLE: Final = "Sextante"
+CSV_MEDIA_TYPE: Final = "text/csv; charset=utf-8"
+XLSX_MEDIA_TYPE: Final = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+class SpreadsheetExportWriter:
+    """Implements SpreadsheetWriter: CSV with the configured separator, or XLSX.
+
+    Example:
+        SpreadsheetExportWriter(",").write(rows, ExportFormat.CSV).extension  # "csv"
+    """
+
+    def __init__(self, csv_separator: str) -> None:
+        self._csv_separator = csv_separator
+
+    def write(self, rows: Sequence[ExportRow], export_format: ExportFormat) -> ExportFile:
+        """Return the file for these rows in the requested format."""
+        if export_format is ExportFormat.CSV:
+            return ExportFile(write_csv(rows, self._csv_separator), CSV_MEDIA_TYPE, "csv")
+        return ExportFile(write_xlsx(rows), XLSX_MEDIA_TYPE, "xlsx")
 
 
 def write_csv(rows: Sequence[ExportRow], separator: str) -> bytes:

@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from sextante.ingestion.domain.statuses import InvoiceStatus
+
 
 @dataclass(frozen=True, slots=True)
 class NewInvoice:
@@ -78,7 +80,7 @@ class ExportInvoice:
     """One invoice of a job as the export reads it: header, status and lines (REQ-EXP-004)."""
 
     invoice_id: str
-    status: str
+    status: InvoiceStatus
     status_reason: str | None
     content_digest: str
     supplier_name: str | None

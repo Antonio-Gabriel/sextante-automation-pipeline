@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 
+from sextante.ingestion.domain.line_type import LineType
+
 
 class FileFormat(StrEnum):
     """Accepted upload formats, decided by real content, never by extension (REQ-ING-001)."""
@@ -84,12 +86,12 @@ class ExtractionRejection:
 
 @dataclass(frozen=True, slots=True)
 class StoredLine:
-    """A persisted invoice line, as handed to coding. ``line_type`` is a LineType value."""
+    """A persisted invoice line, as handed to coding."""
 
     line_id: str
     position: int
     description: str
-    line_type: str
+    line_type: LineType
 
 
 @dataclass(frozen=True, slots=True)

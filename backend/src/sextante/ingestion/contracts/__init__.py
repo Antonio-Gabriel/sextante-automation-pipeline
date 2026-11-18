@@ -17,6 +17,7 @@ from sextante.ingestion.domain.model import (
     SummaryRow,
 )
 from sextante.ingestion.domain.ports import InvoiceExtractor
+from sextante.ingestion.domain.statuses import InvoiceStatus
 
 __all__ = [
     "BilledEntityBlock",
@@ -28,6 +29,7 @@ __all__ = [
     "FileFormat",
     "InvoiceExportReader",
     "InvoiceExtractor",
+    "InvoiceStatus",
     "JobLine",
     "JobLinesReader",
     "JobNotFoundError",

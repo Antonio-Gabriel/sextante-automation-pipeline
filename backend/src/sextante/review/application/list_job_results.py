@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from sextante.ingestion.contracts import JobLine, JobLinesReader, ReadJobStatus
-from sextante.matching.contracts import CodingsReader, EntityVerdict, LineCoding
+from sextante.matching.contracts import CodingsReader, LineCoding, exact_entity_match_label
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,8 +70,7 @@ def _result_line(line: JobLine, coding: LineCoding | None) -> ResultLine:
     return ResultLine(
         invoice_number=line.invoice_number,
         billed_entity_detected=line.billed_entity,
-        # YES only for MATCH: NO_MATCH and AMBIGUOUS are both "not AMT" (REQ-ENT-006).
-        exact_entity_match="YES" if line.entity_verdict == EntityVerdict.MATCH.value else "NO",
+        exact_entity_match=exact_entity_match_label(line.entity_verdict),
         line_position=line.position,
         line_description=line.description,
         target_sheet=coding.target_sheet if coding else None,

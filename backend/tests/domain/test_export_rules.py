@@ -37,8 +37,16 @@ def test_a_leading_formula_trigger_is_prefixed_with_an_apostrophe(
         (None, "Hotel Sintético, Lda.", "HTL-SYN-0001", "hotel sintetico lda/HTL-SYN-0001"),
         ("5419990001", "companhia aérea", None, "5419990001/3f2a9c1b0d4e"),
         (None, None, None, "3f2a9c1b0d4e"),
+        ("5419990001", "companhia aérea", "   ", "5419990001/3f2a9c1b0d4e"),
     ],
-    ids=["NIF and number", "NIF with spaces", "no NIF", "no number", "nothing extracted"],
+    ids=[
+        "NIF and number",
+        "NIF with spaces",
+        "no NIF",
+        "no number",
+        "nothing extracted",
+        "blank number",
+    ],
 )
 def test_invoice_id_combines_supplier_and_number(
     supplier_nif: str | None, supplier_name: str | None, number: str | None, expected: str
@@ -47,3 +55,23 @@ def test_invoice_id_combines_supplier_and_number(
     digest = "3f2a9c1b0d4e" + "0" * 52
 
     assert invoice_identifier(supplier_nif, supplier_name, number, digest) == expected
+
+
+@pytest.mark.requirement("REQ-EXP-003", "SEC-17")
+def test_neutralization_reaches_all_nine_columns() -> None:
+    """Every column may carry supplier content, so none is exempt (SEC-17)."""
+    from sextante.export.domain.export_rows import EXPORT_COLUMNS, ExportRow, export_cells
+
+    row = ExportRow(*(f"=column {index}" for index in range(len(EXPORT_COLUMNS))))
+
+    assert all(cell.startswith("'=") for cell in export_cells(row))
+
+
+@pytest.mark.requirement("REQ-EXP-007", "REQ-PLT-006")
+def test_every_rejection_reason_has_a_portuguese_export_message() -> None:
+    """A new rejection reason without text would turn an export into a server error."""
+    from sextante.export.application.build_job_export import rejection_message
+    from sextante.ingestion.contracts import RejectionReason
+
+    assert all(rejection_message(reason.value) for reason in RejectionReason)
+    assert rejection_message("not-a-known-reason") == rejection_message(None)

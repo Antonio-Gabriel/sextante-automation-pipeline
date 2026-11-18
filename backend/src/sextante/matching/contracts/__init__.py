@@ -8,6 +8,7 @@ from sextante.matching.domain.entity_check import (
     EntityVerdict,
     TargetEntity,
     check_billed_entity,
+    exact_entity_match_label,
 )
 from sextante.matching.domain.item_choice import (
     CandidateItem,
@@ -40,5 +41,6 @@ __all__ = [
     "LineToCode",
     "TargetEntity",
     "check_billed_entity",
+    "exact_entity_match_label",
     "target_sheet_for",
 ]

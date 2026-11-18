@@ -109,10 +109,11 @@ containers = []
 [[tool.importlinter.contracts]]
 name = "api depends on application, never on infrastructure"
 type = "forbidden"
-source_modules = ["sextante.ingestion.api", "sextante.review.api"]
+source_modules = ["sextante.ingestion.api", "sextante.review.api", "sextante.export.api"]
 forbidden_modules = [
     "sextante.ingestion.infrastructure",
     "sextante.matching.infrastructure",
+    "sextante.export.infrastructure",
 ]
 allow_indirect_imports = true
 

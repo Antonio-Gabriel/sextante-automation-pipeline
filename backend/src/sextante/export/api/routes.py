@@ -1,27 +1,22 @@
 """HTTP API of the export (02-arquitectura.md §6, REQ-EXP-002)."""
 
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, Path, Query, Request
 from fastapi.responses import Response
 
-from sextante.export.application.build_job_export import BuildJobExport
-from sextante.export.infrastructure.spreadsheet_writers import write_csv, write_xlsx
+from sextante.export.application.export_job import ExportJob
+from sextante.export.application.ports import ExportFormat
 from sextante.platform.limits import IDENTIFIER_MAX_LENGTH, IDENTIFIER_PATTERN
 
 export_router = APIRouter(prefix="/api")
-
-MEDIA_TYPES = {
-    "csv": "text/csv; charset=utf-8",
-    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-}
 
 
 @export_router.get("/exports/{job_id}")
 async def export_job(
     request: Request,
     job_id: Annotated[str, Path(max_length=IDENTIFIER_MAX_LENGTH, pattern=IDENTIFIER_PATTERN)],
-    export_format: Annotated[Literal["csv", "xlsx"], Query(alias="format")],
+    export_format: Annotated[ExportFormat, Query(alias="format")],
 ) -> Response:
     """Download the job's coding as CSV or XLSX, always as an attachment (SEC-16).
 
@@ -30,14 +25,12 @@ async def export_job(
     Example:
         GET /api/exports/3f2a...?format=csv -> sextante-3f2a....csv
     """
-    build_export: BuildJobExport = request.app.state.build_job_export
-    rows = await build_export.execute(job_id)
-    separator: str = request.app.state.csv_separator
-    content = write_csv(rows, separator) if export_format == "csv" else write_xlsx(rows)
-    file_name = f"sextante-{job_id}.{export_format}"
+    use_case: ExportJob = request.app.state.export_job
+    export_file = await use_case.execute(job_id, export_format)
+    file_name = f"sextante-{job_id}.{export_file.extension}"
     return Response(
-        content=content,
-        media_type=MEDIA_TYPES[export_format],
+        content=export_file.content,
+        media_type=export_file.media_type,
         headers={
             "Content-Disposition": f'attachment; filename="{file_name}"',
             "X-Content-Type-Options": "nosniff",

@@ -22,8 +22,13 @@ O identificador da factura combina o fornecedor e o número da factura.
 - [x] `Matched_Catalog_Description` é a descrição PT do catálogo, sem espaços nas pontas
 - [x] `Notes_or_Flags` junta os motivos de sinalização em português, as notas de tipo de linha, as linhas "ao cuidado de" e a nota de revisão
 - [x] Uma recusa simulada pelo `FakeInvoiceExtractor` aparece na exportação com o motivo
-- [x] Os testes pela API verificam as colunas, a ordem, o BOM, a neutralização e o reflexo de uma correcção
+- [ ] Os testes pela API verificam as colunas, a ordem, o BOM, a neutralização e o reflexo de uma correcção *(parcial: tudo menos o reflexo de uma correcção, que precisa da acção de correcção do ticket 08)*
 
 ## Comments
 
 Resolved on 2026-11-18 (CHG-0021). Review notes join Notes_or_Flags when ticket 08 adds them. A failed invoice also gets one LOW row, like a refused document, so nothing uploaded is missing from the export.
+
+Code review on 2026-11-18 (CHG-0022):
+- The test that a correction shows in the export waits for ticket 08, which adds corrections. The export already reads the persisted state (tested across a restart), so it will reflect them without change.
+- The supplier identifier and the exported Invoice_ID are computed at export time from persisted fields, not stored as columns. Ticket 10 stores the supplier identifier when it needs the (supplier, number) index.
+- With no supplier NIF and no supplier name, Invoice_ID is the number (or short digest) alone: the spec does not define that case, and inventing a supplier would be filling a gap by default.
