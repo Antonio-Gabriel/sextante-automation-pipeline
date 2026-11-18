@@ -44,6 +44,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                             └── CHG-0035  feat      Adaptador Claude do ItemClassifier e prompt v1
                                                                                                                                 └── CHG-0036  feat      Medição manual dos códigos com o modelo real
                                                                                                                                     └── CHG-0037  fix       Correcções da revisão dos tickets 11 e 13
+                                                                                                                                        └── CHG-0038  docs      Fornecedor e moeda no pedido ao modelo (REQ-MAP-005)
 ```
 
 ## Regras
@@ -108,6 +109,22 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0038 · Fornecedor e moeda no pedido ao modelo (REQ-MAP-005)
+
+- **Data:** 2026-11-18
+- **Tipo:** docs
+- **Pai:** CHG-0037
+- **Estado:** activa
+- **Requisitos:** REQ-MAP-005, SEC-14
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `docs/01-requisitos.md`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** o requisito passa a descrever o pedido que o adaptador já envia e que o prompt aprovado descreve; o código não muda.
+
+**Decisão do responsável.** REQ-MAP-005 passa a listar o nome do fornecedor e a moeda entre o que o modelo recebe. Já iam no pedido, como dados delimitados, e o prompt aprovado descreve-os; o requisito não os mencionava.
 
 ### CHG-0037 · Correcções da revisão dos tickets 11 e 13
 

@@ -238,7 +238,7 @@ Os scores são persistidos e são entrada da classificação de confiança e do 
 
 ### REQ-MAP-005 · Escolha entre candidatos
 
-A escolha do item **deve** ser feita pelo modelo de linguagem, que recebe a descrição da linha, o contexto das linhas vizinhas da mesma factura, e a lista de itens da **aba de destino inteira**, por ordem fixa do catálogo, com índice, código, descrição PT e descrição EN. *Revisto em 18-11-2026.*
+A escolha do item **deve** ser feita pelo modelo de linguagem, que recebe a descrição da linha, o contexto das linhas vizinhas da mesma factura, o nome do fornecedor e a moeda da factura, e a lista de itens da **aba de destino inteira**, por ordem fixa do catálogo, com índice, código, descrição PT e descrição EN. O nome do fornecedor e a moeda são conteúdo da factura e vão, como o resto, como dados delimitados (SEC-14). *Revisto em 18-11-2026.* O nome do fornecedor e a moeda foram acrescentados nessa data, por decisão do responsável, para coincidir com o prompt aprovado (00-decisoes-e-lacunas.md §3.22).
 
 O modelo **deve** devolver o **índice** do candidato escolhido na lista fornecida, ou a indicação de que nenhum serve. O modelo **não deve** devolver um código de item em texto livre.
 
