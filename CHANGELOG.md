@@ -32,6 +32,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                             └── CHG-0023  feat      Trabalhador robusto e reprocessamento
                                                                                 └── CHG-0024  feat      Revisão de linhas
                                                                                     └── CHG-0025  fix       Correcções da revisão dos tickets 07 e 08
+                                                                                        └── CHG-0026  docs      Isenção do carregamento e reprocessamento só de falhas
 ```
 
 ## Regras
@@ -96,6 +97,27 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0026 · Isenção do carregamento e reprocessamento só de falhas
+
+- **Data:** 2026-11-18
+- **Tipo:** docs
+- **Pai:** CHG-0025
+- **Estado:** activa
+- **Requisitos:** SEC-19, NFR-REL-002, REQ-ING-007
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `docs/00-decisoes-e-lacunas.md` (§3.19, §3.20)
+  - `docs/03-seguranca.md` (SEC-19), `docs/02-arquitectura.md` (§6)
+  - `.scratch/nucleo-codificacao/issues/14-recodificacao-com-historico.md` (novo), tickets 07 e 08
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit. O código não muda.
+- **Verificação:** decisões tomadas pelo responsável em 18-11-2026; o código já se comporta assim (CHG-0023, CHG-0024).
+
+**Carregamento.** Fica isento de `Idempotency-Key`, por ser idempotente pelo digest do conteúdo. A isenção fica escrita em SEC-19 e na arquitectura, e não se estende a outras escritas.
+
+**Reprocessamento.** Nesta versão aceita só facturas com falha. Recodificar uma factura já codificada, com histórico, passa a ticket próprio (14), bloqueado pelo ticket 11.
 
 ### CHG-0025 · Correcções da revisão dos tickets 07 e 08
 

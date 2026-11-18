@@ -339,7 +339,7 @@ Prefixo `/api`. Documentação OpenAPI desactivada em produção, por SEC-15.
 
 Convenções que valem para todos:
 
-- `Idempotency-Key` obrigatório em `POST` e `PATCH`, enquadrado pela identidade e acompanhado da impressão digital do corpo, nos termos de SEC-19.
+- `Idempotency-Key` obrigatório em `POST` e `PATCH`, enquadrado pela identidade e acompanhado da impressão digital do corpo, nos termos de SEC-19. O carregamento está isento, porque o digest do conteúdo já o torna idempotente (00-decisoes-e-lacunas.md §3.19).
 - Paginação obrigatória, com limite máximo imposto pelo servidor.
 - Contratos de entrada com `extra="forbid"`, contratos de saída separados e explícitos.
 - Erro ao cliente em Português, opaco, com `correlation_id`.

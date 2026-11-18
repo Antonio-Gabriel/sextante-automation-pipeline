@@ -319,6 +319,21 @@ Decisão: as amostras **não** entram no repositório. *Revisto em 18-11-2026.*
 - `make golden` mede, sem chamar o modelo, as etapas determinísticas: extracção, verificação de entidade, aba de destino, tipos de linha e recusas. A medição dos códigos de item com o modelo real é um comando manual e explícito, fora da suite de testes, para cumprir a regra de nenhum teste chamar a API da Anthropic.
 - Nenhuma métrica de precisão é publicada antes de a AMT confirmar os resultados esperados.
 
+### 3.19 Idempotência do carregamento
+
+Decisão: o carregamento (`POST /api/invoices`) é o único `POST` isento de `Idempotency-Key`. *Decidido em 18-11-2026.*
+
+- **Porquê.** O carregamento já é idempotente pelo conteúdo: o digest SHA-256 de cada ficheiro tem restrição única, e reenviar o mesmo ficheiro devolve o trabalho existente sem nova chamada ao modelo (REQ-ING-007, SEC-19, nível «Carregamento»). Uma chave HTTP por cima repetiria a mesma garantia.
+- **O que fica coberto pela chave.** As escritas de revisão (`PATCH` de correcção, `POST` de aceitação) e o reprocessamento, que não têm uma identidade de conteúdo que as torne idempotentes por si.
+- **Uma escrita nova** que não seja idempotente pelo conteúdo exige a chave. A isenção não se estende por analogia.
+
+### 3.20 Reprocessamento só de facturas com falha
+
+Decisão: nesta versão, o reprocessamento aceita só facturas `failed`. Uma factura codificada ou recusada é recusada com 409; uma já na fila fica como está. *Decidido em 18-11-2026.*
+
+- **O que fica por fazer.** NFR-REL-002 dá como motivo recalibrar limiares ou corrigir um prompt, e SEC-19 pede que um reprocessamento escreva uma nova linha de resultado, sem alterar a anterior. Recodificar uma factura já codificada, com o histórico guardado, fica para um ticket próprio, depois do adaptador e do prompt (ticket 11), porque é a mudança de prompt que o justifica.
+- **Até lá,** NFR-REL-002 está cumprido para facturas com falha: a codificação parte do texto guardado, sem nova extracção nem novo carregamento.
+
 ---
 
 ## 4. Lacunas por resolver
