@@ -344,8 +344,18 @@ warn "Save SEXTANTE_ACCESS_TOKEN in your password manager; the screen is cleared
 pause "Press Enter once the variables are saved and the app is running."
 unset SEXTANTE_API_KEY_VALUE SEXTANTE_ACCESS_TOKEN_VALUE
 _clear
-ask_required SHARDCLOUD_SUBDOMAIN "The subdomain you chose (site at <subdomain>.shardweb.app):" '^[A-Za-z0-9]{1,100}$'
+while :; do
+  ask SHARDCLOUD_SUBDOMAIN "The app's address (e.g. sextante, or https://sextante.shardweb.app):"
+  # The subdomain alone, whether typed bare, as a host or as an address.
+  SHARDCLOUD_SUBDOMAIN="${SHARDCLOUD_SUBDOMAIN#http://}"
+  SHARDCLOUD_SUBDOMAIN="${SHARDCLOUD_SUBDOMAIN#https://}"
+  SHARDCLOUD_SUBDOMAIN="${SHARDCLOUD_SUBDOMAIN%%/*}"
+  SHARDCLOUD_SUBDOMAIN="${SHARDCLOUD_SUBDOMAIN%.shardweb.app}"
+  [[ "$SHARDCLOUD_SUBDOMAIN" =~ ^[A-Za-z0-9]{1,100}$ ]] && break
+  warn "Not a shardweb.app address: type the subdomain, e.g. sextante."
+done
 SHARDCLOUD_URL="https://$SHARDCLOUD_SUBDOMAIN.shardweb.app"
+say "Address: $SHARDCLOUD_URL"
 write_env SHARDCLOUD_URL "$SHARDCLOUD_URL"
 if deploy/shardcloud/wait_for_release.sh "$SHARDCLOUD_URL" setup 5; then
   say "${GREEN}✓${RESET} The app answers at $SHARDCLOUD_URL"

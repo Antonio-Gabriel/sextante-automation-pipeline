@@ -89,6 +89,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                                 └── CHG-0080  fix       Retirada a recusa de tokens de audiência /mcp
                                                                                                                                                                                                                     └── CHG-0081  fix       Assistente mostra a razão da ShardCloud para uma recusa
                                                                                                                                                                                                                         └── CHG-0082  infra     Deploy na ShardCloud por um repositório de deploy
+                                                                                                                                                                                                                            └── CHG-0083  fix       Assistente aceita o endereço da app em qualquer forma
 ```
 
 ## Regras
@@ -153,6 +154,22 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0083 · Assistente aceita o endereço da app em qualquer forma
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0082
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `scripts/setup_shardcloud.sh`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** `bash -n` sem erros. A normalização foi testada com quatro formas: `sextante`, `sextante.shardweb.app`, `https://sextante.shardweb.app/` e `http://sextante.shardweb.app/api`. Todas dão `sextante`.
+
+**Relato do responsável.** A fase 6 só aceitava o subdomínio sozinho e recusava `sextante.shardweb.app` e `https://sextante.shardweb.app`, sem dizer porquê. Passa a aceitar o subdomínio, o anfitrião ou o endereço, e mostra o endereço que vai usar.
 
 ### CHG-0082 · Deploy na ShardCloud por um repositório de deploy
 
