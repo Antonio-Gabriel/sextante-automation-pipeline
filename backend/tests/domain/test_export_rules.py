@@ -4,6 +4,7 @@ import pytest
 
 from sextante.export.domain.formula_neutralization import neutralize_formula
 from sextante.export.domain.invoice_identifier import invoice_identifier
+from sextante.platform.language import Language
 
 
 @pytest.mark.requirement("REQ-EXP-003", "SEC-17")
@@ -73,5 +74,7 @@ def test_every_rejection_reason_has_a_portuguese_export_message() -> None:
     from sextante.export.application.build_job_export import rejection_message
     from sextante.ingestion.contracts import RejectionReason
 
-    assert all(rejection_message(reason.value) for reason in RejectionReason)
-    assert rejection_message("not-a-known-reason") == rejection_message(None)
+    assert all(rejection_message(reason.value, Language.PT) for reason in RejectionReason)
+    assert rejection_message("not-a-known-reason", Language.PT) == rejection_message(
+        None, Language.PT
+    )

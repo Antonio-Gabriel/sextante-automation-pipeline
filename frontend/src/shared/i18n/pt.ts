@@ -1,4 +1,4 @@
-// Every visible text of the interface, in Portuguese (REQ-PLT-006, §8.6).
+// Every visible text of the interface, in Portuguese (REQ-PLT-006, §8.6, D-3.25).
 export const pt = {
   app: {
     name: "Sextante",
@@ -28,6 +28,11 @@ export const pt = {
     loading: "A verificar…",
     catalog: "Catálogo",
     notAvailable: "Não disponível",
+  },
+  language: {
+    label: "Idioma",
+    en: "English",
+    pt: "Português",
   },
   session: {
     logout: "Sair",
@@ -308,3 +313,7 @@ export const pt = {
     unexpected: "Não foi possível contactar o servidor. Tente de novo.",
   },
 } as const;
+
+// The shape every language's catalog has: the same keys, any text.
+type Texts<T> = { readonly [K in keyof T]: T[K] extends string ? string : Texts<T[K]> };
+export type Messages = Texts<typeof pt>;

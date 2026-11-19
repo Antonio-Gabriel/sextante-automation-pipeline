@@ -64,7 +64,7 @@ Vêm do enunciado do teste e das decisões já tomadas em conversa. Alterá-las 
 | R9 | Facturas chegam em **PDF ou XLSX**. Nenhum outro formato é aceite nesta versão | Decisão do projecto |
 | R10 | O modelo de linguagem é o **Claude**, pela API da Anthropic | Decisão do projecto |
 | R11 | A persistência é **SQLite** | Decisão do projecto |
-| R12 | Todo o código, identificadores, comentários e logs em **Inglês**. Todo o texto de interface em **Português** | Decisão da equipa |
+| R12 | Todo o código, identificadores, comentários e logs em **Inglês**. O texto de interface está em **Inglês por omissão e em Português**, à escolha de quem usa (revista em 19-11-2026, §3.25) | Decisão da equipa |
 | R13 | O modelo de linguagem **nunca** devolve um código de item livre. Escolhe de uma lista de candidatos fornecida pelo servidor, e a escolha é validada contra o catálogo antes de ser persistida | Decisão de segurança, `03-seguranca.md` SEC-14 |
 
 A restrição R13 é a mais fácil de violar sem dar por isso, e é a que separa este desenho de um que aceita o que o modelo devolver. Ver a secção 3.7.
@@ -347,6 +347,16 @@ Decisão tomada pelo responsável em 18-11-2026 (ticket 14). Revê 3.20, que lim
 - **Consulta.** `GET /api/invoices/{id}/lines/{line_id}/history` mostra todas as codificações da linha, da mais recente para a mais antiga, cada uma com a versão do prompt, o modelo, o digest do catálogo e a revisão que uma pessoa fez dela.
 - **Quando se lê a revisão.** A verificação de que uma linha foi revista corre na transacção que substitui a codificação. Uma revisão gravada enquanto o modelo respondia também é vista. O mesmo vale quando a recodificação dá uma entidade ambígua.
 - **Pedidos repetidos** (confirmado pelo responsável em 18-11-2026). SEC-19 pede que o trabalhador não repita um efeito que já existe. Interpretação aplicada: um segundo pedido com a mesma `Idempotency-Key` repete a resposta; um segundo pedido com outra chave, enquanto a factura está na fila, não faz nada, porque uma factura em fila não volta a ser posta na fila. Um pedido feito depois de a recodificação terminar é uma recodificação nova, pedida por uma pessoa, e paga uma chamada nova ao modelo. Recusá-lo impediria recodificar depois de mudar um limiar, que vive em código e não tem versão.
+
+### 3.25 Interface em Inglês e Português
+
+Decisão tomada pelo responsável em 19-11-2026. Revê R12, que punha todo o texto de interface em Português.
+
+- **Dois idiomas, Inglês por omissão.** A interface tem Inglês e Português. A escolha fica guardada no navegador e pode mudar-se na barra lateral e no ecrã de entrada.
+- **O servidor responde no idioma pedido.** O frontend envia `Accept-Language` em cada pedido. Mensagens de erro, sinalizações, notas e motivos de recusa saem do catálogo do servidor nesse idioma. Sem cabeçalho, ou com um idioma que não suporta, o servidor responde em Inglês. Os códigos estáveis (`code`) não mudam.
+- **Descrição do catálogo.** Em Inglês mostra-se a coluna Description 2 do item. Um item sem descrição inglesa mostra a portuguesa. Em Português mostra-se a descrição registada com a decisão, como antes. A decisão registada não muda com o idioma: guarda sempre a descrição portuguesa (REQ-AUD-001).
+- **Exportação.** Segue o idioma escolhido na descrição do catálogo e em `Notes_or_Flags`. Os nomes das nove colunas não mudam (R6).
+- **O que não muda.** Código, identificadores, comentários, logs e prompts continuam em Inglês. O conteúdo das facturas aparece tal como foi extraído.
 
 ### 3.24 Apagamento lógico de trabalhos
 

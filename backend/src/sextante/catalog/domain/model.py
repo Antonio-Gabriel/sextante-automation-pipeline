@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final
 
+from sextante.platform.language import Language
+
 # The item number format of 03-seguranca.md SEC-09.2. It also refuses a code with
 # surrounding spaces, which would break the exact-value rule R1 without being visible.
 ITEM_NUMBER_PATTERN: Final = re.compile(r"^[A-Z0-9][A-Z0-9._/-]{0,31}$")
@@ -103,6 +105,28 @@ class Catalog:
             catalog.find(FALLBACK_ITEM_NUMBER)  # the O00999 item of OUTLAYSP
         """
         return next((c for c in self.outlays + self.outlaysp if c.item_number == item_number), None)
+
+    def description_in(
+        self, item_number: str | None, language: Language, recorded: str | None
+    ) -> str | None:
+        """The description of an item to show in a language.
+
+        Portuguese shows the description recorded with the decision. English shows the
+        item's English description, or its Portuguese one when the catalog has none; an
+        item no longer in the catalog keeps the recorded text.
+
+        Example:
+            catalog.description_in("O00004", Language.EN, "Bilhete Avião")  # "Air ticket"
+        """
+        if language is Language.PT or item_number is None:
+            return recorded
+        try:
+            item = self.find(ItemNumber(item_number))
+        except ValueError:
+            return recorded
+        if item is None:
+            return recorded
+        return item.description_en or item.description_pt
 
     def items_of(self, sheet: TargetSheet) -> tuple[CatalogItem, ...]:
         """Return the items of one sheet, in catalog order. Sheets never mix (REQ-MAP-002).

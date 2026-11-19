@@ -17,8 +17,8 @@ const TOKEN_MAX_LENGTH = openapiComponents.schemas.AccessTokenRequest.properties
 const loginSchema = z.object({
   token: z
     .string()
-    .min(1, { error: t("login.tokenRequired") })
-    .max(TOKEN_MAX_LENGTH, { error: t("login.tokenTooLong") }),
+    .min(1, { error: () => t("login.tokenRequired") })
+    .max(TOKEN_MAX_LENGTH, { error: () => t("login.tokenTooLong") }),
 }) satisfies z.ZodType<components["schemas"]["AccessTokenRequest"]>;
 
 type LoginValues = z.infer<typeof loginSchema>;

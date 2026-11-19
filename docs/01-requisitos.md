@@ -492,11 +492,11 @@ O detalhe fica no log do servidor, associado ao mesmo identificador.
 
 *Segurança: SEC-15.*
 
-### REQ-PLT-006 · Texto de interface em Português
+### REQ-PLT-006 · Texto de interface em Inglês e Português
 
-Todo o texto apresentado ao utilizador **deve** estar em Português e viver em catálogo de tradução, não em literais espalhados pelo código.
+Todo o texto apresentado ao utilizador **deve** existir em Inglês e em Português e viver em catálogos de tradução, não em literais espalhados pelo código. O Inglês é o idioma por omissão. A pessoa **pode** escolher o idioma, e a escolha vale também para os textos do servidor: erros, sinalizações, notas, descrições do catálogo e exportação.
 
-*Origem: R12.*
+*Origem: R12, revista em 19-11-2026 (00-decisoes-e-lacunas.md §3.25).*
 
 ### REQ-PLT-007 · Arranque que falha cedo
 

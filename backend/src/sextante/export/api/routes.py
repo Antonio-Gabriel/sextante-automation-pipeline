@@ -8,6 +8,7 @@ from fastapi.responses import Response
 from sextante.export.application.export_job import ExportJob
 from sextante.export.application.ports import ExportFormat
 from sextante.platform.http_params import IdentifierPath
+from sextante.platform.request_language import RequestLanguage
 
 export_router = APIRouter(prefix="/api")
 
@@ -17,6 +18,7 @@ async def export_job(
     request: Request,
     job_id: IdentifierPath,
     export_format: Annotated[ExportFormat, Query(alias="format")],
+    language: RequestLanguage,
 ) -> Response:
     """Download the job's coding as CSV or XLSX, always as an attachment (SEC-16).
 
@@ -26,7 +28,7 @@ async def export_job(
         GET /api/exports/3f2a...?format=csv -> sextante-3f2a....csv
     """
     use_case: ExportJob = request.app.state.export_job
-    export_file = await use_case.execute(job_id, export_format)
+    export_file = await use_case.execute(job_id, export_format, language)
     file_name = f"sextante-{job_id}.{export_file.extension}"
     return Response(
         content=export_file.content,

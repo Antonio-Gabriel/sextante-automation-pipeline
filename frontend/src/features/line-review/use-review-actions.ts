@@ -21,7 +21,7 @@ export const REVIEW_NOTE_MAX_LENGTH = requireNumber(
 const reviewSchema = z.object({
   // An unchecked radio group is null in React Hook Form: no item chosen yet.
   item_number: z.string().regex(new RegExp(correction.item_number.pattern)).nullish(),
-  note: z.string().trim().max(REVIEW_NOTE_MAX_LENGTH, { error: t("review.actions.noteTooLong") }),
+  note: z.string().trim().max(REVIEW_NOTE_MAX_LENGTH, { error: () => t("review.actions.noteTooLong") }),
 });
 
 type ReviewInput = z.input<typeof reviewSchema>;

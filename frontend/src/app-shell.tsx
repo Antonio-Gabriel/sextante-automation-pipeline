@@ -6,6 +6,7 @@ import { shortJobId } from "@/entities/job/job-status";
 import { useRecentJobs } from "@/entities/job/recent-jobs";
 import { ServerStatus } from "@/entities/health/server-status";
 import { LogoutButton } from "@/features/auth/logout-button";
+import { LanguageSwitch } from "@/features/language/language-switch";
 import { t } from "@/shared/i18n/t";
 
 const NAV_LINK =
@@ -33,6 +34,7 @@ export function AppShell() {
         </nav>
         <div className="flex flex-col gap-3 border-t border-slate-200 p-4">
           <ServerStatus />
+          <LanguageSwitch />
           <LogoutButton />
         </div>
       </aside>

@@ -46,7 +46,9 @@ def _application(
         worker_poll_seconds=0.01,
     )
     with TestClient(
-        create_app(environment, dependencies), headers={"X-API-Key": SYNTHETIC_API_KEY}
+        create_app(environment, dependencies),
+        # The tests read the Portuguese reasons.
+        headers={"X-API-Key": SYNTHETIC_API_KEY, "Accept-Language": "pt"},
     ) as client:
         yield client
 

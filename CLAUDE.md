@@ -153,7 +153,7 @@ Uma alteração sem entrada no registo não está concluída.
 | Mensagens de commit | Inglês, formato convencional, com `Implements: REQ-...` |
 | Nomes de evento de log | `snake_case` em Inglês |
 
-Código, identificadores, comentários e logs em **Inglês**. Texto de interface em **Português**, em catálogo de tradução.
+Código, identificadores, comentários e logs em **Inglês**. Texto de interface em **Inglês (por omissão) e Português**, nos catálogos de tradução do frontend e do servidor (`docs/00` §3.25).
 
 Cuidado com `item`: existem o item do catálogo, a linha da factura e o código de item, e são três coisas diferentes que aparecem na mesma função. Usar `catalog_item`, `invoice_line` e `item_number`.
 

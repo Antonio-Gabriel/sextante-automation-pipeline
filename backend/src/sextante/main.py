@@ -344,7 +344,9 @@ def _wire_use_cases(
     app.state.list_job_results = ListJobResults(
         engine, app.state.read_job_status, ingestion, codings_in_force
     )
-    build_export = BuildJobExport(engine, app.state.read_job_status, ingestion, codings_in_force)
+    build_export = BuildJobExport(
+        engine, app.state.read_job_status, ingestion, codings_in_force, reference.catalog
+    )
     app.state.export_job = ExportJob(build_export, SpreadsheetExportWriter(settings.csv_separator))
     _wire_review(app, engine, settings, reference.catalog, adapters)
     app.state.worker = _build_worker(engine, settings, reference, adapters, store, classifier)

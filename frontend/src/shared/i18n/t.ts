@@ -1,4 +1,8 @@
-import { pt } from "./pt";
+import { en } from "./en";
+import { currentLanguage, type Language } from "./language";
+import { pt, type Messages } from "./pt";
+
+const CATALOGS: Record<Language, Messages> = { en, pt };
 
 // "login.title", "home.logout", ...: every leaf of the catalog, checked at compile time.
 type Leaves<T> = {
@@ -7,9 +11,14 @@ type Leaves<T> = {
 
 export type MessageKey = Leaves<typeof pt>;
 
-/** The Portuguese text of a catalog key, with {name} placeholders filled from values. */
+/**
+ * The text of a catalog key in the language in force, {name} placeholders filled.
+ *
+ * Example:
+ *   t("jobs.delete.action", { id: "3f2a9c0d" }) // "Delete job 3f2a9c0d"
+ */
 export function t(key: MessageKey, values: Record<string, string | number> = {}): string {
-  let node: unknown = pt;
+  let node: unknown = CATALOGS[currentLanguage()];
   for (const part of key.split(".")) {
     node = typeof node === "object" && node !== null ? Reflect.get(node, part) : undefined;
   }

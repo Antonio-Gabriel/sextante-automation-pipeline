@@ -343,7 +343,7 @@
         "type": "object"
       },
       "ErrorResponse": {
-        "description": "Body of every refused or failed request: stable code, Portuguese message, reference.",
+        "description": "Body of every refused or failed request: stable code, message, reference.",
         "properties": {
           "code": {
             "title": "Code",
@@ -376,7 +376,7 @@
         "type": "string"
       },
       "FlagResponse": {
-        "description": "A flag, a note or a reason: the stable code and its Portuguese text (REQ-CNF-004).",
+        "description": "A flag, a note or a reason: the stable code and its text (REQ-CNF-004).",
         "properties": {
           "code": {
             "title": "Code",
@@ -1228,7 +1228,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -1316,7 +1316,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -1382,7 +1382,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -1429,7 +1429,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -1478,7 +1478,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -1538,7 +1538,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -1626,7 +1626,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -1697,7 +1697,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -1772,7 +1772,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -1850,7 +1850,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -1921,7 +1921,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -1999,7 +1999,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -2057,7 +2057,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -2205,7 +2205,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -2252,7 +2252,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -2303,7 +2303,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {
@@ -2338,7 +2338,7 @@
                 }
               }
             },
-            "description": "Refused, with the Portuguese message."
+            "description": "Refused, with the message in the request's language."
           },
           "5XX": {
             "content": {

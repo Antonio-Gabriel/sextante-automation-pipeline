@@ -17,12 +17,12 @@ const note = openapiComponents.schemas.EntityResolutionRequest.properties.note;
 export const NOTE_MAX_LENGTH = note.maxLength;
 
 const resolutionSchema = z.object({
-  resolution: z.enum(RESOLUTIONS, { error: t("invoice.resolution.choiceRequired") }),
+  resolution: z.enum(RESOLUTIONS, { error: () => t("invoice.resolution.choiceRequired") }),
   note: z
     .string()
     .trim()
-    .min(note.minLength, { error: t("invoice.resolution.noteRequired") })
-    .max(NOTE_MAX_LENGTH, { error: t("invoice.resolution.noteTooLong") }),
+    .min(note.minLength, { error: () => t("invoice.resolution.noteRequired") })
+    .max(NOTE_MAX_LENGTH, { error: () => t("invoice.resolution.noteTooLong") }),
 }) satisfies z.ZodType<components["schemas"]["EntityResolutionRequest"]>;
 
 type ResolutionInput = z.input<typeof resolutionSchema>;

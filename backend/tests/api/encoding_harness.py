@@ -66,8 +66,12 @@ def running_application(
     invoices: list[SyntheticInvoice],
     classifier: ItemClassifier,
     sleeps: list[float] | None = None,
+    language: str = "pt",
 ) -> Iterator[EncodingHarness]:
     """Start the application with fakes for the extractor and the model, nothing else.
+
+    The client asks for Portuguese texts by default, which most tests read; a test of
+    the English texts passes ``language="en"``.
 
     Example:
         with running_application(env, [invoice], FakeItemClassifier({1: "O00004"})) as app:
@@ -83,7 +87,8 @@ def running_application(
         sleep=_recording_sleep(sleeps if sleeps is not None else []),
     )
     with TestClient(
-        create_app(environment, dependencies), headers={"X-API-Key": SYNTHETIC_API_KEY}
+        create_app(environment, dependencies),
+        headers={"X-API-Key": SYNTHETIC_API_KEY, "Accept-Language": language},
     ) as client:
         yield EncodingHarness(client=client, extractor=extractor, classifier=classifier)
 

@@ -1,24 +1,26 @@
-const LOCALE = "pt-PT";
+import { currentLocale } from "./i18n/language";
+
 const DIGEST_SHOWN = 12;
 
 /**
- * A number in the Portuguese format.
+ * A number in the format of the language in force.
  *
  * Example:
- *   formatNumber(12500) // "12 500"
+ *   formatNumber(12500) // "12,500" in English, "12 500" in Portuguese
  */
 export function formatNumber(value: number, fractionDigits = 0): string {
-  return value.toLocaleString(LOCALE, { maximumFractionDigits: fractionDigits });
+  return value.toLocaleString(currentLocale(), { maximumFractionDigits: fractionDigits });
 }
 
 /**
- * A moment of the server (ISO 8601) as a short Portuguese date and time, in local time.
+ * A moment of the server (ISO 8601) as a short date and time in the language in force,
+ * in local time.
  *
  * Example:
  *   formatDateTime("2026-11-18T09:00:00+00:00") // "18/11/2026, 09:00"
  */
 export function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString(LOCALE, {
+  return new Date(iso).toLocaleString(currentLocale(), {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",

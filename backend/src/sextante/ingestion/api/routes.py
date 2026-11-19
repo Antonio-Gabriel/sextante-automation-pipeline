@@ -21,7 +21,9 @@ from sextante.platform.coded_text import FlagResponse, coded_text
 from sextante.platform.http_params import IdentifierPath
 from sextante.platform.idempotency import JsonBody
 from sextante.platform.idempotent_route import IDEMPOTENCY_KEY_DECLARED, run_idempotently
+from sextante.platform.language import Language
 from sextante.platform.limits import MAX_PAGE_SIZE, MAX_RESOLUTION_NOTE_LENGTH, MAX_UPLOAD_BYTES
+from sextante.platform.request_language import RequestLanguage
 from sextante.platform.structured_logging import correlation_id_var
 
 ingestion_router = APIRouter(prefix="/api")
@@ -239,23 +241,25 @@ class InvoiceResponse(BaseModel):
 
 
 @ingestion_router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)
-async def read_invoice(request: Request, invoice_id: IdentifierPath) -> InvoiceResponse:
+async def read_invoice(
+    request: Request, invoice_id: IdentifierPath, language: RequestLanguage
+) -> InvoiceResponse:
     """Return an invoice's extracted header, entity decision, state and earlier copy.
 
     Example:
         GET /api/invoices/3f2a... -> {"status": "not_coded", "resolvable": true, ...}
     """
     use_case: ReadInvoice = request.app.state.read_invoice
-    return _invoice_response(await use_case.execute(invoice_id))
+    return _invoice_response(await use_case.execute(invoice_id), language)
 
 
-def _invoice_response(view: InvoiceView) -> InvoiceResponse:
+def _invoice_response(view: InvoiceView, language: Language) -> InvoiceResponse:
     header = view.header
     return InvoiceResponse(
         invoice_id=view.invoice_id,
         job_id=view.state.job_id,
         status=view.state.status.value,
-        status_reason=coded_text("rejections", view.status_reason),
+        status_reason=coded_text("rejections", view.status_reason, language),
         supplier_name=header.supplier_name,
         supplier_nif=header.supplier_nif,
         invoice_number=header.invoice_number,
@@ -263,7 +267,7 @@ def _invoice_response(view: InvoiceView) -> InvoiceResponse:
         currency=header.currency,
         billed_entity_detected=header.billed_entity_detected,
         entity_verdict=view.state.entity_verdict,
-        entity_reason=_entity_reason(view),
+        entity_reason=_entity_reason(view, language),
         entity_resolution=_resolution_response(view),
         resolvable=view.state.awaits_entity_resolution(),
         target_sheet=header.target_sheet,
@@ -271,9 +275,11 @@ def _invoice_response(view: InvoiceView) -> InvoiceResponse:
     )
 
 
-def _entity_reason(view: InvoiceView) -> FlagResponse | None:
+def _entity_reason(view: InvoiceView, language: Language) -> FlagResponse | None:
     # Once a reviewer resolved the entity, the resolution is the reason (D-3.15).
-    return None if view.resolution is not None else coded_text("flags", view.state.entity_reason)
+    if view.resolution is not None:
+        return None
+    return coded_text("flags", view.state.entity_reason, language)
 
 
 def _resolution_response(view: InvoiceView) -> EntityResolutionResponse | None:

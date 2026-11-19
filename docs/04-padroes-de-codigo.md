@@ -10,7 +10,7 @@
 
 **Todo o código é escrito em Inglês.** Identificadores, nomes de ficheiro, nomes de módulo, comentários, docstrings, mensagens de log, nomes de evento, nomes de tabela e de coluna, mensagens de commit e descrições de pull request.
 
-**Todo o texto apresentado ao utilizador é em Português.** Rótulos, estados, mensagens de validação, mensagens de erro e motivos de sinalização. Vive em catálogos de tradução, nunca em literais espalhados pelo código.
+**Todo o texto apresentado ao utilizador existe em Inglês e em Português** (REQ-PLT-006, revisto em 19-11-2026). Rótulos, estados, mensagens de validação, mensagens de erro e motivos de sinalização. Vive em catálogos de tradução, nunca em literais espalhados pelo código.
 
 ```python
 # Correcto
@@ -457,7 +457,7 @@ Os filtros de confiança e de aba vão para a rota de propósito: um revisor que
 React Hook Form com resolvedor Zod. O esquema vem do OpenAPI, não é reescrito.
 
 * `mode: "onBlur"`. Validar a cada tecla é hostil.
-* Mensagens de erro em Português, vindas do catálogo, não de literais no esquema Zod.
+* Mensagens de erro vindas do catálogo, não de literais no esquema Zod, e avaliadas na validação (`error: () => t(...)`), para seguirem o idioma escolhido.
 * Botão de submissão desactivado durante o envio, com o `Idempotency-Key` gerado antes do primeiro clique, por SEC-19.
 * O selector de código de item **só oferece itens da aba de destino daquela linha**, por REQ-REV-002. A restrição é também validada no servidor, porque o selector é conveniência e não controlo.
 
@@ -479,7 +479,7 @@ export const encodingKeys = {
 
 * Mutações declaram `Idempotency-Key` e invalidam as chaves afectadas em `onSuccess`.
 * O acompanhamento do progresso de um trabalho usa sondagem com intervalo crescente, e para quando o trabalho termina (`completed` ou `failed`) ou não existe. Um trabalho em fila ou à espera de quota do modelo (`waiting_model`) ainda muda, e continua a ser sondado. Sondar indefinidamente um trabalho terminado é desperdício visível em qualquer registo de acesso.
-* Erros apresentados por **Sonner**, com a mensagem em Português vinda do contrato de erro do servidor. Nunca `alert()`.
+* Erros apresentados por **Sonner**, com a mensagem no idioma escolhido, vinda do contrato de erro do servidor. Nunca `alert()`.
 
 ### 8.6 Texto da interface
 
@@ -539,7 +539,7 @@ Implements: REQ-MAP-009 (L-08)
 - [ ] Dependências injectadas, bibliotecas atrás de porta do projecto
 - [ ] Licença verificada em qualquer dependência nova
 - [ ] Código, identificadores e logs em Inglês
-- [ ] Texto de interface em Português, em catálogo
+- [ ] Texto de interface em Inglês e em Português, nos dois catálogos
 - [ ] **Todo o campo de texto com `max_length` declarado** (`03-seguranca.md` SEC-09.1)
 - [ ] **Nada devolvido pelo modelo é usado sem validação de índice e de catálogo** (SEC-14)
 - [ ] **Neutralização de fórmula aplicada a toda a coluna de texto exportada** (SEC-17)

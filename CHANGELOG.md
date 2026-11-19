@@ -74,6 +74,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                     └── CHG-0065  fix       Correcções da revisão dos tickets 04 e 06 do frontend
                                                                                                                                                         └── CHG-0066  feat      Lista e apagamento lógico de trabalhos, e UX da tabela e do carregamento
                                                                                                                                                             └── CHG-0067  fix       Correcções da revisão do ticket 07 do frontend
+                                                                                                                                                                └── CHG-0068  feat      Interface em Inglês e Português, com os textos do servidor no idioma escolhido
 ```
 
 ## Regras
@@ -138,6 +139,38 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0068 · Interface em Inglês e Português, com os textos do servidor no idioma escolhido
+
+- **Data:** 2026-11-19
+- **Tipo:** feat
+- **Pai:** CHG-0067
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-006 (revisto), REQ-PLT-005, REQ-CNF-004, REQ-EXP-001, R6, R12 (revista)
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `backend/src/sextante/platform/{language,request_language}.py` (novos), `platform/{user_messages,http_errors,coded_text}.py`, `catalog/domain/model.py`, `export/application/{build_job_export,export_job}.py`, `export/api/routes.py`, `review/api/routes.py`, `ingestion/api/routes.py`, `main.py`, `tests/domain/test_language.py` e `tests/api/test_language.py` (novos), `tests/api/encoding_harness.py`, `tests/api/test_pdf_ingestion.py`, `tests/domain/test_export_rules.py`; `frontend/src/shared/i18n/{en,language}.ts` (novos), `shared/i18n/{pt,t}.ts`, `shared/api/client.ts`, `shared/format.ts`, `features/language/*` (novo), `root-layout.tsx`, `app-shell.tsx`, `pages/login-page.tsx`, `features/line-review/candidates-table.tsx`, esquemas Zod, `index.html`, `vitest.setup.ts`; `frontend/openapi.json`, `schema.d.ts`; `docs/00` R12 e §3.25, `docs/01` REQ-PLT-006, `docs/04` §1 e §8, `CLAUDE.md`, `README.md`, ticket 08 do frontend
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** backend 412 testes e 1 xfail, mypy, ruff, import-linter, funções até 20 linhas; frontend 79 testes, `tsc`, ESLint, licenças, build.
+
+**Pedido do responsável.** Tradução da interface em Inglês e Português, com o Inglês por omissão e a opção de trocar. Em Inglês, a descrição do catálogo vem da Description 2, e as sinalizações e notas vêm também em Inglês. Contradizia R12 e REQ-PLT-006. Por isso perguntou-se antes, e o responsável respondeu: rever R12 com o Inglês por omissão, a exportação segue o idioma, e a descrição em falta mostra a portuguesa.
+
+**Servidor.**
+- O idioma vem de `Accept-Language` (o primeiro suportado, por qualidade). É Inglês sem cabeçalho, ou com um cabeçalho inválido ou longo de mais.
+- `USER_MESSAGES_EN` tem exactamente as chaves de `USER_MESSAGES_PT`, e um teste verifica-o.
+- Os erros, os códigos com texto (`coded_text`), os resultados, as respostas da revisão, o histórico e a exportação usam o idioma do pedido.
+- A descrição do catálogo em Inglês vem do catálogo carregado (`Catalog.description_in`). A decisão continua registada com a descrição portuguesa, e uma resposta de revisão repetida pela mesma `Idempotency-Key` mostra-se no idioma de quem a repete.
+- Os testes existentes pedem Português explicitamente. Testes novos cobrem o Inglês, a omissão, a exportação e o histórico nos dois idiomas.
+
+**Frontend.**
+- `en.ts` tem o mesmo formato de `pt.ts`, e o compilador recusa uma chave em falta ou a mais.
+- O idioma vive num estado guardado no navegador, com Inglês por omissão.
+- `t()`, os formatos de número e data (`en-GB` ou `pt-PT`), o atributo `lang` da página e o cabeçalho de cada pedido seguem-no.
+- Ao trocar, as páginas montam-se de novo no idioma escolhido e as leituras do servidor voltam a ser pedidas.
+- As mensagens dos esquemas Zod passam a ser avaliadas na validação.
+- Na tabela de candidatos aparece primeiro a descrição no idioma escolhido.
+- Os testes existentes correm em Português. Testes novos cobrem o Inglês por omissão, a troca e o cabeçalho enviado.
 
 ### CHG-0067 · Correcções da revisão do ticket 07 do frontend
 

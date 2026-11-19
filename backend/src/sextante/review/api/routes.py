@@ -1,24 +1,27 @@
 """HTTP API of coded results (02-arquitectura.md §6, REQ-PLT-004, SEC-18)."""
 
+from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from sextante.catalog.contracts import ITEM_NUMBER_PATTERN, TargetSheet
+from sextante.catalog.contracts import ITEM_NUMBER_PATTERN, Catalog, TargetSheet
 from sextante.matching.contracts import Confidence
 from sextante.platform.coded_text import FlagResponse
 from sextante.platform.http_params import IdentifierPath
 from sextante.platform.idempotency import JsonBody
 from sextante.platform.idempotent_route import IDEMPOTENCY_KEY_DECLARED, run_idempotently
+from sextante.platform.language import Language
 from sextante.platform.limits import (
     IDENTIFIER_MAX_LENGTH,
     IDENTIFIER_PATTERN,
     MAX_PAGE_SIZE,
     MAX_REVIEW_NOTE_LENGTH,
 )
-from sextante.platform.user_messages import USER_MESSAGES_PT
+from sextante.platform.request_language import RequestLanguage
+from sextante.platform.user_messages import user_message
 from sextante.review.application.codings_in_force import CodingInForce
 from sextante.review.application.list_job_results import ListJobResults, ResultFilters, ResultLine
 from sextante.review.application.read_job_progress import ReadJobProgress
@@ -122,6 +125,7 @@ async def read_job_progress(
 async def read_results(
     request: Request,
     job_id: IdentifierPath,
+    language: RequestLanguage,
     limit: Annotated[int, Query(ge=1)] = MAX_PAGE_SIZE,
     offset: Annotated[int, Query(ge=0)] = 0,
     confidence: Annotated[Confidence | None, Query()] = None,
@@ -141,14 +145,29 @@ async def read_results(
     filters = ResultFilters(confidence, target_sheet, flagged, invoice_id)
     lines = await list_results.execute(job_id, filters, page_size, offset)
     return ResultsPageResponse(
-        lines=[_line_response(line) for line in lines],
+        lines=[_line_response(line, _Texts(language, request.app.state.catalog)) for line in lines],
         limit=page_size,
         offset=offset,
         limit_truncated=limit > MAX_PAGE_SIZE,
     )
 
 
-def _line_response(line: ResultLine) -> ResultLineResponse:
+@dataclass(frozen=True, slots=True)
+class _Texts:
+    # The language of one answer: its messages, and the catalog's descriptions in it.
+    language: Language
+    catalog: Catalog
+
+    def coded(self, group: str, codes: tuple[str, ...]) -> list[FlagResponse]:
+        return [
+            FlagResponse(code=c, message=user_message(f"{group}.{c}", self.language)) for c in codes
+        ]
+
+    def description(self, item_number: str | None, recorded: str | None) -> str | None:
+        return self.catalog.description_in(item_number, self.language, recorded)
+
+
+def _line_response(line: ResultLine, texts: _Texts) -> ResultLineResponse:
     # Field by field, never by reflection: the projection is what SEC-18 asks to be explicit.
     return ResultLineResponse(
         invoice_id=line.invoice_id,
@@ -161,11 +180,11 @@ def _line_response(line: ResultLine) -> ResultLineResponse:
         line_description=line.line_description,
         target_sheet=line.target_sheet,
         item_number=line.item_number,
-        catalog_description=line.catalog_description,
+        catalog_description=texts.description(line.item_number, line.catalog_description),
         confidence=line.confidence,
         review_status=line.review_status,
-        flags=[FlagResponse(code=c, message=USER_MESSAGES_PT[f"flags.{c}"]) for c in line.flags],
-        notes=[FlagResponse(code=c, message=USER_MESSAGES_PT[f"notes.{c}"]) for c in line.notes],
+        flags=texts.coded("flags", line.flags),
+        notes=texts.coded("notes", line.notes),
         review_note=line.review_note,
         possible_duplicate_of=line.possible_duplicate_of,
     )
@@ -208,7 +227,11 @@ class ReviewResponse(BaseModel):
     dependencies=[IDEMPOTENCY_KEY_DECLARED],
 )
 async def correct_line(
-    request: Request, response: Response, encoded_line_id: IdentifierPath, body: CorrectionRequest
+    request: Request,
+    response: Response,
+    encoded_line_id: IdentifierPath,
+    body: CorrectionRequest,
+    language: RequestLanguage,
 ) -> ReviewResponse:
     """Assign another item of the line's target sheet (REQ-REV-002). Needs Idempotency-Key.
 
@@ -222,7 +245,7 @@ async def correct_line(
         return 200, _review_body(coding)
 
     answer = await run_idempotently(request, response, body.model_dump(), operation)
-    return ReviewResponse.model_validate(answer)
+    return _review_response(answer, _Texts(language, request.app.state.catalog))
 
 
 @review_router.post(
@@ -231,7 +254,11 @@ async def correct_line(
     dependencies=[IDEMPOTENCY_KEY_DECLARED],
 )
 async def accept_line(
-    request: Request, response: Response, encoded_line_id: IdentifierPath, body: AcceptanceRequest
+    request: Request,
+    response: Response,
+    encoded_line_id: IdentifierPath,
+    body: AcceptanceRequest,
+    language: RequestLanguage,
 ) -> ReviewResponse:
     """Accept a pending line without changing its code (REQ-REV-007). Needs Idempotency-Key.
 
@@ -245,7 +272,15 @@ async def accept_line(
         return 200, _review_body(coding)
 
     answer = await run_idempotently(request, response, body.model_dump(), operation)
-    return ReviewResponse.model_validate(answer)
+    return _review_response(answer, _Texts(language, request.app.state.catalog))
+
+
+def _review_response(answer: JsonBody, texts: _Texts) -> ReviewResponse:
+    # The stored answer keeps the recorded description; a replay shows it in the language
+    # of the replaying request.
+    review = ReviewResponse.model_validate(answer)
+    description = texts.description(review.item_number, review.catalog_description)
+    return review.model_copy(update={"catalog_description": description})
 
 
 def _review_body(coding: CodingInForce) -> JsonBody:
@@ -344,7 +379,10 @@ class CodingHistoryResponse(BaseModel):
     response_model=list[CodingHistoryResponse],
 )
 async def read_line_history(
-    request: Request, invoice_id: IdentifierPath, invoice_line_id: IdentifierPath
+    request: Request,
+    invoice_id: IdentifierPath,
+    invoice_line_id: IdentifierPath,
+    language: RequestLanguage,
 ) -> list[CodingHistoryResponse]:
     """Return every coding of the line, newest first, each with its review (ticket 14).
 
@@ -353,16 +391,17 @@ async def read_line_history(
     """
     history: ReadLineHistory = request.app.state.read_line_history
     entries = await history.execute(invoice_id, invoice_line_id)
-    return [_history_response(entry) for entry in entries]
+    texts = _Texts(language, request.app.state.catalog)
+    return [_history_response(entry, texts) for entry in entries]
 
 
-def _history_response(entry: LineHistoryEntry) -> CodingHistoryResponse:
+def _history_response(entry: LineHistoryEntry, texts: _Texts) -> CodingHistoryResponse:
     coding, review = entry.coding, entry.review
     return CodingHistoryResponse(
         encoded_line_id=coding.encoded_line_id,
         in_force=coding.superseded_at is None,
         item_number=coding.item_number,
-        catalog_description=coding.catalog_description,
+        catalog_description=texts.description(coding.item_number, coding.catalog_description),
         confidence=coding.confidence,
         prompt_version=coding.prompt_version,
         model_id=coding.model_id,

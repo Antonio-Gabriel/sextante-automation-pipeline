@@ -2,12 +2,30 @@ import type { UseFormRegisterReturn } from "react-hook-form";
 
 import type { components } from "@/shared/api/schema";
 import { formatNumber } from "@/shared/format";
+import { useLanguage, type Language } from "@/shared/i18n/language";
 import { t } from "@/shared/i18n/t";
 import { Badge } from "@/shared/ui-kit/badge";
 
 type Candidate = components["schemas"]["CandidateResponse"];
 
 const SCORE_DIGITS = 3;
+
+/**
+ * The description in the language in force, then the other one when it says more.
+ * An item without an English name shows its Portuguese one (D-3.25).
+ *
+ * Example:
+ *   descriptions({ description_pt: "Bilhete Avião", description_en: "Air ticket" }, "en")
+ *   // ["Air ticket", "Bilhete Avião"]
+ */
+export function descriptions(
+  candidate: Pick<Candidate, "description_pt" | "description_en">,
+  language: Language,
+): [string, string | null] {
+  const { description_pt: portuguese, description_en: english } = candidate;
+  if (language === "pt" || english === "") return [portuguese, english === "" ? null : english];
+  return [english, portuguese];
+}
 const CELL = "px-3 py-2 align-top";
 
 interface CandidatesTableProps {
@@ -26,6 +44,7 @@ interface CandidatesTableProps {
  *   <CandidatesTable candidates={candidates} currentItem="O00004" choice={register("item_number")} disabled={false} />
  */
 export function CandidatesTable({ candidates, currentItem, choice, disabled }: CandidatesTableProps) {
+  const language = useLanguage((state) => state.language);
   return (
     <fieldset className="max-h-[28rem] overflow-auto rounded-xl border border-slate-200 bg-white">
       <legend className="sr-only">{t("review.candidates.legend")}</legend>
@@ -63,8 +82,7 @@ export function CandidatesTable({ candidates, currentItem, choice, disabled }: C
                 )}
               </td>
               <td className={CELL}>
-                <p>{candidate.description_pt}</p>
-                <p className="text-xs text-slate-500">{candidate.description_en}</p>
+                <CandidateDescriptions texts={descriptions(candidate, language)} />
               </td>
               <td className={`${CELL} text-right tabular-nums`}>{formatNumber(candidate.score, SCORE_DIGITS)}</td>
               <td className={CELL}>
@@ -75,5 +93,14 @@ export function CandidatesTable({ candidates, currentItem, choice, disabled }: C
         </tbody>
       </table>
     </fieldset>
+  );
+}
+
+function CandidateDescriptions({ texts: [primary, secondary] }: { texts: [string, string | null] }) {
+  return (
+    <>
+      <p>{primary}</p>
+      {secondary !== null && <p className="text-xs text-slate-500">{secondary}</p>}
+    </>
   );
 }
