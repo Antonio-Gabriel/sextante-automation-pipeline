@@ -1,14 +1,11 @@
-# Release (decisions 3.27 and 3.28 of docs/00): a tag vX.Y.Z publishes version X.Y.Z.
+# Release (decisions 3.27 to 3.29 of docs/00): a tag vX.Y.Z publishes version X.Y.Z.
 #   1. CI runs in full;
 #   2. the image is built from the git context and pushed to the private Docker Hub
 #      repository as X.Y.Z, then scanned;
-#   3. after a person approves the "production" environment, the same context is pushed
-#      to the deploy repository, whose push makes ShardCloud rebuild the app's image;
-#   4. a person backs the app up and restarts it in ShardCloud's dashboard, and the job
-#      waits until the public health check answers X.Y.Z.
-# ShardCloud's API is not used: it answers automated clients with a Cloudflare challenge.
-# Secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN, SHARDCLOUD_DEPLOY_KEY.
-# Variables: DOCKERHUB_REPOSITORY, SHARDCLOUD_DEPLOY_REPOSITORY, SHARDCLOUD_URL.
+#   3. the same context is kept as the artifact sextante-X.Y.Z-shardcloud: its zip, with
+#      the Dockerfile at the root, is uploaded to ShardCloud by a person (README).
+# Nothing calls ShardCloud: its API answers automated clients with a Cloudflare challenge.
+# Secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN. Variables: DOCKERHUB_REPOSITORY.
 name: Release
 
 on:
@@ -96,53 +93,3 @@ jobs:
             echo "when the build shows success, back the app up and restart it."
           } >> "$GITHUB_STEP_SUMMARY"
 
-  deploy:
-    name: Deploy to ShardCloud
-    needs: publish
-    runs-on: ubuntu-24.04
-    timeout-minutes: 70
-    # Configure required reviewers on this environment: a person approves each release.
-    # Without a deploy repository the release ends at the zip, uploaded by hand (README).
-    if: vars.SHARDCLOUD_DEPLOY_REPOSITORY != ''
-    environment:
-      name: production
-      url: ${{ vars.SHARDCLOUD_URL }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: sextante-${{ needs.publish.outputs.version }}-shardcloud
-          path: build/context
-      - name: Push the context to the deploy repository
-        env:
-          VERSION: ${{ needs.publish.outputs.version }}
-          SHARDCLOUD_DEPLOY_REMOTE: git@github.com:${{ vars.SHARDCLOUD_DEPLOY_REPOSITORY }}.git
-          SHARDCLOUD_DEPLOY_KEY: ${{ secrets.SHARDCLOUD_DEPLOY_KEY }}
-        run: deploy/shardcloud/push_context.sh build/context "$VERSION"
-      - name: What to do in ShardCloud now
-        env:
-          VERSION: ${{ needs.publish.outputs.version }}
-        run: |
-          {
-            echo "### Release $VERSION: finish it in ShardCloud"
-            echo "1. Wait until the app's Custom Image shows the build as *success*."
-            echo "2. Create a backup of the app (Backups)."
-            echo "3. Restart the app."
-            echo ""
-            echo "This job waits for the public address to answer $VERSION."
-          } >> "$GITHUB_STEP_SUMMARY"
-      - name: Wait for the release to answer
-        env:
-          VERSION: ${{ needs.publish.outputs.version }}
-          SHARDCLOUD_URL: ${{ vars.SHARDCLOUD_URL }}
-        # Code 2: Cloudflare hides the answer from this runner; a person confirms in a browser.
-        run: |
-          status=0
-          deploy/shardcloud/wait_for_release.sh "$SHARDCLOUD_URL" "$VERSION" 60 || status=$?
-          if [ "$status" -eq 2 ]; then
-            echo "4. Open $SHARDCLOUD_URL/api/health in a browser and check that it shows $VERSION." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          exit "$status"

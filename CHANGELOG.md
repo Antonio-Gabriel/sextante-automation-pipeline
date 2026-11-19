@@ -93,6 +93,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                                                 └── CHG-0084  fix       O desafio do Cloudflare no endereço da app é detectado
                                                                                                                                                                                                                                     └── CHG-0085  fix       Deploy com caminho relativo, e deploy automático opcional
                                                                                                                                                                                                                                         └── CHG-0086  fix       Artefacto do release com o Dockerfile na raiz
+                                                                                                                                                                                                                                            └── CHG-0087  infra     O release acaba no zip; sem deploy automático na ShardCloud
 ```
 
 ## Regras
@@ -157,6 +158,28 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0087 · O release acaba no zip; sem deploy automático na ShardCloud
+
+- **Data:** 2026-11-19
+- **Tipo:** infra
+- **Pai:** CHG-0086
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `.github/workflows/release.yml`, `scripts/setup_shardcloud.sh`, `deploy/shardcloud/push_context.sh` e `deploy/shardcloud/wait_for_release.sh` (apagados), `backend/tests/deploy/test_shardcloud_deploy.py` (apagado), `backend/tests/deploy/test_workflows.py`, `docs/00` §3.29, `README.md`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** backend com 459 testes e 1 xfail (os testes do deploy por repositório saíram com ele); `tests/deploy` com 31 testes. Um teste garante que o release só tem os trabalhos `ci` e `publish` e não fala com `shardcloud.app`.
+
+**Pedido do responsável.** O trabalho de deploy da v1.0.1 enviou o contexto e ficou à espera do endereço público. Esse endereço está atrás do desafio do Cloudflare e o runner via-o como «sem resposta». O responsável pediu que o release gere apenas o zip.
+
+**Release.** Fica CI, a imagem no Docker Hub e o artefacto com o contexto. O resumo diz como pôr a versão na ShardCloud: Rebuild com o zip, backup, Restart e confirmação no navegador.
+
+**Assistente.** Fica com cinco fases: ferramentas, o repositório e o token do Docker Hub (segredos e variável no GitHub), a imagem na ShardCloud a partir de um zip montado localmente, e a app, com a confirmação no navegador. Já não cria o repositório de deploy, a *deploy key* nem o ambiente `production`.
+
+**Arrumação pelo responsável, opcional (§3.29).** Pode apagar o que já não se usa: o repositório `sextante-shardcloud`, o segredo `SHARDCLOUD_DEPLOY_KEY`, as variáveis `SHARDCLOUD_DEPLOY_REPOSITORY` e `SHARDCLOUD_URL`, e o ambiente `production`.
 
 ### CHG-0086 · Artefacto do release com o Dockerfile na raiz
 

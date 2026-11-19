@@ -38,18 +38,19 @@ def test_ci_reads_no_secret_and_only_reads_the_repository() -> None:
     assert _workflow("ci.yml")["permissions"] == {"contents": "read"}
 
 
-@pytest.mark.requirement("D-3.27")
-def test_only_a_version_tag_releases_and_a_person_approves_production() -> None:
-    """vX.Y.Z publishes X.Y.Z, after the full CI, behind the production environment."""
+@pytest.mark.requirement("D-3.27", "D-3.29")
+def test_only_a_version_tag_releases_and_nothing_calls_shardcloud() -> None:
+    """vX.Y.Z publishes X.Y.Z after the full CI; the release ends at the artifact."""
     release = _workflow("release.yml")
     jobs = release["jobs"]
     # PyYAML reads the key `on` as True.
     trigger = release[True]
 
     assert trigger == {"push": {"tags": ["v[0-9]+.[0-9]+.[0-9]+"]}}
+    assert set(jobs) == {"ci", "publish"}
     assert jobs["ci"]["uses"] == "./.github/workflows/ci.yml"
-    assert jobs["publish"]["needs"] == "ci" and jobs["deploy"]["needs"] == "publish"
-    assert jobs["deploy"]["environment"]["name"] == "production"
+    assert jobs["publish"]["needs"] == "ci"
+    assert "shardcloud.app" not in (WORKFLOWS / "release.yml").read_text()
     assert release["concurrency"]["cancel-in-progress"] is False
 
 

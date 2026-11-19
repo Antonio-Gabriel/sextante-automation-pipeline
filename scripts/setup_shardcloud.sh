@@ -198,15 +198,13 @@ finish() {
 # the whole file before the first prompt, so an edit mid-run can't break it.
 # ──────────────────────────────────────────────────────────────────────────
 
-# Sextante: one-time setup of Docker Hub, the ShardCloud deploy repository, ShardCloud and
-# GitHub (decisions 3.27 and 3.28 of docs/00, README "One-time setup"). Run from the
-# repository root:
+# Sextante: one-time setup of Docker Hub, GitHub and ShardCloud (decisions 3.27 to 3.29 of
+# docs/00, README "One-time setup"). Run from the repository root:
 #   scripts/setup_shardcloud.sh
-# ShardCloud's API is not used: it answers automated clients with a Cloudflare challenge.
-# Its steps are done in the dashboard, guided here. Secrets typed here go straight to
+# ShardCloud is not called: its API answers automated clients with a Cloudflare challenge,
+# so its steps are done in the dashboard, guided here. Secrets typed here go straight to
 # GitHub; none is written to a file or put on a command line. Only non-secret values are
-# kept, in config/.env.shardcloud (ignored by git), so a re-run resumes. It pushes no code
-# of this repository and no tag.
+# kept, in config/.env.shardcloud (ignored by git), so a re-run resumes. It pushes nothing.
 ENV_FILE="config/.env.shardcloud"
 
 # ask_required KEY "Prompt" PATTERN [DEFAULT]: asks until the answer matches PATTERN.
@@ -231,14 +229,14 @@ random_secret() { python3 -c 'import secrets; print(secrets.token_urlsafe(32))';
 
 run_wizard() {
 
-TOTAL_STAGES=7
+TOTAL_STAGES=5
 
-banner "Sextante: Docker Hub, ShardCloud and GitHub"
+banner "Sextante: Docker Hub, GitHub and ShardCloud"
 
 # ── 1 ────────────────────────────────────────────────────────────────────────
 stage "Tools and GitHub login"
-say "This wizard needs docker, git, zip, ssh-keygen, python3 and the GitHub CLI (gh), logged in."
-for tool in docker git zip ssh-keygen python3 curl; do
+say "This wizard needs git, zip, python3 and the GitHub CLI (gh), logged in."
+for tool in git zip python3; do
   command -v "$tool" >/dev/null 2>&1 || { warn "missing: $tool. Install it and run again."; exit 1; }
 done
 if ! command -v gh >/dev/null 2>&1; then
@@ -282,72 +280,33 @@ set_secret DOCKERHUB_TOKEN "$DOCKERHUB_TOKEN"
 unset DOCKERHUB_TOKEN
 
 # ── 4 ────────────────────────────────────────────────────────────────────────
-stage "GitHub: the deploy repository ShardCloud builds from"
-say "A private repository whose main branch holds only the build context, Dockerfile at"
-say "its root. Each release pushes there; ShardCloud rebuilds the image on every push."
-ask_required SHARDCLOUD_DEPLOY_REPOSITORY "Deploy repository, as <owner>/<name>:" \
-  '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' "${REPO%%/*}/sextante-shardcloud"
-write_env SHARDCLOUD_DEPLOY_REPOSITORY "$SHARDCLOUD_DEPLOY_REPOSITORY"
-if gh repo view "$SHARDCLOUD_DEPLOY_REPOSITORY" >/dev/null 2>&1; then
-  say "Repository already exists (kept)."
-else
-  confirm "Create the private repository $SHARDCLOUD_DEPLOY_REPOSITORY?" || exit 1
-  gh repo create "$SHARDCLOUD_DEPLOY_REPOSITORY" --private \
-    --description "Build context of Sextante for ShardCloud; written by the release pipeline only" >/dev/null
-  say "${GREEN}✓${RESET} created $SHARDCLOUD_DEPLOY_REPOSITORY (private)."
-fi
-say "A deploy key lets the pipeline write to that repository, and only to it."
-if gh secret list --json name --jq '.[].name' 2>/dev/null | grep -qx SHARDCLOUD_DEPLOY_KEY &&
-  ! confirm "The secret SHARDCLOUD_DEPLOY_KEY already exists. Replace it with a new key?"; then
-  say "Deploy key kept; the first context was pushed by the earlier run."
-  set_var SHARDCLOUD_DEPLOY_REPOSITORY "$SHARDCLOUD_DEPLOY_REPOSITORY"
-else
-key_dir=$(mktemp -d)
-ssh-keygen -q -t ed25519 -N "" -C "sextante release pipeline" -f "$key_dir/key"
-gh repo deploy-key add "$key_dir/key.pub" --repo "$SHARDCLOUD_DEPLOY_REPOSITORY" \
-  --allow-write --title "sextante release pipeline $(date +%Y-%m-%d)" >/dev/null
-set_secret SHARDCLOUD_DEPLOY_KEY "$(cat "$key_dir/key")"
-say "Pushing the first build context (version 'setup') to $SHARDCLOUD_DEPLOY_REPOSITORY..."
+stage "ShardCloud: the image"
 build_dir=$(mktemp -d)
 deploy/shardcloud/build_context.sh "$build_dir/context" HEAD setup
-SHARDCLOUD_DEPLOY_REMOTE="git@github.com:$SHARDCLOUD_DEPLOY_REPOSITORY.git" \
-  SHARDCLOUD_DEPLOY_KEY="$(cat "$key_dir/key")" \
-  deploy/shardcloud/push_context.sh "$build_dir/context" setup
 mkdir -p build
 (cd "$build_dir/context" && zip -q -r -X - .) > build/sextante-setup.zip
-rm -rf "$key_dir" "$build_dir"
-set_var SHARDCLOUD_DEPLOY_REPOSITORY "$SHARDCLOUD_DEPLOY_REPOSITORY"
-note "Old deploy keys of earlier runs can be deleted in that repository's Settings → Deploy keys."
-fi
-
-# ── 5 ────────────────────────────────────────────────────────────────────────
-stage "ShardCloud: the image, linked to the deploy repository"
+rm -rf "$build_dir"
+say "The build context is ready, Dockerfile at its root: $(pwd)/build/sextante-setup.zip"
+note "Each release leaves the same kind of zip as its artifact sextante-X.Y.Z-shardcloud."
 open_url "https://shardcloud.app/en"
 step "Sign in and open Dashboard (your plan must be Core or higher)."
-step "Config → Integrations → GitHub → Manage: connect GitHub, and give it access to"
-step "  $SHARDCLOUD_DEPLOY_REPOSITORY."
-step "Custom Docker Images → create an image named sextante from the file:"
-say  "    $(pwd)/build/sextante-setup.zip"
+step "Custom Docker Images → create an image named sextante from that zip."
 step "Wait until its build shows success."
-step "On the image's page, link the repository $SHARDCLOUD_DEPLOY_REPOSITORY."
-pause "Press Enter once the image is built and linked."
+pause "Press Enter once the image is built."
 
-# ── 6 ────────────────────────────────────────────────────────────────────────
+# ── 5 ────────────────────────────────────────────────────────────────────────
 stage "ShardCloud: the application"
 step "From the image, deploy an app named sextante with 2048 MB of RAM."
 step "Turn on its web access with a subdomain (letters and digits only)."
 step "In the app's environment variables, add these. Generated values are shown once:"
-SEXTANTE_API_KEY_VALUE=$(random_secret)
-SEXTANTE_ACCESS_TOKEN_VALUE=$(random_secret)
-printf '\n      SEXTANTE_API_KEY=%s\n' "$SEXTANTE_API_KEY_VALUE"
-printf '      SEXTANTE_ACCESS_TOKEN=%s   (what people type to sign in: keep it)\n' "$SEXTANTE_ACCESS_TOKEN_VALUE"
+printf '\n      SEXTANTE_API_KEY=%s\n' "$(random_secret)"
+printf '      SEXTANTE_ACCESS_TOKEN=%s   (what people type to sign in: keep it)\n' "$(random_secret)"
 printf '      SEXTANTE_TARGET_ENTITY_NAME=Advanced Maritime Transports - Transitarios Limitada\n'
 printf '      SEXTANTE_TARGET_ENTITY_NIF=<AMT tax number, as on its invoices>\n'
 printf '      SEXTANTE_REVIEWER_ID=revisor-1\n'
 printf '      SEXTANTE_ANTHROPIC_API_KEY=<a NEW key, typed straight into the dashboard>\n\n'
 warn "Save SEXTANTE_ACCESS_TOKEN in your password manager; the screen is cleared next."
 pause "Press Enter once the variables are saved and the app is running."
-unset SEXTANTE_API_KEY_VALUE SEXTANTE_ACCESS_TOKEN_VALUE
 _clear
 while :; do
   ask SHARDCLOUD_SUBDOMAIN "The app's address (e.g. sextante, or https://sextante.shardweb.app):"
@@ -360,43 +319,20 @@ while :; do
   warn "Not a shardweb.app address: type the subdomain, e.g. sextante."
 done
 SHARDCLOUD_URL="https://$SHARDCLOUD_SUBDOMAIN.shardweb.app"
-say "Address: $SHARDCLOUD_URL"
 write_env SHARDCLOUD_URL "$SHARDCLOUD_URL"
-status=0
-deploy/shardcloud/wait_for_release.sh "$SHARDCLOUD_URL" setup 5 || status=$?
-if (( status == 0 )); then
-  say "${GREEN}✓${RESET} The app answers at $SHARDCLOUD_URL"
-elif (( status == 2 )); then
-  open_url "$SHARDCLOUD_URL/api/health"
-  step "Cloudflare hides the answer from this terminal: check it in the browser instead."
-  if ! confirm "Does the page show \"version\":\"setup\"?"; then
-    warn "Check the app's logs in ShardCloud; if it expects a port other than 80, change"
-    warn "deploy/shardcloud/nginx.conf."
-  fi
-else
-  warn "No answer with version 'setup' yet. Check the app's logs in ShardCloud; if it expects"
-  warn "a port other than 80, change deploy/shardcloud/nginx.conf."
-fi
-set_var SHARDCLOUD_URL "$SHARDCLOUD_URL"
-
-# ── 7 ────────────────────────────────────────────────────────────────────────
-stage "GitHub: the production environment"
-say "Each release waits for your approval in the environment 'production'."
-me=$(gh api user --jq .id)
-if printf '{"reviewers":[{"type":"User","id":%s}]}' "$me" |
-  gh api --method PUT "repos/$REPO/environments/production" --input - >/dev/null 2>&1; then
-  say "${GREEN}✓${RESET} Environment 'production' with you as required reviewer."
-else
-  SKIPPED+=("GitHub environment 'production' with required reviewers (Settings → Environments)")
-  warn "GitHub refused required reviewers: a private repository needs a paid plan for them."
-  warn "Create 'production' by hand in Settings → Environments; without reviewers releases deploy at once."
+open_url "$SHARDCLOUD_URL/api/health"
+step "Cloudflare hides the answer from terminals, so check it in the browser."
+if ! confirm "Does the page show \"version\":\"setup\"?"; then
+  warn "\"Site Não Encontrado\": turn on the app's web access with that subdomain."
+  warn "Otherwise check the app's logs; if it expects a port other than 80, change"
+  warn "deploy/shardcloud/nginx.conf."
 fi
 
 finish
 say "Next, by you:"
 step "Push the code: git push origin $(git branch --show-current), then merge into main."
 step "Publish a version: git tag v1.0.0 && git push origin v1.0.0"
-step "Approve the deploy in GitHub → Actions → Release; then back up and restart the app in ShardCloud."
+step "Upload the release's artifact sextante-X.Y.Z-shardcloud to ShardCloud (Rebuild), back up, Restart."
 warn "Before real invoices: AMT confirms the data may stay at ShardCloud, and ShardCloud"
 warn "confirms the app's files survive a redeploy (docs/00 §3.27)."
 printf '\n'

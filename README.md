@@ -152,15 +152,16 @@ Two GitHub Actions workflows live in `.github/workflows/` (decision 3.27 of `doc
   3. It builds the three images and scans them with Trivy. The public ShardCloud image fails the run on any fixable HIGH or CRITICAL vulnerability; the two compose images fail it on any fixable CRITICAL.
 
   CI uses no secret and never calls the model. The golden set needs the private samples, so it is run locally with `make golden`.
-- **Release** (`release.yml`) runs when a tag `vX.Y.Z` is pushed (decision 3.28).
+- **Release** (`release.yml`) runs when a tag `vX.Y.Z` is pushed (decision 3.29).
   1. It runs CI in full.
   2. It builds the ShardCloud image from the git context and pushes it to the private Docker Hub repository as `X.Y.Z`, then scans it.
-  3. It waits for a person to approve the `production` environment.
-  4. It pushes the same context to the **deploy repository**: a private repository whose `main` holds only the context, with the `Dockerfile` at its root. The ShardCloud image is linked to that repository and rebuilds on every push.
-  5. In ShardCloud's dashboard, a person waits for the build, backs up the app and restarts it. The job's summary lists these steps.
-  6. The job waits until `https://<app>/api/health` answers `"version": "X.Y.Z"`.
+  3. It keeps the same context as the artifact `sextante-X.Y.Z-shardcloud`. GitHub's zip of it has the `Dockerfile` at its root, as ShardCloud wants.
 
-  ShardCloud's REST API is not used: it answers automated clients with a Cloudflare challenge.
+  Nothing calls ShardCloud: its API answers automated clients with a Cloudflare challenge. A person puts each version on ShardCloud:
+  1. Download the artifact from the run's Summary page.
+  2. In ShardCloud, open Custom Docker Images → sextante → Rebuild with that zip, and wait for *success*.
+  3. Back the app up, then Restart it.
+  4. Check `https://<app>/api/health` in a browser. It shows the version.
 
 ```bash
 git tag v1.0.0 && git push origin v1.0.0   # publishes version 1.0.0
@@ -191,42 +192,29 @@ Run the setup wizard from the repository root. It walks you through each step, a
 scripts/setup_shardcloud.sh
 ```
 
-It needs `docker`, `git`, `zip`, `ssh-keygen`, `python3` and the GitHub CLI (`gh`), logged in.
+It needs `git`, `zip`, `python3` and the GitHub CLI (`gh`), logged in. It does two things:
 
-What it does:
+- sets the GitHub secrets and the variable that the release needs (`DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, `DOCKERHUB_REPOSITORY`);
+- builds a first context, `build/sextante-setup.zip`.
 
-- creates the private deploy repository and a deploy key that can write only to it, and stores the key as a GitHub secret;
-- pushes the first context to the deploy repository and leaves the same context as `build/sextante-setup.zip`;
-- sets the GitHub secrets and variables;
-- creates the `production` environment.
+It then guides you through ShardCloud's dashboard:
 
-In ShardCloud's dashboard it guides you through:
+- creating the image from that zip;
+- creating the app with 2048 MB, web access and its variables (the API key and the access token are generated and shown once);
+- checking the app in a browser.
 
-- connecting GitHub;
-- creating the image from that zip and linking it to the deploy repository;
-- creating the app with its variables (the API key and the access token are generated and shown once).
-
-Only non-secret values are kept, in `config/.env.shardcloud` (ignored by git). It pushes nothing of this repository.
+Only non-secret values are kept, in `config/.env.shardcloud` (ignored by git). It pushes nothing.
 
 The same setup by hand, if you prefer:
 
 1. **Docker Hub.** Create a private repository (for example `<user>/sextante`) and an access token with *Read & Write* on it.
-2. **Deploy repository.**
-   1. Create an empty private GitHub repository (for example `<owner>/sextante-shardcloud`).
-   2. Add a deploy key **with write access** to it (`ssh-keygen -t ed25519`, then Settings → Deploy keys).
-   3. Push a first context: `SHARDCLOUD_DEPLOY_REMOTE=git@github.com:<owner>/sextante-shardcloud.git deploy/shardcloud/push_context.sh <context> setup`, after `deploy/shardcloud/build_context.sh <context> HEAD setup`.
+2. **GitHub**, under Settings → Secrets and variables → Actions:
+   - **Secrets:** `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`.
+   - **Variable:** `DOCKERHUB_REPOSITORY`.
 3. **ShardCloud.**
-   1. In Config → Integrations, connect GitHub with access to the deploy repository.
-   2. Create a Custom Docker Image from the zipped context, then link it to the deploy repository from the image's page.
-   3. Deploy an app from the image with at least 2048 MB of RAM (PDF reading alone may use up to 512 MiB), and turn on its web access.
-   4. Set the app's environment variables: `SEXTANTE_ANTHROPIC_API_KEY`, `SEXTANTE_API_KEY`, `SEXTANTE_ACCESS_TOKEN`, `SEXTANTE_TARGET_ENTITY_NAME`, `SEXTANTE_TARGET_ENTITY_NIF` and `SEXTANTE_REVIEWER_ID`, plus any optional ones from `config/.env.example`. Do not set the paths: the image sets them.
-4. **GitHub**, under Settings → Secrets and variables → Actions:
-   - **Secrets:** `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, `SHARDCLOUD_DEPLOY_KEY` (the private half of the deploy key).
-   - **Variables:**
-     - `DOCKERHUB_REPOSITORY`;
-     - `SHARDCLOUD_DEPLOY_REPOSITORY` (`<owner>/sextante-shardcloud`);
-     - `SHARDCLOUD_URL` (the app's `https://` address, with no trailing slash).
-5. **GitHub environment.** Under Settings → Environments, create `production` with *Required reviewers*, so each release waits for a person.
+   1. Create a Custom Docker Image from a context zip. Use a release's artifact, or build one with `deploy/shardcloud/build_context.sh build/shardcloud HEAD setup && (cd build/shardcloud && zip -qr ../sextante.zip .)`.
+   2. Deploy an app from the image with at least 2048 MB of RAM (PDF reading alone may use up to 512 MiB), and turn on its web access.
+   3. Set its environment variables: `SEXTANTE_ANTHROPIC_API_KEY`, `SEXTANTE_API_KEY`, `SEXTANTE_ACCESS_TOKEN`, `SEXTANTE_TARGET_ENTITY_NAME`, `SEXTANTE_TARGET_ENTITY_NIF` and `SEXTANTE_REVIEWER_ID`, plus any optional ones from `config/.env.example`. Do not set the paths: the image sets them.
 
 ### Before using it with real invoices
 

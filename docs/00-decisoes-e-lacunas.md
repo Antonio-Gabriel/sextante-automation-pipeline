@@ -348,7 +348,18 @@ Decisão tomada pelo responsável em 18-11-2026 (ticket 14). Revê 3.20, que lim
 - **Quando se lê a revisão.** A verificação de que uma linha foi revista corre na transacção que substitui a codificação. Uma revisão gravada enquanto o modelo respondia também é vista. O mesmo vale quando a recodificação dá uma entidade ambígua.
 - **Pedidos repetidos** (confirmado pelo responsável em 18-11-2026). SEC-19 pede que o trabalhador não repita um efeito que já existe. Interpretação aplicada: um segundo pedido com a mesma `Idempotency-Key` repete a resposta; um segundo pedido com outra chave, enquanto a factura está na fila, não faz nada, porque uma factura em fila não volta a ser posta na fila. Um pedido feito depois de a recodificação terminar é uma recodificação nova, pedida por uma pessoa, e paga uma chamada nova ao modelo. Recusá-lo impediria recodificar depois de mudar um limiar, que vive em código e não tem versão.
 
+### 3.29 O release acaba no zip; a publicação na ShardCloud é à mão
+
+Decisão tomada pelo responsável em 19-11-2026. Substitui o trabalho de deploy de §3.28.
+
+- **O que o release faz.** CI completo, a imagem `X.Y.Z` no Docker Hub privado, com análise, e o contexto como artefacto `sextante-X.Y.Z-shardcloud`. O zip que o GitHub dá desse artefacto tem o `Dockerfile` na raiz e envia-se à ShardCloud tal como está.
+- **O que faz uma pessoa.** Na ShardCloud: Rebuild da imagem com o zip, backup e Restart da app. Depois confirma a versão no navegador, porque o Cloudflare esconde a resposta dos clientes que não são navegadores (§3.28).
+- **Porquê.** Com a API da ShardCloud e o endereço da app atrás do desafio do Cloudflare, o pipeline não pode reiniciar a app nem confirmar a versão. O repositório de deploy acrescentava uma *deploy key*, um segundo repositório e uma espera que nunca podia terminar, para poupar só o envio do zip.
+- **Sai do repositório:** `push_context.sh`, `wait_for_release.sh`, o trabalho de deploy, o ambiente `production` e a criação do repositório de deploy pelo assistente. O que o assistente já criou no GitHub (o repositório de deploy, a *deploy key*, o segredo `SHARDCLOUD_DEPLOY_KEY`, as variáveis `SHARDCLOUD_DEPLOY_REPOSITORY` e `SHARDCLOUD_URL` e o ambiente) deixa de ser usado e pode ser apagado pelo responsável.
+
 ### 3.28 Deploy na ShardCloud por um repositório de deploy
+
+*Substituída em 19-11-2026 por §3.29.*
 
 Decisão tomada pelo responsável em 19-11-2026. Revê a parte de §3.27 que publicava pela API REST da ShardCloud.
 
