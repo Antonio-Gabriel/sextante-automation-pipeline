@@ -87,6 +87,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                         └── CHG-0078  fix       Assistente parado com uma resposta vazia
                                                                                                                                                                                                             └── CHG-0079  fix       Assistente explica a recusa do token da ShardCloud
                                                                                                                                                                                                                 └── CHG-0080  fix       Retirada a recusa de tokens de audiência /mcp
+                                                                                                                                                                                                                    └── CHG-0081  fix       Assistente mostra a razão da ShardCloud para uma recusa
 ```
 
 ## Regras
@@ -151,6 +152,22 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0081 · Assistente mostra a razão da ShardCloud para uma recusa
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0080
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `scripts/setup_shardcloud.sh`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** `bash -n` sem erros.
+
+**Relato do responsável.** Com o plano Core 1 activo, `GET /custom-images` continua a responder 403. A mensagem do assistente, «sem plano activo», era uma suposição errada. O assistente passa a mostrar o código e a resposta da própria ShardCloud, até 500 caracteres; essa resposta nunca contém a chave. Fica em aberto se a API Key de Settings → Integrations, de audiência `…/api/mcp`, serve a API REST, ou se o plano Core 1 inclui imagens personalizadas.
 
 ### CHG-0080 · Retirada a recusa de tokens de audiência /mcp
 

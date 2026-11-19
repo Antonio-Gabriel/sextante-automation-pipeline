@@ -247,19 +247,27 @@ ask_required() {
   done
 }
 
-# check_shard_token: one call to the API, explaining a refusal in plain words.
+# check_shard_token: one call to the API; on refusal, ShardCloud's own reason is shown
+# (the answer never holds the key).
 check_shard_token() {
-  local code
+  local code body
+  body=$(mktemp)
   code=$(printf 'header = "Authorization: Bearer %s"\n' "$SHARD_TOKEN" |
-    curl --config - --silent --output /dev/null --write-out '%{http_code}' --max-time 60 \
+    curl --config - --silent --output "$body" --write-out '%{http_code}' --max-time 60 \
       "$SHARD_API/custom-images") || code="000"
+  if [[ "$code" == "200" ]]; then
+    rm -f "$body"
+    say "${GREEN}✓${RESET} ShardCloud accepted the key."
+    return 0
+  fi
+  warn "ShardCloud answered HTTP $code to GET /custom-images:"
+  note "$(head -c 500 "$body")"
+  rm -f "$body"
   case "$code" in
-    200) say "${GREEN}✓${RESET} ShardCloud accepted the token."; return 0 ;;
-    401) warn "ShardCloud does not recognise this key (401). Copy it again, or create a new one." ;;
-    403) warn "ShardCloud answered 403: no valid subscription. Custom images need an active"
-         warn "Core plan or higher: check Settings → Plan & Billing, and run again once it is active." ;;
-    000) warn "ShardCloud could not be reached. Check your connection and run again." ;;
-    *)   warn "ShardCloud answered HTTP $code. Run again later." ;;
+    401) warn "The key is not recognised: copy it again, or create a new one." ;;
+    403) warn "Refused: the key may not be allowed on the REST API, or the plan may not include"
+         warn "custom images. Send ShardCloud's answer above to their support." ;;
+    000) warn "ShardCloud could not be reached. Check your connection." ;;
   esac
   return 1
 }
