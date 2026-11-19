@@ -1,23 +1,21 @@
 """Credentials of every /api call but the health check (SEC-06, L-07).
 
 Two credentials open the API, both compared in the server:
-- the key of programs, ``X-API-Key``, compared in constant time with SEXTANTE_API_KEY;
+- the key of programs, ``X-API-Key``, compared by digest in constant time with SEXTANTE_API_KEY;
 - the session of a person, an HttpOnly cookie opened by the access token (session.py).
 
 Both stand for one principal: they close the API to whoever holds neither, but do not
 tell people apart. The author of a review is still SEXTANTE_REVIEWER_ID.
 """
 
-import hmac
 import logging
 from typing import Annotated, Final
 
 from fastapi import Request, Security
 from fastapi.security import APIKeyCookie, APIKeyHeader
-from pydantic import SecretStr
 
 from sextante.platform.errors import DomainError
-from sextante.platform.session import SESSION_COOKIE, SessionStore
+from sextante.platform.session import SESSION_COOKIE, SessionStore, secret_matches
 
 logger = logging.getLogger(__name__)
 
@@ -60,12 +58,8 @@ async def require_credential(
         CredentialInvalidError: when both are missing or wrong.
     """
     sessions: SessionStore = request.app.state.sessions
-    if not (_key_matches(request.app.state.api_key, key) or sessions.is_open(session_id)):
+    if not (secret_matches(key, request.app.state.api_key) or sessions.is_open(session_id)):
         # The event and the path only: never the key or session that was sent (SEC-15).
         logger.warning("credential_rejected", extra={"path": request.url.path})
         raise CredentialInvalidError("Missing or wrong credential. Expected the key or a session.")
     request.state.principal = PRINCIPAL
-
-
-def _key_matches(expected: SecretStr, sent: str | None) -> bool:
-    return hmac.compare_digest((sent or "").encode(), expected.get_secret_value().encode())

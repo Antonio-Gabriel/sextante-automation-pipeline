@@ -284,7 +284,7 @@ export interface paths {
         put?: never;
         /**
          * Open Session Route
-         * @description Open a session when the access token is the configured one.
+         * @description Open a session when the access token is the configured one, ending the previous one.
          *
          *     Example:
          *         POST /api/session {"token": "..."} -> 204, Set-Cookie: sextante_session=...

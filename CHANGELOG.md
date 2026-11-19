@@ -62,6 +62,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                     └── CHG-0053  security  Extracção de PDF isolada com limites
                                                                                                                                                                                                         └── CHG-0054  fix       Correcções da revisão da extracção isolada
                                                                                                             └── CHG-0055  feat      Esqueleto do frontend e login por token
+                                                                                                                └── CHG-0056  fix       Correcções da revisão do ticket 01 do frontend
 ```
 
 ## Regras
@@ -126,6 +127,26 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0056 · Correcções da revisão do ticket 01 do frontend
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0055
+- **Estado:** activa
+- **Requisitos:** SEC-06, SEC-19, SEC-15, REQ-PLT-006, REQ-PLT-007
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `backend/src/sextante/platform/session.py`, `platform/credentials.py`, `platform/settings.py`, `platform/user_messages.py`, `tests/api/test_session_login.py`; `frontend/src/features/auth/*`, `entities/health/use-health.ts`, `pages/home-page.tsx`, `shared/i18n/pt.ts`, `test/api.ts`, `tsconfig.json`, `openapi.json` e tipos gerados; `README.md`, `docs/03-seguranca.md` (SEC-06, SEC-19), ticket 01 do frontend
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 374 testes do backend e o `xfail` estrito; 8 testes do frontend. `make golden` com 12 amostras sem divergências. `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos; `tsc`, ESLint, licenças, build.
+
+**Sessão.** A saída só leva à entrada quando o servidor a confirma; se falhar, a pessoa fica e vê a mensagem. Entrar de novo fecha a sessão anterior. O token tem de ser diferente da chave da API, ou o servidor recusa arrancar. Chave e token comparam-se pelos digests, para que nem o comprimento transpareça, numa só função. Os atributos do cookie vivem num só sítio. A mensagem de credencial recusada serve também a programas com a chave.
+
+**Frontend.** O limite do token vem do documento OpenAPI, não de uma cópia. O ecrã inicial não tem texto literal, e o estado do servidor decide-se no gancho. A subscrição dos erros de sessão deixa de estar duplicada.
+
+**Documentos.** SEC-19 regista a isenção de `Idempotency-Key` na entrada e na saída da sessão. SEC-06 e o README declaram a quota anónima única do login, risco aceite com o servidor ligado só a `127.0.0.1`.
 
 ### CHG-0055 · Esqueleto do frontend e login por token
 

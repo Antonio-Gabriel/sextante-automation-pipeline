@@ -7,7 +7,9 @@ SameSite=Strict, Secure by default, of limited life. The browser never holds the
 Known limitations of this version, declared rather than hidden:
 - sessions live in this process's memory: a restart ends them, and two instances do not
   share them (the same limit as the rate counters of SEC-12);
-- one token for everyone, like the key: a session does not tell people apart.
+- one token for everyone, like the key: a session does not tell people apart;
+- login attempts share one anonymous quota: guessing from one place slows logins for
+  all. With the server bound to 127.0.0.1 every caller is local anyway (L-07).
 """
 
 import hashlib
@@ -15,7 +17,7 @@ import hmac
 import logging
 import secrets
 from dataclasses import dataclass
-from typing import Annotated, Final, Literal
+from typing import Annotated, Any, Final, Literal
 
 from fastapi import APIRouter, Cookie, Depends, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
@@ -39,6 +41,19 @@ class AccessTokenInvalidError(DomainError):
     """The access token sent to open a session is not the configured one."""
 
     user_message_key = "errors.auth.access_token_invalid"
+
+
+def secret_matches(sent: str | None, expected: SecretStr) -> bool:
+    """Whether a sent secret is the configured one, in time independent of both.
+
+    The digests are compared, so not even the length of the secret leaks.
+
+    Example:
+        secret_matches(request_token, settings.access_token)
+    """
+    sent_digest = hashlib.sha256((sent or "").encode()).digest()
+    expected_digest = hashlib.sha256(expected.get_secret_value().encode()).digest()
+    return hmac.compare_digest(sent_digest, expected_digest)
 
 
 class SessionStore:
@@ -82,6 +97,15 @@ class SessionPolicy:
     access_token: SecretStr
     secure_cookie: bool
 
+    def cookie_attributes(self) -> dict[str, Any]:
+        """The attributes the session cookie is set and cleared with, the same both ways."""
+        return {
+            "path": SESSION_COOKIE_PATH,
+            "secure": self.secure_cookie,
+            "httponly": True,
+            "samesite": "strict",
+        }
+
 
 class AccessTokenRequest(BaseModel):
     """Input contract of the login (SEC-08: unknown fields refused)."""
@@ -104,9 +128,12 @@ SessionCookie = Annotated[str | None, Cookie(alias=SESSION_COOKIE, include_in_sc
 
 @session_router.post("", status_code=204, dependencies=[Depends(enforce_rate_limits)])
 async def open_session_route(
-    body: AccessTokenRequest, request: Request, response: Response
+    body: AccessTokenRequest,
+    request: Request,
+    response: Response,
+    previous: SessionCookie = None,
 ) -> None:
-    """Open a session when the access token is the configured one.
+    """Open a session when the access token is the configured one, ending the previous one.
 
     Example:
         POST /api/session {"token": "..."} -> 204, Set-Cookie: sextante_session=...
@@ -115,20 +142,17 @@ async def open_session_route(
         AccessTokenInvalidError: when the token is wrong; no cookie is set.
     """
     policy: SessionPolicy = request.app.state.session_policy
-    expected = policy.access_token.get_secret_value().encode()
-    if not hmac.compare_digest(body.token.encode(), expected):
+    if not secret_matches(body.token, policy.access_token):
         # The event only: never the token that was sent (SEC-15).
         logger.warning("access_token_rejected")
         raise AccessTokenInvalidError("Wrong access token. Expected SEXTANTE_ACCESS_TOKEN.")
     store: SessionStore = request.app.state.sessions
+    store.close(previous)
     response.set_cookie(
         SESSION_COOKIE,
         store.open(),
         max_age=int(store.lifetime_seconds),
-        path=SESSION_COOKIE_PATH,
-        secure=policy.secure_cookie,
-        httponly=True,
-        samesite="strict",
+        **policy.cookie_attributes(),
     )
     logger.info("session_opened")
 
@@ -145,13 +169,7 @@ async def end_session_route(
     store: SessionStore = request.app.state.sessions
     store.close(session_id)
     policy: SessionPolicy = request.app.state.session_policy
-    response.delete_cookie(
-        SESSION_COOKIE,
-        path=SESSION_COOKIE_PATH,
-        secure=policy.secure_cookie,
-        httponly=True,
-        samesite="strict",
-    )
+    response.delete_cookie(SESSION_COOKIE, **policy.cookie_attributes())
     logger.info("session_ended")
 
 

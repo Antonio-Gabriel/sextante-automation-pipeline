@@ -37,5 +37,5 @@ export function apiWithoutSession(rightToken: string) {
       return new HttpResponse(null, { status: 204 });
     }),
   ];
-  return { handlers, calls, expire: () => (open = false) };
+  return { handlers, calls };
 }

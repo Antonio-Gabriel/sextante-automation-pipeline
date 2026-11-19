@@ -1,7 +1,9 @@
 import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { apiWithoutSession, CATALOG_DIGEST } from "@/test/api";
+import { http } from "msw";
+
+import { apiWithoutSession, CATALOG_DIGEST, refused } from "@/test/api";
 import { renderApp } from "@/test/render-app";
 import { server } from "@/test/server";
 
@@ -98,5 +100,27 @@ describe("logout (frontend ticket 01)", () => {
     await router.navigate({ to: "/" });
 
     await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
+  });
+});
+
+describe("logout the server does not confirm (frontend ticket 01)", () => {
+  it("keeps the person in, with the server's message, so no session is left open unseen", async () => {
+    const api = apiWithoutSession(TOKEN);
+    server.use(...api.handlers);
+    // A later server.use takes precedence over the handlers above.
+    server.use(
+      http.post("/api/session/end", () =>
+        refused("errors.internal", "Ocorreu um erro interno.", 500),
+      ),
+    );
+    const { user, router } = renderApp("/login");
+    await user.type(await screen.findByLabelText("Token de acesso"), TOKEN);
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+    await screen.findByText(CATALOG_DIGEST);
+
+    await user.click(screen.getByRole("button", { name: "Sair" }));
+
+    expect(await screen.findByText("Ocorreu um erro interno.")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/");
   });
 });

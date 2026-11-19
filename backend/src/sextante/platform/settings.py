@@ -4,7 +4,15 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Final
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 ENV_PREFIX: Final = "SEXTANTE_"
 SETTING_TEXT_MAX_LENGTH: Final = 512
@@ -118,6 +126,16 @@ class Settings(ModelCallSettings):
             )
         return value
 
+    @model_validator(mode="after")
+    def _token_apart_from_key(self) -> "Settings":
+        # A person's token and a program's key are two credentials; one value for both
+        # would hand the key to everyone who logs in.
+        if self.access_token.get_secret_value() == self.api_key.get_secret_value():
+            raise ValueError(
+                "SEXTANTE_ACCESS_TOKEN equals SEXTANTE_API_KEY. Expected two different values"
+            )
+        return self
+
     @field_validator("database_url")
     @classmethod
     def _require_sqlite(cls, value: SecretStr) -> SecretStr:
@@ -149,8 +167,11 @@ class Settings(ModelCallSettings):
 def _describe_invalid_settings(error: ValidationError) -> str:
     # Only the variable name and the kind of problem are reported. The input value is
     # left out on purpose, because it may be a secret (SEC-02, SEC-15).
+    # A rule across settings has no single variable: its message names the variables.
     problems = [
         f"{ENV_PREFIX}{str(issue['loc'][0]).upper()}: {issue['msg']}"
+        if issue["loc"]
+        else issue["msg"]
         for issue in error.errors(include_input=False, include_url=False, include_context=False)
     ]
     return "Invalid or missing configuration. " + "; ".join(problems)

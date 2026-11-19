@@ -1750,7 +1750,7 @@
         ]
       },
       "post": {
-        "description": "Open a session when the access token is the configured one.\n\nExample:\n    POST /api/session {\"token\": \"...\"} -> 204, Set-Cookie: sextante_session=...\n\nRaises:\n    AccessTokenInvalidError: when the token is wrong; no cookie is set.",
+        "description": "Open a session when the access token is the configured one, ending the previous one.\n\nExample:\n    POST /api/session {\"token\": \"...\"} -> 204, Set-Cookie: sextante_session=...\n\nRaises:\n    AccessTokenInvalidError: when the token is wrong; no cookie is set.",
         "operationId": "open_session_route_api_session_post",
         "requestBody": {
           "content": {

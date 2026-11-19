@@ -119,6 +119,31 @@ def test_logging_out_ends_the_session(valid_environment: dict[str, str]) -> None
 
 
 @pytest.mark.requirement("SEC-06")
+def test_logging_in_again_ends_the_previous_session(valid_environment: dict[str, str]) -> None:
+    """A second login from the same browser leaves one session open, not two."""
+    with _client(valid_environment) as client:
+        _login(client)
+        first = client.cookies.get(SESSION_COOKIE)
+        assert first
+        _login(client)
+        client.cookies.set(SESSION_COOKIE, first)
+        replayed = client.get("/api/session").status_code
+
+    assert replayed == 401
+
+
+@pytest.mark.requirement("SEC-06", "REQ-PLT-007")
+def test_an_access_token_equal_to_the_api_key_refuses_startup(
+    valid_environment: dict[str, str],
+) -> None:
+    """The token of people and the key of programs must be two values."""
+    environment = {**valid_environment, "SEXTANTE_ACCESS_TOKEN": SYNTHETIC_API_KEY}
+
+    with pytest.raises(StartupConfigurationError, match="SEXTANTE_ACCESS_TOKEN"):
+        create_app(environment)
+
+
+@pytest.mark.requirement("SEC-06")
 def test_a_session_expires_after_its_validity(valid_environment: dict[str, str]) -> None:
     """Eight hours by default: one second later the session is refused."""
     stopwatch = _Stopwatch()

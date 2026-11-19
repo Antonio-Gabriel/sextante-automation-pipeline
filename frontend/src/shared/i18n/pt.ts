@@ -19,6 +19,7 @@ export const pt = {
     serverUp: "Disponível",
     serverDown: "Indisponível",
     catalogDigest: "Versão do catálogo",
+    notAvailable: "Não disponível",
     loading: "A carregar…",
     logout: "Sair",
     loggingOut: "A sair…",

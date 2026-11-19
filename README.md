@@ -70,7 +70,7 @@ The frontend is a React application in `frontend/`. Without Docker it runs as tw
 
 4. Open `http://127.0.0.1:5173` and type the access token in the login screen.
 
-The token opens a session kept in a cookie the page cannot read (`HttpOnly`, `SameSite=Strict`, `Secure`), valid for 8 hours by default (`SEXTANTE_SESSION_HOURS`). **Sair** ends it in the server. The browser never receives the API key, and no secret is compiled into the frontend: only variables starting `VITE_SEXTANTE_` can reach it, and none is a secret. Sessions live in the memory of the backend: restarting it logs everyone out. A wrong token is refused, and login attempts are limited to 10 per minute (`SEXTANTE_RATE_LIMIT_LOGIN_PER_MINUTE`).
+The token opens a session kept in a cookie the page cannot read (`HttpOnly`, `SameSite=Strict`, `Secure`), valid for 8 hours by default (`SEXTANTE_SESSION_HOURS`). **Sair** ends it in the server. The browser never receives the API key, and no secret is compiled into the frontend: only variables starting `VITE_SEXTANTE_` can reach it, and none is a secret. Sessions live in the memory of the backend: restarting it logs everyone out. A wrong token is refused, and login attempts are limited to 10 per minute (`SEXTANTE_RATE_LIMIT_LOGIN_PER_MINUTE`), counted together for everyone. The server refuses to start when the token equals the API key.
 
 The backend address defaults to `http://127.0.0.1:8000`; set `SEXTANTE_BACKEND_URL` before `npm run dev` to change it. Browsers accept the `Secure` cookie on `http://127.0.0.1` and `http://localhost`; if yours refuses it, set `SEXTANTE_SESSION_COOKIE_SECURE=false` for local use only.
 

@@ -20,7 +20,6 @@ export function HomePage() {
 
 function ServerStatusCard() {
   const health = useHealth();
-  const status = health.isPending ? t("home.loading") : health.data ? t("home.serverUp") : t("home.serverDown");
 
   return (
     <Card>
@@ -30,9 +29,9 @@ function ServerStatusCard() {
       <CardContent>
         <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
           <dt className="text-slate-500">{t("home.serverStatus")}</dt>
-          <dd>{status}</dd>
+          <dd>{t(health.status)}</dd>
           <dt className="text-slate-500">{t("home.catalogDigest")}</dt>
-          <dd className="break-all font-mono">{health.data?.catalog_digest ?? "—"}</dd>
+          <dd className="break-all font-mono">{health.catalogDigest ?? t("home.notAvailable")}</dd>
         </dl>
       </CardContent>
     </Card>

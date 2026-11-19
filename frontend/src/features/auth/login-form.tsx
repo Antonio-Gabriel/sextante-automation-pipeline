@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { components as openapiComponents } from "../../../openapi.json";
 import type { components } from "@/shared/api/schema";
 import { t } from "@/shared/i18n/t";
 import { Button } from "@/shared/ui-kit/button";
@@ -10,8 +11,8 @@ import { Label } from "@/shared/ui-kit/label";
 
 import { useLogin } from "./use-login";
 
-// The server's limit on any setting; checked against the generated request type.
-const TOKEN_MAX_LENGTH = 512;
+// The limit comes from the OpenAPI document, so it follows the server's (§8.4).
+const TOKEN_MAX_LENGTH = openapiComponents.schemas.AccessTokenRequest.properties.token.maxLength;
 
 const loginSchema = z.object({
   token: z
