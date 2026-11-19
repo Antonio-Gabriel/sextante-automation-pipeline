@@ -167,7 +167,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0087
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-008, SEC-04
-- **Commit:** pendente
+- **Commit:** `1548c82`
 - **Migração:** nenhuma
 - **Ficheiros:** `deploy/shardcloud/Dockerfile`, `deploy/shardcloud/entrypoint.sh`
 - **Reversibilidade:** total
