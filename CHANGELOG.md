@@ -135,7 +135,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0055
 - **Estado:** activa
 - **Requisitos:** SEC-06, SEC-19, SEC-15, REQ-PLT-006, REQ-PLT-007
-- **Commit:** pendente
+- **Commit:** `3419814`
 - **Migração:** nenhuma
 - **Ficheiros:** `backend/src/sextante/platform/session.py`, `platform/credentials.py`, `platform/settings.py`, `platform/user_messages.py`, `tests/api/test_session_login.py`; `frontend/src/features/auth/*`, `entities/health/use-health.ts`, `pages/home-page.tsx`, `shared/i18n/pt.ts`, `test/api.ts`, `tsconfig.json`, `openapi.json` e tipos gerados; `README.md`, `docs/03-seguranca.md` (SEC-06, SEC-19), ticket 01 do frontend
 - **Reversibilidade:** total
@@ -155,7 +155,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0054
 - **Estado:** activa
 - **Requisitos:** SEC-06, SEC-02, SEC-12, SEC-15, REQ-PLT-006, REQ-PLT-007, NFR-DOC-001, NFR-LIC-001
-- **Commit:** pendente
+- **Commit:** `4414e7f`
 - **Migração:** nenhuma
 - **Ficheiros:** `backend/src/sextante/platform/session.py` (novo), `platform/credentials.py` (era `api_key.py`), `platform/rate_limit.py`, `platform/settings.py`, `platform/http_errors.py`, `platform/user_messages.py`, `main.py`, `backend/Makefile`, testes `tests/api/test_session_login.py`, `test_openapi_contract.py`, `test_api_key.py`, `test_rate_limits.py`, `test_startup.py`, `conftest.py`; `frontend/` (novo); `config/.env.example`, `README.md`, `docs/00-decisoes-e-lacunas.md` (L-07), `docs/02-arquitectura.md` (§7), `docs/03-seguranca.md` (SEC-06, SEC-11)
 - **Reversibilidade:** total
