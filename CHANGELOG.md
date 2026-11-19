@@ -161,7 +161,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0081
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-008, SEC-02, SEC-06
-- **Commit:** pendente
+- **Commit:** `a5bfd14`
 - **Migração:** nenhuma
 - **Ficheiros:** `deploy/shardcloud/push_context.sh` e `deploy/shardcloud/wait_for_release.sh` (novos), `deploy/shardcloud/deploy.sh` (apagado), `.github/workflows/release.yml`, `scripts/setup_shardcloud.sh`, `backend/tests/deploy/test_shardcloud_deploy.py` (reescrito), `.gitignore`, `docs/00` §3.28, `README.md`
 - **Reversibilidade:** total no repositório. O repositório de deploy e a *deploy key* criados pelo assistente apagam-se no GitHub.
