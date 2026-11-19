@@ -206,7 +206,7 @@ O token de acesso da versão publicada não está nos documentos, porque o repos
 - **Pai:** CHG-0090
 - **Estado:** activa
 - **Requisitos:** REQ-REV-006, REQ-PLT-002
-- **Commit:** pendente
+- **Commit:** `c54c596`
 - **Migração:** nenhuma
 - **Ficheiros:** `backend/src/sextante/ingestion/api/routes.py`, `backend/src/sextante/platform/user_messages.py`, `backend/tests/api/test_invoice_view.py`
 - **Reversibilidade:** total
