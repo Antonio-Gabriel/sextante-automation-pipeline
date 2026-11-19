@@ -172,7 +172,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0092
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** pendente
+- **Commit:** `cebaa99`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `docs/sextante-documentacao.pt.{md,pdf}` e `docs/sextante-documentation.en.{md,pdf}`;
