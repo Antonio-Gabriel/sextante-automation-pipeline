@@ -156,7 +156,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0076
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-008, SEC-02
-- **Commit:** pendente
+- **Commit:** `628f579`
 - **Migração:** nenhuma
 - **Ficheiros:** `scripts/setup_shardcloud.sh` (novo), `backend/tests/deploy/test_workflows.py`, `README.md`
 - **Reversibilidade:** total no repositório. O que o assistente cria na ShardCloud, no Docker Hub e no GitHub apaga-se lá.
