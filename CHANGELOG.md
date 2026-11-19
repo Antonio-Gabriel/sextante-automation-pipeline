@@ -100,6 +100,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                                                                             └── CHG-0091  fix       Motivo do estado de uma factura ambígua ou com falha
                                                                                                                                                                                                                                                                 └── CHG-0092  docs      Documentação técnica e de utilização em PDF, em português e em inglês
                                                                                                                                                                                                                                                                     └── CHG-0093  docs      Documentação em PDF com capa corporativa, sumário, dez diagramas e integrações
+                                                                                                                                                                                                                                                                        └── CHG-0094  docs      Capa dos PDF em fundo branco
 ```
 
 ## Regras
@@ -164,6 +165,28 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0094 · Capa dos PDF em fundo branco
+
+- **Data:** 2026-11-19
+- **Tipo:** docs
+- **Pai:** CHG-0093
+- **Estado:** activa
+- **Requisitos:** nenhum
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `scripts/docs/document.css`, `docs/sextante-documentacao.pt.pdf`, `docs/sextante-documentation.en.pdf`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:**
+  - Revista a capa dos dois PDF; o resto continua igual, com 42 páginas cada.
+  - Nenhum caminho local entra nos PDF.
+
+Pedido do responsável: a capa passa a ter fundo branco, por causa do logótipo da AMT, que é azul-escuro sobre transparente.
+
+- O logótipo fica directamente sobre o branco, sem moldura.
+- O texto passa a preto.
+- O carácter corporativo mantém-se com uma barra preta à esquerda e filetes pretos.
 
 ### CHG-0093 · Documentação em PDF com capa corporativa, sumário, dez diagramas e integrações
 
