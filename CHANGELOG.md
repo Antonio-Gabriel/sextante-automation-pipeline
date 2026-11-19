@@ -146,7 +146,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0066
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-009, REQ-ING-011, SEC-19, REQ-REV-006
-- **Commit:** pendente
+- **Commit:** `ca5e1fa`
 - **Migração:** nenhuma
 - **Ficheiros:** `backend/src/sextante/ingestion/application/job_lifecycle.py` (era `manage_jobs.py`), `ingestion/application/{ports,records,upload_invoices}.py`, `ingestion/domain/statuses.py`, `ingestion/infrastructure/repository.py`, `ingestion/api/routes.py`, `main.py`, `tests/api/test_job_deletion.py`; `frontend/src/features/results/{results-table.tsx,use-row-opens-line.ts}`, `features/jobs/*`, `features/upload/*`, `pages/{jobs,upload}-page.tsx`, `shared/i18n/{t,pt}.ts`
 - **Reversibilidade:** total
