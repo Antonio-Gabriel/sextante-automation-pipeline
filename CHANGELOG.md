@@ -101,6 +101,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                                                                                 └── CHG-0092  docs      Documentação técnica e de utilização em PDF, em português e em inglês
                                                                                                                                                                                                                                                                     └── CHG-0093  docs      Documentação em PDF com capa corporativa, sumário, dez diagramas e integrações
                                                                                                                                                                                                                                                                         └── CHG-0094  docs      Capa dos PDF em fundo branco
+                                                                                                                                                                                                                                                                            └── CHG-0095  docs      Capa sem a nota da outra versão
 ```
 
 ## Regras
@@ -165,6 +166,22 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0095 · Capa sem a nota da outra versão
+
+- **Data:** 2026-11-19
+- **Tipo:** docs
+- **Pai:** CHG-0094
+- **Estado:** activa
+- **Requisitos:** nenhum
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `docs/sextante-documentacao.pt.{md,pdf}`, `docs/sextante-documentation.en.{md,pdf}`, `scripts/docs/build_pdf.mjs`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** a capa dos dois PDF já não tem a nota, confirmado com `pdftotext`. Continuam com 42 páginas e sem caminhos locais.
+
+Pedido do responsável: tirar da capa a nota que remetia para a versão na outra língua. O construtor só escreve esse rodapé quando o documento o define.
 
 ### CHG-0094 · Capa dos PDF em fundo branco
 

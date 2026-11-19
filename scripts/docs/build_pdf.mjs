@@ -124,7 +124,7 @@ function cover(meta, logo) {
     <p class="doc">${meta.title}</p>
   </div>
   <dl class="cover-meta">${rows}</dl>
-  <div class="cover-foot">${meta.cover_foot}</div>
+  ${meta.cover_foot ? `<div class="cover-foot">${meta.cover_foot}</div>` : ""}
 </section>`;
 }
 
