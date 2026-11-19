@@ -27,3 +27,9 @@ graphify-out/
 
 # Build contexts and zips assembled for ShardCloud (deploy/shardcloud/build_context.sh)
 build/
+
+# Technical documentation PDFs and their Markdown sources stay local, never on GitHub
+docs/sextante-documentacao.pt.md
+docs/sextante-documentacao.pt.pdf
+docs/sextante-documentation.en.md
+docs/sextante-documentation.en.pdf

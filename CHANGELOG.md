@@ -102,6 +102,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                                                                                     └── CHG-0093  docs      Documentação em PDF com capa corporativa, sumário, dez diagramas e integrações
                                                                                                                                                                                                                                                                         └── CHG-0094  docs      Capa dos PDF em fundo branco
                                                                                                                                                                                                                                                                             └── CHG-0095  docs      Capa sem a nota da outra versão
+                                                                                                                                                                                                                                                                                └── CHG-0096  docs      Documentação técnica só local, fora do repositório
 ```
 
 ## Regras
@@ -166,6 +167,28 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0096 · Documentação técnica só local, fora do repositório
+
+- **Data:** 2026-11-19
+- **Tipo:** docs
+- **Pai:** CHG-0095
+- **Estado:** activa
+- **Requisitos:** nenhum
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `.gitignore`; deixam de ser seguidos `docs/sextante-documentacao.pt.{md,pdf}` e `docs/sextante-documentation.en.{md,pdf}`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit e voltar a juntar os quatro ficheiros.
+- **Verificação:**
+  - `git status` mostra os quatro ficheiros como removidos do índice.
+  - Os ficheiros continuam no disco.
+  - O `.gitignore` impede que voltem a entrar.
+
+Pedido do responsável: os dois documentos e as suas fontes Markdown ficam só na máquina local e não sobem para o GitHub. Ficam no repositório:
+- o gerador (`scripts/docs/`);
+- os diagramas (`docs/diagramas/documentacao/`, `docs/assets/diagrams/`);
+- as capturas.
 
 ### CHG-0095 · Capa sem a nota da outra versão
 
