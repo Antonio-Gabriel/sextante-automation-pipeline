@@ -297,7 +297,11 @@ else
   say "${GREEN}✓${RESET} created $SHARDCLOUD_DEPLOY_REPOSITORY (private)."
 fi
 say "A deploy key lets the pipeline write to that repository, and only to it."
-confirm "Generate a new deploy key and store it as the secret SHARDCLOUD_DEPLOY_KEY?" || exit 1
+if gh secret list --json name --jq '.[].name' 2>/dev/null | grep -qx SHARDCLOUD_DEPLOY_KEY &&
+  ! confirm "The secret SHARDCLOUD_DEPLOY_KEY already exists. Replace it with a new key?"; then
+  say "Deploy key kept; the first context was pushed by the earlier run."
+  set_var SHARDCLOUD_DEPLOY_REPOSITORY "$SHARDCLOUD_DEPLOY_REPOSITORY"
+else
 key_dir=$(mktemp -d)
 ssh-keygen -q -t ed25519 -N "" -C "sextante release pipeline" -f "$key_dir/key"
 gh repo deploy-key add "$key_dir/key.pub" --repo "$SHARDCLOUD_DEPLOY_REPOSITORY" \
@@ -314,6 +318,7 @@ mkdir -p build
 rm -rf "$key_dir" "$build_dir"
 set_var SHARDCLOUD_DEPLOY_REPOSITORY "$SHARDCLOUD_DEPLOY_REPOSITORY"
 note "Old deploy keys of earlier runs can be deleted in that repository's Settings → Deploy keys."
+fi
 
 # ── 5 ────────────────────────────────────────────────────────────────────────
 stage "ShardCloud: the image, linked to the deploy repository"
@@ -357,8 +362,17 @@ done
 SHARDCLOUD_URL="https://$SHARDCLOUD_SUBDOMAIN.shardweb.app"
 say "Address: $SHARDCLOUD_URL"
 write_env SHARDCLOUD_URL "$SHARDCLOUD_URL"
-if deploy/shardcloud/wait_for_release.sh "$SHARDCLOUD_URL" setup 5; then
+status=0
+deploy/shardcloud/wait_for_release.sh "$SHARDCLOUD_URL" setup 5 || status=$?
+if (( status == 0 )); then
   say "${GREEN}✓${RESET} The app answers at $SHARDCLOUD_URL"
+elif (( status == 2 )); then
+  open_url "$SHARDCLOUD_URL/api/health"
+  step "Cloudflare hides the answer from this terminal: check it in the browser instead."
+  if ! confirm "Does the page show \"version\":\"setup\"?"; then
+    warn "Check the app's logs in ShardCloud; if it expects a port other than 80, change"
+    warn "deploy/shardcloud/nginx.conf."
+  fi
 else
   warn "No answer with version 'setup' yet. Check the app's logs in ShardCloud; if it expects"
   warn "a port other than 80, change deploy/shardcloud/nginx.conf."

@@ -357,6 +357,9 @@ Decisão tomada pelo responsável em 19-11-2026. Revê a parte de §3.27 que pub
 - **O que passa a ser feito à mão.** A ShardCloud não reinicia a app depois de reconstruir a imagem. Uma pessoa faz o backup e o *restart* no dashboard, e o pipeline espera até o endereço público responder com a versão nova. O backup automático antes de cada deploy (§3.27) deixa de ser possível sem a API e passa a ser este passo à mão, indicado no resumo do trabalho.
 - **O assistente** (`scripts/setup_shardcloud.sh`) cria o repositório de deploy, gera a *deploy key*, guarda-a como segredo e envia o primeiro contexto. Os passos na ShardCloud (ligar o GitHub, criar e ligar a imagem, criar a app e as variáveis) ficam guiados no dashboard.
 - **Quando a API voltar a aceitar a chave,** o backup e o *restart* podem voltar ao pipeline. Fica registado como melhoria, não como dívida escondida.
+- **O endereço da app também está atrás do Cloudflare.** `https://<subdomínio>.shardweb.app` responde com o mesmo desafio a clientes que não são navegadores. Verificado pelo agente em 19-11-2026: `cf-mitigated: challenge` em `/` e em `/api/health`. Daqui decorre o seguinte:
+  - o pipeline e o assistente não conseguem ler a versão publicada. Detectam o desafio e pedem a uma pessoa que a confirme no navegador;
+  - **programas não conseguem usar a API do Sextante publicado** com `X-API-Key`; só as pessoas, no navegador. Resolve-se com a ShardCloud, por exemplo com uma regra que deixe passar `/api/*` ou com um domínio próprio com o Cloudflare configurado pelo responsável.
 
 ### 3.27 CI/CD, imagem versionada no Docker Hub e publicação na ShardCloud
 

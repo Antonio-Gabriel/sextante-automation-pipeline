@@ -90,6 +90,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                                     └── CHG-0081  fix       Assistente mostra a razão da ShardCloud para uma recusa
                                                                                                                                                                                                                         └── CHG-0082  infra     Deploy na ShardCloud por um repositório de deploy
                                                                                                                                                                                                                             └── CHG-0083  fix       Assistente aceita o endereço da app em qualquer forma
+                                                                                                                                                                                                                                └── CHG-0084  fix       O desafio do Cloudflare no endereço da app é detectado
 ```
 
 ## Regras
@@ -154,6 +155,30 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0084 · O desafio do Cloudflare no endereço da app é detectado
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0083
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `deploy/shardcloud/wait_for_release.sh`, `.github/workflows/release.yml`, `scripts/setup_shardcloud.sh`, `backend/tests/deploy/test_shardcloud_deploy.py`, `docs/00` §3.28
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** `tests/deploy` com 36 testes, incluindo o desafio, que termina com o código 2 sem esperar. O agente pediu `https://sextante.shardweb.app/` e `/api/health` sem credencial: ambos responderam 403 com `cf-mitigated: challenge` e «Just a moment…».
+
+**Relato do responsável.** A fase 6 do assistente esperava sem fim, com «no answer». O endereço da app também está atrás do desafio do Cloudflare, que responde com uma página HTML. O script lia essa página como «sem resposta».
+
+**Correcções.**
+- `wait_for_release.sh` reconhece o cabeçalho `cf-mitigated: challenge`, pára com o código 2 e diz o que confirmar no navegador. O desafio não é contornado.
+- O release, com o código 2, acrescenta ao resumo o passo de confirmar a versão no navegador e não falha.
+- O assistente abre o endereço no navegador e pergunta se mostra a versão.
+- Corrido de novo, o assistente já não obriga a gerar uma *deploy key* nova quando o segredo já existe.
+
+**Consequência registada em §3.28.** Os programas não conseguem usar a API do Sextante publicado com `X-API-Key` enquanto o desafio estiver activo. As pessoas, no navegador, conseguem.
 
 ### CHG-0083 · Assistente aceita o endereço da app em qualquer forma
 

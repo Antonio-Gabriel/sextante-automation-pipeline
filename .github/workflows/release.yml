@@ -126,4 +126,12 @@ jobs:
         env:
           VERSION: ${{ needs.publish.outputs.version }}
           SHARDCLOUD_URL: ${{ vars.SHARDCLOUD_URL }}
-        run: deploy/shardcloud/wait_for_release.sh "$SHARDCLOUD_URL" "$VERSION" 60
+        # Code 2: Cloudflare hides the answer from this runner; a person confirms in a browser.
+        run: |
+          status=0
+          deploy/shardcloud/wait_for_release.sh "$SHARDCLOUD_URL" "$VERSION" 60 || status=$?
+          if [ "$status" -eq 2 ]; then
+            echo "4. Open $SHARDCLOUD_URL/api/health in a browser and check that it shows $VERSION." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          exit "$status"

@@ -139,3 +139,31 @@ def test_the_deploy_fails_when_the_new_version_never_answers() -> None:
 
     assert result.returncode != 0
     assert "restarted" in result.stderr
+
+
+class _Challenge(BaseHTTPRequestHandler):
+    def log_message(self, *_: object) -> None:
+        return
+
+    def do_GET(self) -> None:
+        payload = b"<!DOCTYPE html><title>Just a moment...</title>"
+        self.send_response(403)
+        self.send_header("cf-mitigated", "challenge")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+
+@pytest.mark.requirement("D-3.28")
+def test_a_cloudflare_challenge_stops_the_wait_and_asks_for_a_browser() -> None:
+    """Never worked around, never waited on: code 2, and what a person checks instead."""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _Challenge)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        result = _wait(f"http://127.0.0.1:{server.server_address[1]}", "1.1.0", "5")
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert result.returncode == 2
+    assert "in a browser" in result.stderr and "1.1.0" in result.stderr
