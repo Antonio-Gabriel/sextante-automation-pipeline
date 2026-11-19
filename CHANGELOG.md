@@ -151,7 +151,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0071
 - **Estado:** activa
 - **Requisitos:** SEC-04, SEC-06, SEC-11, SEC-16, SEC-20
-- **Commit:** pendente
+- **Commit:** `4ad9e47`
 - **Migração:** nenhuma
 - **Ficheiros:** `backend/Dockerfile`, `backend/Makefile`, `backend/scripts/lock_dependencies.sh`, `backend/tests/deploy/test_container_config.py`, `frontend/Dockerfile`, `frontend/.dockerignore`, `frontend/nginx/default.conf`; `docs/00` §3.26, `docs/03` SEC-06 e SEC-11, `CLAUDE.md`
 - **Reversibilidade:** total
