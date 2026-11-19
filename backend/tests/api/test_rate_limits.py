@@ -206,7 +206,7 @@ def test_a_request_refused_by_its_endpoint_uses_no_general_quota(
 
 @pytest.mark.requirement("SEC-12")
 def test_the_default_limits_are_the_table_of_sec_12(valid_environment: dict[str, str]) -> None:
-    """Without overrides, the limits are SEC-12's: requests per window, in seconds."""
+    """Without overrides, the limits are SEC-12's, and login's: requests per window, in seconds."""
     limits = rate_limits(Settings.from_environment(valid_environment))
 
     assert {
@@ -217,6 +217,7 @@ def test_the_default_limits_are_the_table_of_sec_12(valid_environment: dict[str,
         "reprocess": (20, 3600.0),
         "export": (30, 3600.0),
         "correction": (120, 60.0),
+        "login": (10, 60.0),
     }
 
 

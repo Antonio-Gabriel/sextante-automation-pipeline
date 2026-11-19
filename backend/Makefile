@@ -4,7 +4,7 @@ VENV := .venv
 BIN := $(VENV)/bin
 ENV_FILE := ../config/.env
 
-.PHONY: install run test test-unit typecheck lint fmt boundaries licenses golden golden-model traceability-matrix check
+.PHONY: install run test test-unit typecheck lint fmt boundaries licenses golden golden-model openapi traceability-matrix check
 
 install:
 	python3 -m venv $(VENV)
@@ -48,6 +48,10 @@ golden:
 golden-model:
 	if [ -f $(ENV_FILE) ]; then set -a && . $(ENV_FILE) && set +a; fi && \
 	$(BIN)/python -m tests.golden.model_run
+
+# Rewrites frontend/openapi.json from the running contract; then `npm run api:types`.
+openapi:
+	OPENAPI_SNAPSHOT_WRITE=1 $(BIN)/pytest -q tests/api/test_openapi_contract.py
 
 traceability-matrix:
 	$(BIN)/python scripts/traceability_matrix.py

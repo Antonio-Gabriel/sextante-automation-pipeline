@@ -15,6 +15,7 @@ CSV_SEPARATORS: Final = frozenset({",", ";", "|"})
 # A key a person could guess is refused at startup.
 API_KEY_MIN_LENGTH: Final = 16
 RATE_LIMIT_MAXIMUM: Final = 100_000
+SESSION_HOURS_MAXIMUM: Final = 24
 MODEL_CALL_WINDOW_MAXIMUM_SECONDS: Final = 86_400
 PDF_MIN_CHARS_DEFAULT: Final = 100
 PDF_MIN_CHARS_MAXIMUM: Final = 10_000
@@ -64,6 +65,13 @@ class Settings(ModelCallSettings):
     upload_dir: Path
     # Key every /api call but health must carry in X-API-Key (L-07, revised 2026-11-19).
     api_key: SecretStr = Field(min_length=API_KEY_MIN_LENGTH, max_length=SETTING_TEXT_MAX_LENGTH)
+    # Token a person types to open a browser session (SEC-06, frontend ticket 01).
+    access_token: SecretStr = Field(
+        min_length=API_KEY_MIN_LENGTH, max_length=SETTING_TEXT_MAX_LENGTH
+    )
+    # Life of a session, absolute from login, and whether its cookie is Secure.
+    session_hours: int = Field(default=8, ge=1, le=SESSION_HOURS_MAXIMUM)
+    session_cookie_secure: bool = True
     entity_denylist_path: Path
     # Author of every review action in the audit trail: there is no login in this
     # version (L-07), so the identity comes from configuration (REQ-REV-004).
@@ -76,6 +84,7 @@ class Settings(ModelCallSettings):
     rate_limit_export_per_hour: int = Field(default=30, ge=1, le=RATE_LIMIT_MAXIMUM)
     rate_limit_correction_per_minute: int = Field(default=120, ge=1, le=RATE_LIMIT_MAXIMUM)
     rate_limit_general_per_minute: int = Field(default=300, ge=1, le=RATE_LIMIT_MAXIMUM)
+    rate_limit_login_per_minute: int = Field(default=10, ge=1, le=RATE_LIMIT_MAXIMUM)
     # Ceiling on model calls per window, in the worker: over it invoices wait queued
     # (SEC-12). Provisional default, to calibrate with the real volume (L-02).
     model_call_ceiling: int = Field(default=200, ge=1, le=RATE_LIMIT_MAXIMUM)

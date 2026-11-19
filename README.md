@@ -19,6 +19,7 @@ For each line of a supplier invoice, Sextante assigns the exact item number from
 ## Requirements
 
 - Python 3.12
+- Node.js 22 and npm, for the frontend
 - The catalog file, `sources/catalog.xlsx`, in the repository. It is the catalog received from AMT, with its file metadata (author and a local Windows path) removed and its data unchanged.
 
 ## Install and run
@@ -38,7 +39,7 @@ curl http://127.0.0.1:8000/api/health
 
 The response gives the SHA-256 of the loaded catalog.
 
-Every `/api` call except the health check needs the `X-API-Key` header, with the value of `SEXTANTE_API_KEY`; without it the answer is 401. The interactive API documentation (Swagger UI) is at `http://127.0.0.1:8000/docs`: press **Authorize** and paste the key once. Every `POST` and `PATCH` except the upload needs an `Idempotency-Key` header: in Swagger, fill the field with any new value, for example `test-1`, and change it for each new request. Without `SEXTANTE_ANTHROPIC_API_KEY` set to a valid key with credit, an invoice with service lines ends `failed`, and can be reprocessed later.
+Every `/api` call except the health check and login needs a credential: the `X-API-Key` header, with the value of `SEXTANTE_API_KEY`, for programs and Swagger; or the session cookie of the frontend, for people (see [Frontend](#frontend)). Without either the answer is 401. The interactive API documentation (Swagger UI) is at `http://127.0.0.1:8000/docs`: press **Authorize** and paste the key once. Every `POST` and `PATCH` except the upload needs an `Idempotency-Key` header: in Swagger, fill the field with any new value, for example `test-1`, and change it for each new request. Without `SEXTANTE_ANTHROPIC_API_KEY` set to a valid key with credit, an invoice with service lines ends `failed`, and can be reprocessed later.
 
 | Endpoint | What it does |
 |---|---|
@@ -53,6 +54,28 @@ Every `/api` call except the health check needs the `X-API-Key` header, with the
 | `POST /api/encoded-lines/{encoded_line_id}/accept` | Accept a pending line without changing its code. Needs `Idempotency-Key` |
 | `GET /api/exports/{job_id}?format=csv` | Export with the nine columns: CSV in UTF-8 with BOM, or `format=xlsx` |
 
+## Frontend
+
+The frontend is a React application in `frontend/`. Without Docker it runs as two processes: the backend above, and the Vite development server, which serves the pages and forwards every `/api` request to the backend. The browser sees one origin, so there is no CORS.
+
+1. In `config/.env`, set `SEXTANTE_ACCESS_TOKEN` to a long random value, different from the API key (`python3 -c "import secrets; print(secrets.token_urlsafe(32))"`). Restart the backend after changing it.
+2. Start the backend: `cd backend && make run`.
+3. In another terminal, install and start the frontend:
+
+   ```bash
+   cd frontend
+   npm ci
+   npm run dev
+   ```
+
+4. Open `http://127.0.0.1:5173` and type the access token in the login screen.
+
+The token opens a session kept in a cookie the page cannot read (`HttpOnly`, `SameSite=Strict`, `Secure`), valid for 8 hours by default (`SEXTANTE_SESSION_HOURS`). **Sair** ends it in the server. The browser never receives the API key, and no secret is compiled into the frontend: only variables starting `VITE_SEXTANTE_` can reach it, and none is a secret. Sessions live in the memory of the backend: restarting it logs everyone out. A wrong token is refused, and login attempts are limited to 10 per minute (`SEXTANTE_RATE_LIMIT_LOGIN_PER_MINUTE`).
+
+The backend address defaults to `http://127.0.0.1:8000`; set `SEXTANTE_BACKEND_URL` before `npm run dev` to change it. Browsers accept the `Secure` cookie on `http://127.0.0.1` and `http://localhost`; if yours refuses it, set `SEXTANTE_SESSION_COOKIE_SECURE=false` for local use only.
+
+The API types of the frontend are generated from the backend's OpenAPI document, never written by hand. After changing the API, run `make openapi` in `backend/`, then `npm run api:types` in `frontend/`; `make test` fails while `frontend/openapi.json` is stale.
+
 The application refuses to start, with a message naming the problem, in either of these cases:
 
 - a variable in `config/.env` is missing;
@@ -60,7 +83,7 @@ The application refuses to start, with a message naming the problem, in either o
 
 ## Rate limits
 
-The API counts requests per time window (SEC-12). Over a quota the answer is `429` with a `Retry-After` header, in seconds. The health check is never limited, a request refused for its API key never uses a quota, and a request refused by one limit is not counted by the others. Quotas belong to the API key: with the single key of this version, everyone using it shares one quota.
+The API counts requests per time window (SEC-12). Over a quota the answer is `429` with a `Retry-After` header, in seconds. The health check is never limited, a request refused for its credential never uses a quota, and a request refused by one limit is not counted by the others. The API key and the frontend session stand for one principal, so everyone shares one quota. Login attempts, made before any credential, are counted apart.
 
 | Limit | Default | Variable |
 |---|---|---|
@@ -69,6 +92,7 @@ The API counts requests per time window (SEC-12). Over a quota the answer is `42
 | Reprocessing and entity resolution | 20 per hour | `SEXTANTE_RATE_LIMIT_REPROCESS_PER_HOUR` |
 | Export | 30 per hour | `SEXTANTE_RATE_LIMIT_EXPORT_PER_HOUR` |
 | Line correction and acceptance | 120 per minute | `SEXTANTE_RATE_LIMIT_CORRECTION_PER_MINUTE` |
+| Login with the access token | 10 per minute | `SEXTANTE_RATE_LIMIT_LOGIN_PER_MINUTE` |
 
 Windows are fixed, so up to twice a quota can pass across the boundary between two windows. The counters live in the memory of the server process. With one process that is enough. With two or more instances each one allows the full quota: running more than one instance needs a shared counter, such as Redis or Valkey.
 
@@ -115,7 +139,7 @@ The entity threshold was measured on the 12 samples: third parties score below 4
 
 ## Development commands
 
-Run from `backend/`.
+Backend commands, run from `backend/`:
 
 | Command | What it does |
 |---|---|
@@ -127,6 +151,20 @@ Run from `backend/`.
 | `make traceability-matrix` | Tests cited by requirement. Fails on an unknown identifier |
 | `make golden-model` | Manual only: item codes measured with the real model on the local samples. Calls the Anthropic API and costs money |
 | `make golden` | Golden set on the local samples, without the model: extraction, entity, target sheet, line types and refusals. Needs `SEXTANTE_GOLDEN_SAMPLES_PATH` |
+| `make openapi` | Rewrite `frontend/openapi.json` from the API |
+
+Frontend commands, run from `frontend/`:
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Development server on `http://127.0.0.1:5173`, forwarding `/api` to the backend |
+| `npm test` | Component tests, against a simulated API (MSW). No test reaches a server |
+| `npm run typecheck` | TypeScript, strict |
+| `npm run lint` | ESLint: no `any`, no `dangerouslySetInnerHTML` |
+| `npm run licenses` | Production dependency licences against NFR-LIC-001 |
+| `npm run api:types` | Generate the API types from `openapi.json` |
+| `npm run build` | Production build in `dist/` |
+| `npm run check` | Typecheck, lint, tests and licences |
 
 ## Documentation
 

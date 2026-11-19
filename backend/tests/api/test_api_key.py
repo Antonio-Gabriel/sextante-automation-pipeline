@@ -28,7 +28,7 @@ def test_a_call_without_the_right_key_is_refused(
         response = client.get("/api/jobs/some-job", headers=headers)
 
     assert response.status_code == 401
-    assert response.json()["code"] == "errors.auth.api_key_invalid"
+    assert response.json()["code"] == "errors.auth.credential_invalid"
 
 
 @pytest.mark.requirement("SEC-06", "L-07")
@@ -48,8 +48,9 @@ def test_health_and_the_interactive_docs_stay_open(valid_environment: dict[str, 
         scheme = client.get("/openapi.json").json()["components"]["securitySchemes"]
 
     assert statuses == [200, 200]
-    assert [(s["type"], s["in"], s["name"]) for s in scheme.values()] == [
-        ("apiKey", "header", "X-API-Key")
+    assert sorted((s["type"], s["in"], s["name"]) for s in scheme.values()) == [
+        ("apiKey", "cookie", "sextante_session"),
+        ("apiKey", "header", "X-API-Key"),
     ]
 
 
@@ -63,7 +64,7 @@ def test_a_refused_key_never_reaches_the_log(
         client.get("/api/jobs/some-job", headers={"X-API-Key": "leaked-key-value-1234"})
 
     output = capsys.readouterr().out
-    assert "api_key_rejected" in output
+    assert "credential_rejected" in output
     assert "leaked-key-value-1234" not in output
 
 

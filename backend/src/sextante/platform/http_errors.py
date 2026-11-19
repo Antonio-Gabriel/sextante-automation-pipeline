@@ -6,6 +6,7 @@ from typing import Final
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict
 
 from sextante.platform.errors import DomainError
 from sextante.platform.structured_logging import correlation_id_var
@@ -14,6 +15,24 @@ from sextante.platform.user_messages import USER_MESSAGES_PT
 logger = logging.getLogger(__name__)
 
 DOMAIN_ERROR_DEFAULT_STATUS: Final = 422
+
+
+class ErrorResponse(BaseModel):
+    """Body of every refused or failed request: stable code, Portuguese message, reference."""
+
+    model_config = ConfigDict(frozen=True)
+
+    code: str
+    message: str
+    correlation_id: str
+
+
+# Declared on the application so the OpenAPI document, and the frontend's generated
+# types, carry the error body of every route.
+ERROR_RESPONSES: Final[dict[int | str, dict[str, object]]] = {
+    "4XX": {"model": ErrorResponse, "description": "Refused, with the Portuguese message."},
+    "5XX": {"model": ErrorResponse, "description": "Failed, with a reference for support."},
+}
 
 
 def error_response(
@@ -27,11 +46,11 @@ def error_response(
     return JSONResponse(
         status_code=status_code,
         headers=dict(headers or {}),
-        content={
-            "code": user_message_key,
-            "message": USER_MESSAGES_PT[user_message_key],
-            "correlation_id": correlation_id_var.get(),
-        },
+        content=ErrorResponse(
+            code=user_message_key,
+            message=USER_MESSAGES_PT[user_message_key],
+            correlation_id=correlation_id_var.get(),
+        ).model_dump(),
     )
 
 

@@ -63,13 +63,13 @@ from sextante.matching.infrastructure.claude_classifier import (
 from sextante.matching.infrastructure.denylist_file import DenylistFileError, read_entity_denylist
 from sextante.matching.infrastructure.rapidfuzz_scorer import RapidfuzzLexicalScorer
 from sextante.matching.infrastructure.repository import MatchingRepository
-from sextante.platform.api_key import ApiKeyInvalidError, require_api_key
 from sextante.platform.audit import AuditEventRepository
 from sextante.platform.clock import Clock, IdentifierGenerator, SystemClock, UuidIdentifierGenerator
 from sextante.platform.correlation import CorrelationIdMiddleware
+from sextante.platform.credentials import CredentialInvalidError, require_credential
 from sextante.platform.database import apply_migrations, create_database_engine
 from sextante.platform.health import health_router
-from sextante.platform.http_errors import install_error_handlers
+from sextante.platform.http_errors import ERROR_RESPONSES, install_error_handlers
 from sextante.platform.idempotency import (
     PURGE_INTERVAL_SECONDS,
     IdempotencyKeyRequiredError,
@@ -89,6 +89,14 @@ from sextante.platform.rate_limit import (
     enforce_rate_limits,
 )
 from sextante.platform.retry import RetryPolicy, Sleep
+from sextante.platform.session import (
+    AccessTokenInvalidError,
+    SessionPolicy,
+    SessionStore,
+    open_session_route,
+    session_router,
+    session_status_router,
+)
 from sextante.platform.settings import Settings, StartupConfigurationError
 from sextante.platform.structured_logging import configure_logging
 from sextante.review.api.routes import accept_line as accept_line_route
@@ -131,7 +139,8 @@ class ReferenceData:
 HTTP_STATUS_BY_ERROR = {
     InvoiceNotFoundError: 404,
     InvoiceNotReprocessableError: 409,
-    ApiKeyInvalidError: 401,
+    CredentialInvalidError: 401,
+    AccessTokenInvalidError: 401,
     RateLimitExceededError: 429,
     InvoiceNotAmbiguousError: 409,
     JobNotFoundError: 404,
@@ -189,14 +198,13 @@ def create_app(
     adapters = dependencies or AppDependencies()
     app = FastAPI(
         title="Sextante",
+        responses=ERROR_RESPONSES,
         lifespan=_lifespan(settings, ReferenceData(catalog, denylist, target_entity), adapters),
     )
     app.state.catalog = catalog
     app.add_middleware(CorrelationIdMiddleware)
     install_error_handlers(app, HTTP_STATUS_BY_ERROR)
-    app.state.rate_limiter = RateLimiter(rate_limits(settings), adapters.monotonic)
-    app.state.costly_endpoints = COSTLY_ENDPOINTS
-    _include_routers(app, settings)
+    _include_routers(app, settings, adapters.monotonic)
     return app
 
 
@@ -229,6 +237,7 @@ def rate_limits(settings: Settings) -> dict[RateRule, RateLimit]:
         RateRule.REPROCESS: RateLimit(settings.rate_limit_reprocess_per_hour, HOUR),
         RateRule.EXPORT: RateLimit(settings.rate_limit_export_per_hour, HOUR),
         RateRule.CORRECTION: RateLimit(settings.rate_limit_correction_per_minute, MINUTE),
+        RateRule.LOGIN: RateLimit(settings.rate_limit_login_per_minute, MINUTE),
     }
 
 
@@ -242,16 +251,24 @@ COSTLY_ENDPOINTS: Final[Mapping[object, RateRule]] = {
     export_job_route: RateRule.EXPORT,
     correct_line_route: RateRule.CORRECTION,
     accept_line_route: RateRule.CORRECTION,
+    open_session_route: RateRule.LOGIN,
 }
 
 
-def _include_routers(app: FastAPI, settings: Settings) -> None:
+def _include_routers(app: FastAPI, settings: Settings, monotonic: Monotonic) -> None:
     app.state.api_key = settings.api_key
+    app.state.sessions = SessionStore(settings.session_hours * HOUR, monotonic)
+    app.state.session_policy = SessionPolicy(settings.access_token, settings.session_cookie_secure)
+    app.state.rate_limiter = RateLimiter(rate_limits(settings), monotonic)
+    app.state.costly_endpoints = COSTLY_ENDPOINTS
     app.include_router(health_router)
-    # Every /api route but health needs the key (L-07), then counts against the rate
-    # limits (SEC-12); the docs stay open to read.
-    guards = [Depends(require_api_key), Depends(enforce_rate_limits)]
-    for router in (ingestion_router, review_router, export_router):
+    # Opening and ending a session need no credential: they are how a person gets one.
+    app.include_router(session_router)
+    # Every other /api route needs the key or a session (L-07), then counts against the
+    # rate limits (SEC-12); the docs stay open to read.
+    guards = [Depends(require_credential), Depends(enforce_rate_limits)]
+    routers = (session_status_router, ingestion_router, review_router, export_router)
+    for router in routers:
         app.include_router(router, dependencies=guards)
 
 

@@ -61,6 +61,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                 └── CHG-0052  fix       Correcções da revisão do tecto de chamadas ao modelo
                                                                                                                                                                                                     └── CHG-0053  security  Extracção de PDF isolada com limites
                                                                                                                                                                                                         └── CHG-0054  fix       Correcções da revisão da extracção isolada
+                                                                                                            └── CHG-0055  feat      Esqueleto do frontend e login por token
 ```
 
 ## Regras
@@ -125,6 +126,24 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0055 · Esqueleto do frontend e login por token
+
+- **Data:** 2026-11-19
+- **Tipo:** feat
+- **Pai:** CHG-0054
+- **Estado:** activa
+- **Requisitos:** SEC-06, SEC-02, SEC-12, SEC-15, REQ-PLT-006, REQ-PLT-007, NFR-DOC-001, NFR-LIC-001
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `backend/src/sextante/platform/session.py` (novo), `platform/credentials.py` (era `api_key.py`), `platform/rate_limit.py`, `platform/settings.py`, `platform/http_errors.py`, `platform/user_messages.py`, `main.py`, `backend/Makefile`, testes `tests/api/test_session_login.py`, `test_openapi_contract.py`, `test_api_key.py`, `test_rate_limits.py`, `test_startup.py`, `conftest.py`; `frontend/` (novo); `config/.env.example`, `README.md`, `docs/00-decisoes-e-lacunas.md` (L-07), `docs/02-arquitectura.md` (§7), `docs/03-seguranca.md` (SEC-06, SEC-11)
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit e retirar `SEXTANTE_ACCESS_TOKEN` do `config/.env`.
+- **Verificação:** 372 testes do backend e o `xfail` estrito; 7 testes do frontend com a API simulada. `make golden` com 12 amostras sem divergências. `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos. `tsc` estrito, ESLint, licenças de produção dentro de NFR-LIC-001, `npm audit` sem vulnerabilidades. Ensaio manual pelo proxy do Vite: recusa sem sessão, token errado, login com o cookie esperado, sessão, saída, cookie antigo recusado, e nenhum token no log.
+
+**Servidor.** `SEXTANTE_ACCESS_TOKEN` passa a obrigatório, com pelo menos 16 caracteres. `POST /api/session` compara-o em tempo constante e abre uma sessão em cookie `HttpOnly`, `SameSite=Strict`, `Secure`, `Path=/api`, de 8 horas (`SEXTANTE_SESSION_HOURS`); `POST /api/session/end` termina-a; `GET /api/session` diz se há sessão. As sessões vivem na memória do processo, só pelo digest do identificador. O guarda de `/api` aceita a chave ou a sessão, que representam o mesmo principal e partilham a quota; o erro passa a `errors.auth.credential_invalid` e o evento a `credential_rejected`. O login tem limite próprio, 10 por minuto. O corpo de erro passa a modelo (`ErrorResponse`) declarado no OpenAPI.
+
+**Frontend.** React 18, TypeScript estrito, Vite, TanStack Query e Router, React Hook Form com Zod, Sonner, Tailwind e componentes do shadcn/ui copiados para `ui-kit`. Os tipos da API são gerados de `frontend/openapi.json`, que um teste do backend mantém actualizado (`make openapi`). Ecrã de entrada e ecrã inicial com o estado do servidor, o digest do catálogo e a saída; um 401 a meio da sessão volta à entrada. Texto todo do catálogo `pt.ts`. Em desenvolvimento o Vite encaminha `/api` para o backend, e só variáveis `VITE_SEXTANTE_` chegam ao código compilado.
 
 ### CHG-0054 · Correcções da revisão da extracção isolada
 

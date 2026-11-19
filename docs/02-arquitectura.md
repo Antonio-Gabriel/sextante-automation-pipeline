@@ -364,7 +364,7 @@ Cinco ecrãs, e deliberadamente nada mais:
 | Revisão de linha | Candidatos com scores, escolha do modelo, correcção com selector do catálogo, nota |
 | Exportação | Botão para CSV e para XLSX |
 
-Fica fora: autenticação e perfis por L-07, painéis, gráficos, edição das descrições extraídas, aprovação em várias etapas, agendamento.
+Entra um ecrã de entrada com o token de acesso, que abre uma sessão no servidor (L-07, acrescento de 19-11-2026). Fica fora: perfis e identidade por pessoa, painéis, gráficos, edição das descrições extraídas, aprovação em várias etapas, agendamento.
 
 A razão do âmbito curto é de alocação de esforço. É um protótipo cuja avaliação recai sobre a qualidade do mapeamento e sobre a clareza das decisões de arquitectura. Um frontend ambicioso come o tempo que devia ir para o conjunto dourado e para a calibração, e não compensa em nada que esteja a ser avaliado.
 

@@ -159,6 +159,10 @@ Nunca desenhar esquemas de cifra próprios. Quando a cifra entrar, é AES-256-GC
 
 **Implementação nesta versão: uma chave da API, sem perfis.** *Revisto em 19-11-2026, por decisão do responsável (L-07).* Todo o `/api`, excepto `/api/health`, exige o cabeçalho `X-API-Key` com o valor de `SEXTANTE_API_KEY`, comparado em tempo constante; sem ele, 401. A chave tem pelo menos 16 caracteres, e uma recusa é registada sem a chave enviada. A documentação interactiva (`/docs`) fica aberta para leitura. A chave fecha a API a quem não a tem, mas não distingue pessoas: o autor de uma revisão continua a vir de `SEXTANTE_REVIEWER_ID`.
 
+**Sessão do frontend.** *Acrescento de 19-11-2026.* Uma pessoa não usa a chave: escreve o token de acesso (`SEXTANTE_ACCESS_TOKEN`, obrigatório, pelo menos 16 caracteres) no ecrã de entrada, e `POST /api/session` compara-o em tempo constante. Um token certo abre uma sessão num cookie `HttpOnly`, `SameSite=Strict`, `Secure` por omissão, com `Path=/api` e validade absoluta de 8 horas (`SEXTANTE_SESSION_HOURS`). O servidor guarda só o digest do identificador da sessão, em memória: reiniciar termina todas as sessões. `POST /api/session/end` termina a sessão e limpa o cookie; um cookie antigo reenviado é recusado. O guarda de `/api` aceita a chave ou a sessão, e as duas representam o mesmo principal, por isso partilham a quota de SEC-12. As tentativas de entrada contam-se à parte, 10 por minuto por omissão, e um token recusado é registado como `access_token_rejected`, sem o valor enviado. O código compilado do frontend só lê variáveis `VITE_SEXTANTE_`, e nenhuma é segredo (SEC-02).
+
+Contra pedidos forjados de outro sítio, o cookie é `SameSite=Strict`, não há CORS (o frontend e a API partilham a origem), e toda a escrita de revisão exige `Idempotency-Key`, um cabeçalho que um formulário de outro sítio não consegue enviar.
+
 Isto não é tratado como "mais tarde se vê". É tratado como decisão com consequências declaradas:
 
 - O serviço liga apenas a `127.0.0.1`. **Nunca** a `0.0.0.0`, nem em desenvolvimento, porque essa é a alteração de uma palavra que transforma um protótipo local num sistema aberto na rede da empresa.
@@ -421,7 +425,7 @@ Regras que não se negociam:
 - **Nunca `allow_origins=["*"]`.** Nem em desenvolvimento, porque a configuração de desenvolvimento é a que acaba em produção.
 - **Nunca origem universal combinada com `allow_credentials=True`.** É recusado pelos navegadores e é um erro de configuração. O arranque valida e falha se detectar essa combinação.
 - `allow_methods` lista os métodos que a API usa, não `["*"]`. Esta API não tem `DELETE` nem `PUT`, e a lista diz isso.
-- `allow_headers` lista os cabeçalhos que a API lê. `Authorization` entra quando a autenticação entrar, não antes.
+- `allow_headers` lista os cabeçalhos que a API lê. `Authorization` entra quando a autenticação entrar, não antes. A sessão do frontend vai em cookie, não em `Authorization`; em desenvolvimento o Vite encaminha `/api` e a origem é a mesma, pelo que esta configuração não chega a ser montada.
 - Nenhuma origem com protocolo `http` na lista de produção.
 
 CORS não é um controlo de autorização, e vale repeti-lo: impede um navegador de ler uma resposta de outra origem, e não impede nada a quem construa o pedido fora do navegador. A autorização é SEC-07.

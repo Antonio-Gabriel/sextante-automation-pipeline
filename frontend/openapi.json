@@ -1,0 +1,1832 @@
+{
+  "components": {
+    "schemas": {
+      "AcceptanceRequest": {
+        "additionalProperties": false,
+        "description": "Input contract of an acceptance: an optional note only (SEC-08).",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "AcceptanceRequest",
+        "type": "object"
+      },
+      "AccessTokenRequest": {
+        "additionalProperties": false,
+        "description": "Input contract of the login (SEC-08: unknown fields refused).",
+        "properties": {
+          "token": {
+            "maxLength": 512,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "AccessTokenRequest",
+        "type": "object"
+      },
+      "Body_upload_invoices_api_invoices_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "contentMediaType": "application/octet-stream",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "Body_upload_invoices_api_invoices_post",
+        "type": "object"
+      },
+      "CandidateResponse": {
+        "description": "One item of the line's target sheet, offered to the reviewer.",
+        "properties": {
+          "chosen_by_model": {
+            "title": "Chosen By Model",
+            "type": "boolean"
+          },
+          "description_en": {
+            "title": "Description En",
+            "type": "string"
+          },
+          "description_pt": {
+            "title": "Description Pt",
+            "type": "string"
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "item_number",
+          "description_pt",
+          "description_en",
+          "score",
+          "rank",
+          "chosen_by_model"
+        ],
+        "title": "CandidateResponse",
+        "type": "object"
+      },
+      "CandidatesResponse": {
+        "description": "The line's target sheet and its items, best lexical score first.",
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateResponse"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "target_sheet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Sheet"
+          }
+        },
+        "required": [
+          "target_sheet",
+          "candidates"
+        ],
+        "title": "CandidatesResponse",
+        "type": "object"
+      },
+      "CodingHistoryResponse": {
+        "description": "One coding of a line, in force or superseded, with what produced it.",
+        "properties": {
+          "catalog_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Description"
+          },
+          "catalog_digest": {
+            "title": "Catalog Digest",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "string"
+          },
+          "encoded_at": {
+            "title": "Encoded At",
+            "type": "string"
+          },
+          "encoded_line_id": {
+            "title": "Encoded Line Id",
+            "type": "string"
+          },
+          "in_force": {
+            "title": "In Force",
+            "type": "boolean"
+          },
+          "item_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Number"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "superseded_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Superseded At"
+          }
+        },
+        "required": [
+          "encoded_line_id",
+          "in_force",
+          "item_number",
+          "catalog_description",
+          "confidence",
+          "prompt_version",
+          "model_id",
+          "catalog_digest",
+          "encoded_at",
+          "superseded_at",
+          "review"
+        ],
+        "title": "CodingHistoryResponse",
+        "type": "object"
+      },
+      "Confidence": {
+        "description": "Confidence of one line (REQ-CNF-002).",
+        "enum": [
+          "HIGH",
+          "MEDIUM",
+          "LOW"
+        ],
+        "title": "Confidence",
+        "type": "string"
+      },
+      "CorrectionRequest": {
+        "additionalProperties": false,
+        "description": "Input contract of a correction: an item and a note, never a control field (SEC-08).",
+        "properties": {
+          "item_number": {
+            "maxLength": 32,
+            "pattern": "^[A-Z0-9][A-Z0-9._/-]{0,31}$",
+            "title": "Item Number",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "item_number"
+        ],
+        "title": "CorrectionRequest",
+        "type": "object"
+      },
+      "EntityResolutionRequest": {
+        "additionalProperties": false,
+        "description": "Input contract of an entity resolution: a verdict and a mandatory note (SEC-08).",
+        "properties": {
+          "note": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Note",
+            "type": "string"
+          },
+          "resolution": {
+            "enum": [
+              "MATCH",
+              "NO_MATCH"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolution",
+          "note"
+        ],
+        "title": "EntityResolutionRequest",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Body of every refused or failed request: stable code, Portuguese message, reference.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "correlation_id": {
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "correlation_id"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "ExportFormat": {
+        "description": "Export file formats (REQ-EXP-002).",
+        "enum": [
+          "csv",
+          "xlsx"
+        ],
+        "title": "ExportFormat",
+        "type": "string"
+      },
+      "FlagResponse": {
+        "description": "A flag or a note: the stable code and its Portuguese text (REQ-CNF-004, REQ-PLT-006).",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "FlagResponse",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "description": "Output contract of the health check (SEC-08: explicit output model).",
+        "properties": {
+          "catalog_digest": {
+            "title": "Catalog Digest",
+            "type": "string"
+          },
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "catalog_digest"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "JobProgressResponse": {
+        "description": "Output contract of a job's progress (REQ-PLT-001, REQ-AUD-004).",
+        "properties": {
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "invoice_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Invoice Counts",
+            "type": "object"
+          },
+          "invoice_tokens": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TokenUsageResponse"
+            },
+            "title": "Invoice Tokens",
+            "type": "object"
+          },
+          "invoice_total": {
+            "title": "Invoice Total",
+            "type": "integer"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "invoice_counts",
+          "invoice_total",
+          "input_tokens",
+          "output_tokens",
+          "invoice_tokens"
+        ],
+        "title": "JobProgressResponse",
+        "type": "object"
+      },
+      "ReprocessResponse": {
+        "description": "Output contract of a reprocessing request.",
+        "properties": {
+          "invoice_id": {
+            "title": "Invoice Id",
+            "type": "string"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "invoice_id",
+          "job_id"
+        ],
+        "title": "ReprocessResponse",
+        "type": "object"
+      },
+      "ResultLineResponse": {
+        "description": "One coded line as listed to the client (SEC-18: explicit projection).",
+        "properties": {
+          "billed_entity_detected": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Billed Entity Detected"
+          },
+          "catalog_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Description"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "encoded_line_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Encoded Line Id"
+          },
+          "exact_entity_match": {
+            "title": "Exact Entity Match",
+            "type": "string"
+          },
+          "flags": {
+            "items": {
+              "$ref": "#/components/schemas/FlagResponse"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "invoice_id": {
+            "title": "Invoice Id",
+            "type": "string"
+          },
+          "invoice_line_id": {
+            "title": "Invoice Line Id",
+            "type": "string"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number"
+          },
+          "item_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Number"
+          },
+          "line_description": {
+            "title": "Line Description",
+            "type": "string"
+          },
+          "line_position": {
+            "title": "Line Position",
+            "type": "integer"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/FlagResponse"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "possible_duplicate_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Possible Duplicate Of"
+          },
+          "review_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Note"
+          },
+          "review_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Status"
+          },
+          "target_sheet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Sheet"
+          }
+        },
+        "required": [
+          "invoice_id",
+          "invoice_line_id",
+          "encoded_line_id",
+          "invoice_number",
+          "billed_entity_detected",
+          "exact_entity_match",
+          "line_position",
+          "line_description",
+          "target_sheet",
+          "item_number",
+          "catalog_description",
+          "confidence",
+          "review_status",
+          "flags",
+          "notes",
+          "review_note",
+          "possible_duplicate_of"
+        ],
+        "title": "ResultLineResponse",
+        "type": "object"
+      },
+      "ResultsPageResponse": {
+        "description": "One page of results. ``limit_truncated`` says the requested limit was capped.",
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "limit_truncated": {
+            "title": "Limit Truncated",
+            "type": "boolean"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/ResultLineResponse"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "lines",
+          "limit",
+          "offset",
+          "limit_truncated"
+        ],
+        "title": "ResultsPageResponse",
+        "type": "object"
+      },
+      "ReviewResponse": {
+        "description": "The line's values in force after the review.",
+        "properties": {
+          "catalog_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Description"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "string"
+          },
+          "encoded_line_id": {
+            "title": "Encoded Line Id",
+            "type": "string"
+          },
+          "item_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Number"
+          },
+          "review_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Note"
+          },
+          "review_status": {
+            "title": "Review Status",
+            "type": "string"
+          },
+          "target_sheet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Sheet"
+          }
+        },
+        "required": [
+          "encoded_line_id",
+          "target_sheet",
+          "item_number",
+          "catalog_description",
+          "confidence",
+          "review_status",
+          "review_note"
+        ],
+        "title": "ReviewResponse",
+        "type": "object"
+      },
+      "ReviewView": {
+        "description": "The review a person made of one coding.",
+        "properties": {
+          "item_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Number"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "review_status": {
+            "title": "Review Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_status",
+          "item_number",
+          "note"
+        ],
+        "title": "ReviewView",
+        "type": "object"
+      },
+      "SessionResponse": {
+        "description": "Output contract of the session check: answered only to an open credential.",
+        "properties": {
+          "authenticated": {
+            "const": true,
+            "title": "Authenticated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "authenticated"
+        ],
+        "title": "SessionResponse",
+        "type": "object"
+      },
+      "TargetSheet": {
+        "description": "The two catalog sheets. Routing picks exactly one (R2, REQ-MAP-001).",
+        "enum": [
+          "OUTLAYS",
+          "OUTLAYSP"
+        ],
+        "title": "TargetSheet",
+        "type": "string"
+      },
+      "TokenUsageResponse": {
+        "description": "Tokens spent on one invoice's model calls (REQ-AUD-004).",
+        "properties": {
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "input_tokens",
+          "output_tokens"
+        ],
+        "title": "TokenUsageResponse",
+        "type": "object"
+      },
+      "UploadResponse": {
+        "description": "Output contract of an upload (SEC-08, SEC-18): no path, no digest, no file name.",
+        "properties": {
+          "existing_job_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Existing Job Ids",
+            "type": "array"
+          },
+          "invoice_count": {
+            "title": "Invoice Count",
+            "type": "integer"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "invoice_count",
+          "existing_job_ids"
+        ],
+        "title": "UploadResponse",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "APIKeyCookie": {
+        "description": "The session opened by POST /api/session with the access token, for people.",
+        "in": "cookie",
+        "name": "sextante_session",
+        "type": "apiKey"
+      },
+      "APIKeyHeader": {
+        "description": "The key set in SEXTANTE_API_KEY, for programs. Or the session cookie.",
+        "in": "header",
+        "name": "X-API-Key",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "title": "Sextante",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/encoded-lines/{encoded_line_id}": {
+      "patch": {
+        "description": "Assign another item of the line's target sheet (REQ-REV-002). Needs Idempotency-Key.\n\nExample:\n    PATCH /api/encoded-lines/3f2a... {\"item_number\": \"O00051\"} -> 200 {...}",
+        "operationId": "correct_line_api_encoded_lines__encoded_line_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "encoded_line_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Encoded Line Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Mandatory. A key you choose for this request, 1 to 128 characters of letters, digits, '.', '_', ':' or '-'. Sending the same request again with the same key returns the same answer and acts once (SEC-19).",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Mandatory. A key you choose for this request, 1 to 128 characters of letters, digits, '.', '_', ':' or '-'. Sending the same request again with the same key returns the same answer and acts once (SEC-19).",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Correct Line"
+      }
+    },
+    "/api/encoded-lines/{encoded_line_id}/accept": {
+      "post": {
+        "description": "Accept a pending line without changing its code (REQ-REV-007). Needs Idempotency-Key.\n\nExample:\n    POST /api/encoded-lines/3f2a.../accept {\"note\": \"Confirmado.\"} -> 200 {...}",
+        "operationId": "accept_line_api_encoded_lines__encoded_line_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "encoded_line_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Encoded Line Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Mandatory. A key you choose for this request, 1 to 128 characters of letters, digits, '.', '_', ':' or '-'. Sending the same request again with the same key returns the same answer and acts once (SEC-19).",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Mandatory. A key you choose for this request, 1 to 128 characters of letters, digits, '.', '_', ':' or '-'. Sending the same request again with the same key returns the same answer and acts once (SEC-19).",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Accept Line"
+      }
+    },
+    "/api/exports/{job_id}": {
+      "get": {
+        "description": "Download the job's coding as CSV or XLSX, always as an attachment (SEC-16).\n\nThe file name is generated by the server; no client text reaches the header.\n\nExample:\n    GET /api/exports/3f2a...?format=csv -> sextante-3f2a....csv",
+        "operationId": "export_job_api_exports__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ExportFormat"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Export Job"
+      }
+    },
+    "/api/health": {
+      "get": {
+        "description": "Report that the process is up and which catalog version it serves.\n\nThe digest identifies the catalog content and is not a secret (D-3.9).\n\nExample:\n    GET /api/health -> {\"status\": \"ok\", \"catalog_digest\": \"3f2a...\"}",
+        "operationId": "read_health_api_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "summary": "Read Health"
+      }
+    },
+    "/api/invoices": {
+      "post": {
+        "description": "Accept PDF or XLSX invoices and answer at once with the job that will code them.\n\nThe file count is checked before any content is read, and each file is read only up to\none byte past the size limit (03-seguranca.md \u00a79.1, SEC-16).\n\nExample:\n    POST /api/invoices (multipart, field \"files\") -> 202 {\"job_id\": \"...\", ...}",
+        "operationId": "upload_invoices_api_invoices_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_invoices_api_invoices_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Upload Invoices"
+      }
+    },
+    "/api/invoices/{invoice_id}/entity-resolution": {
+      "post": {
+        "description": "Resolve an ambiguous entity; the invoice is coded again from its stored text.\n\nNeeds Idempotency-Key. The denylist is never changed (REQ-REV-006).\n\nExample:\n    POST /api/invoices/3f2a.../entity-resolution {\"resolution\": \"MATCH\", \"note\": \"...\"}",
+        "operationId": "resolve_entity_api_invoices__invoice_id__entity_resolution_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Mandatory. A key you choose for this request, 1 to 128 characters of letters, digits, '.', '_', ':' or '-'. Sending the same request again with the same key returns the same answer and acts once (SEC-19).",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Mandatory. A key you choose for this request, 1 to 128 characters of letters, digits, '.', '_', ':' or '-'. Sending the same request again with the same key returns the same answer and acts once (SEC-19).",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntityResolutionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReprocessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Resolve Entity"
+      }
+    },
+    "/api/invoices/{invoice_id}/lines/{invoice_line_id}/candidates": {
+      "get": {
+        "description": "Return every item of the line's target sheet, with the model's choice marked.\n\nExample:\n    GET /api/invoices/3f2a.../lines/9b1c.../candidates -> {\"target_sheet\": \"OUTLAYS\", ...}",
+        "operationId": "read_candidates_api_invoices__invoice_id__lines__invoice_line_id__candidates_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "invoice_line_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Invoice Line Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidatesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Read Candidates"
+      }
+    },
+    "/api/invoices/{invoice_id}/lines/{invoice_line_id}/history": {
+      "get": {
+        "description": "Return every coding of the line, newest first, each with its review (ticket 14).\n\nExample:\n    GET /api/invoices/3f2a.../lines/9b1c.../history -> [{\"in_force\": true, ...}, ...]",
+        "operationId": "read_line_history_api_invoices__invoice_id__lines__invoice_line_id__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "invoice_line_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Invoice Line Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CodingHistoryResponse"
+                  },
+                  "title": "Response Read Line History Api Invoices  Invoice Id  Lines  Invoice Line Id  History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Read Line History"
+      }
+    },
+    "/api/invoices/{invoice_id}/reprocess": {
+      "post": {
+        "description": "Queue a failed invoice again; it is coded from its stored text (NFR-REL-002).\n\nExample:\n    POST /api/invoices/3f2a.../reprocess -> 202 {\"invoice_id\": \"...\", \"job_id\": \"...\"}",
+        "operationId": "reprocess_invoice_api_invoices__invoice_id__reprocess_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Mandatory. A key you choose for this request, 1 to 128 characters of letters, digits, '.', '_', ':' or '-'. Sending the same request again with the same key returns the same answer and acts once (SEC-19).",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Mandatory. A key you choose for this request, 1 to 128 characters of letters, digits, '.', '_', ':' or '-'. Sending the same request again with the same key returns the same answer and acts once (SEC-19).",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReprocessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Reprocess Invoice"
+      }
+    },
+    "/api/jobs/{job_id}": {
+      "get": {
+        "description": "Return the job status, its invoices counted by status and in total, and its tokens.\n\nExample:\n    GET /api/jobs/3f2a... -> {\"status\": \"completed\", \"invoice_total\": 1, ...}",
+        "operationId": "read_job_progress_api_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobProgressResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Read Job Progress"
+      }
+    },
+    "/api/jobs/{job_id}/results": {
+      "get": {
+        "description": "Return the job's lines in document order, filtered, paginated with a server maximum.\n\nExample:\n    GET /api/jobs/3f2a.../results?confidence=LOW&limit=50 -> {\"lines\": [...], ...}",
+        "operationId": "read_results_api_jobs__job_id__results_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confidence",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Confidence"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Confidence"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_sheet",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TargetSheet"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Sheet"
+            }
+          },
+          {
+            "in": "query",
+            "name": "flagged",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Flagged"
+            }
+          },
+          {
+            "in": "query",
+            "name": "invoice_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_-]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Invoice Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultsPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Read Results"
+      }
+    },
+    "/api/session": {
+      "get": {
+        "description": "Answer when the request carries an open credential; the guard refuses the others.\n\nExample:\n    GET /api/session -> {\"authenticated\": true}, or 401",
+        "operationId": "read_session_route_api_session_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Read Session Route",
+        "tags": [
+          "session"
+        ]
+      },
+      "post": {
+        "description": "Open a session when the access token is the configured one.\n\nExample:\n    POST /api/session {\"token\": \"...\"} -> 204, Set-Cookie: sextante_session=...\n\nRaises:\n    AccessTokenInvalidError: when the token is wrong; no cookie is set.",
+        "operationId": "open_session_route_api_session_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "summary": "Open Session Route",
+        "tags": [
+          "session"
+        ]
+      }
+    },
+    "/api/session/end": {
+      "post": {
+        "description": "End the session of this browser, and clear its cookie. Ending none is no error.\n\nExample:\n    POST /api/session/end -> 204, Set-Cookie: sextante_session=\"\"; Max-Age=0",
+        "operationId": "end_session_route_api_session_end_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "summary": "End Session Route",
+        "tags": [
+          "session"
+        ]
+      }
+    }
+  }
+}

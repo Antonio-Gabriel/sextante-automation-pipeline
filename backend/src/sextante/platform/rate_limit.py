@@ -8,10 +8,10 @@ Known limitations of this version, declared rather than hidden:
 - the counters live in one process: with two instances each allows the full quota
   (SEC-12); production needs a shared counter, 00-decisoes-e-lacunas.md §6;
 - a fixed window lets up to twice the quota through across a window boundary;
-- the caller is the API key, and there is one key (L-07): everyone shares one quota.
+- the caller is the one principal behind the key and the session (L-07): everyone
+  shares one quota; login attempts, before any credential, count as anonymous.
 """
 
-import hashlib
 import logging
 import math
 from collections.abc import Callable, Mapping, Sequence
@@ -21,13 +21,13 @@ from typing import Final
 
 from fastapi import Request
 
-from sextante.platform.api_key import API_KEY_HEADER
 from sextante.platform.errors import DomainError
 
 logger = logging.getLogger(__name__)
 
 MINUTE: Final = 60.0
 HOUR: Final = 3600.0
+ANONYMOUS: Final = "anonymous"
 
 Monotonic = Callable[[], float]
 
@@ -40,6 +40,7 @@ class RateRule(StrEnum):
     REPROCESS = "reprocess"
     EXPORT = "export"
     CORRECTION = "correction"
+    LOGIN = "login"
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,7 +150,7 @@ async def enforce_rate_limits(request: Request) -> None:
 
 
 def _caller(request: Request) -> str:
-    # require_api_key has already refused a request without the key, so the key is
-    # there; its digest identifies the caller without keeping the key in memory.
-    key = request.headers.get(API_KEY_HEADER, "")
-    return hashlib.sha256(key.encode()).hexdigest()[:16]
+    # The credential guard names the principal; a request it does not guard (the login)
+    # counts as anonymous, apart from the principal's quota.
+    principal: str = getattr(request.state, "principal", ANONYMOUS)
+    return principal

@@ -470,6 +470,8 @@ Cada lacuna tem identificador, questão, porque importa, sugestão da equipa, qu
 
 **Estado em 19-11-2026.** Decidido pelo responsável: uma chave da API única, em `SEXTANTE_API_KEY`, exigida em todo o `/api` excepto `/api/health`, no cabeçalho `X-API-Key`. Sem perfis e sem chave por pessoa: o autor das revisões continua a ser `SEXTANTE_REVIEWER_ID`. A ligação apenas a `127.0.0.1` mantém-se.
 
+**Acrescento em 19-11-2026.** Decidido pelo responsável, para o frontend: uma pessoa entra com um token de acesso, em `SEXTANTE_ACCESS_TOKEN`, distinto da chave da API, comparado no servidor em tempo constante. Um token certo abre uma sessão num cookie `HttpOnly`, `SameSite=Strict` e `Secure`, de validade limitada, guardada na memória do servidor. A chave e a sessão representam o mesmo principal: continua sem perfis nem identidade por pessoa, e o navegador nunca recebe a chave da API.
+
 ---
 
 ### L-08 · Ausência de correspondência em OUTLAYS
