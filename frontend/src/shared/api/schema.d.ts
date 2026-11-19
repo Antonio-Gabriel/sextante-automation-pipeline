@@ -123,6 +123,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/invoices/{invoice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Invoice
+         * @description Return an invoice's extracted header, entity decision, state and earlier copy.
+         *
+         *     Example:
+         *         GET /api/invoices/3f2a... -> {"status": "not_coded", "resolvable": true, ...}
+         */
+        get: operations["read_invoice_api_invoices__invoice_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/invoices/{invoice_id}/entity-resolution": {
         parameters: {
             query?: never;
@@ -416,6 +439,16 @@ export interface components {
             note?: string | null;
         };
         /**
+         * EarlierInvoiceResponse
+         * @description The invoice a possible duplicate repeats.
+         */
+        EarlierInvoiceResponse: {
+            /** Invoice Id */
+            invoice_id: string;
+            /** Invoice Number */
+            invoice_number: string | null;
+        };
+        /**
          * EntityResolutionRequest
          * @description Input contract of an entity resolution: a verdict and a mandatory note (SEC-08).
          */
@@ -427,6 +460,18 @@ export interface components {
              * @enum {string}
              */
             resolution: "MATCH" | "NO_MATCH";
+        };
+        /**
+         * EntityResolutionResponse
+         * @description A reviewer's resolution of the entity, as recorded.
+         */
+        EntityResolutionResponse: {
+            /** Note */
+            note: string;
+            /** Resolved At */
+            resolved_at: string;
+            /** Verdict */
+            verdict: string;
         };
         /**
          * ErrorResponse
@@ -448,7 +493,7 @@ export interface components {
         ExportFormat: "csv" | "xlsx";
         /**
          * FlagResponse
-         * @description A flag or a note: the stable code and its Portuguese text (REQ-CNF-004, REQ-PLT-006).
+         * @description A flag, a note or a reason: the stable code and its Portuguese text (REQ-CNF-004).
          */
         FlagResponse: {
             /** Code */
@@ -468,6 +513,40 @@ export interface components {
              * @constant
              */
             status: "ok";
+        };
+        /**
+         * InvoiceResponse
+         * @description One invoice for the reviewer (SEC-18: explicit projection, no storage detail).
+         */
+        InvoiceResponse: {
+            /** Billed Entity Detected */
+            billed_entity_detected: string | null;
+            /** Currency */
+            currency: string | null;
+            entity_reason: components["schemas"]["FlagResponse"] | null;
+            entity_resolution: components["schemas"]["EntityResolutionResponse"] | null;
+            /** Entity Verdict */
+            entity_verdict: string | null;
+            /** Invoice Date */
+            invoice_date: string | null;
+            /** Invoice Id */
+            invoice_id: string;
+            /** Invoice Number */
+            invoice_number: string | null;
+            /** Job Id */
+            job_id: string;
+            possible_duplicate_of: components["schemas"]["EarlierInvoiceResponse"] | null;
+            /** Resolvable */
+            resolvable: boolean;
+            /** Status */
+            status: string;
+            status_reason: components["schemas"]["FlagResponse"] | null;
+            /** Supplier Name */
+            supplier_name: string | null;
+            /** Supplier Nif */
+            supplier_nif: string | null;
+            /** Target Sheet */
+            target_sheet: string | null;
         };
         /**
          * JobProgressResponse
@@ -833,6 +912,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UploadResponse"];
+                };
+            };
+            /** @description Refused, with the Portuguese message. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Failed, with a reference for support. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_invoice_api_invoices__invoice_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceResponse"];
                 };
             };
             /** @description Refused, with the Portuguese message. */

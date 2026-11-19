@@ -5,23 +5,24 @@ the configuration, which change only by an explicit decision (D-3.15).
 """
 
 from dataclasses import dataclass
-from typing import Final
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from sextante.ingestion.application.ports import EntityResolutionRepositoryPort
-from sextante.ingestion.application.records import EntityResolutionRecord, InvoiceState
+from sextante.ingestion.application.records import (
+    AMBIGUOUS_VERDICT,
+    EntityResolutionRecord,
+    InvoiceState,
+)
 from sextante.ingestion.application.reprocess_invoice import (
     InvoiceNotFoundError,
     ReprocessReceipt,
 )
-from sextante.ingestion.domain.statuses import InvoiceStatus
 from sextante.platform.audit import AuditEventRepository
 from sextante.platform.clock import Clock, IdentifierGenerator
 from sextante.platform.errors import DomainError
 
 # The verdict the entity check left on an invoice it would not route (D-3.15).
-AMBIGUOUS_VERDICT: Final = "AMBIGUOUS"
 
 
 class InvoiceNotAmbiguousError(DomainError):
@@ -91,7 +92,7 @@ class ResolveEntity:
         state: InvoiceState,
         resolution: EntityResolutionRecord,
     ) -> None:
-        if state.entity_verdict != AMBIGUOUS_VERDICT or state.status is not InvoiceStatus.NOT_CODED:
+        if not state.awaits_entity_resolution():
             raise InvoiceNotAmbiguousError(
                 f"Invoice {invoice_id!r} has verdict {state.entity_verdict} and status "
                 f"{state.status.value}. Expected verdict {AMBIGUOUS_VERDICT}, not coded."

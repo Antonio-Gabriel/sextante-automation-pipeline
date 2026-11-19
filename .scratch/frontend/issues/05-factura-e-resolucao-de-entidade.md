@@ -4,11 +4,15 @@
 
 **Blocked by:** 03 (Ecrã de resultados com filtros)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Um endpoint novo devolve o cabeçalho de uma factura e o seu estado, com projecção explícita dos campos (SEC-18) e `404` para uma factura inexistente
-- [ ] O ecrã mostra o veredicto, o motivo de ambiguidade em Português, a aba de destino e o duplicado provável com a factura anterior
-- [ ] A resolução só é oferecida a uma factura ambígua ainda por resolver; a nota é obrigatória e tem comprimento máximo
-- [ ] A resolução gera a sua `Idempotency-Key` antes do primeiro envio
-- [ ] O `README.md` descreve o ecrã da factura e a resolução
-- [ ] Testes do endpoint pela API e testes do componente para a resolução
+- [x] Um endpoint novo devolve o cabeçalho de uma factura e o seu estado, com projecção explícita dos campos (SEC-18) e `404` para uma factura inexistente
+- [x] O ecrã mostra o veredicto, o motivo de ambiguidade em Português, a aba de destino e o duplicado provável com a factura anterior
+- [x] A resolução só é oferecida a uma factura ambígua ainda por resolver; a nota é obrigatória e tem comprimento máximo
+- [x] A resolução gera a sua `Idempotency-Key` antes do primeiro envio
+- [x] O `README.md` descreve o ecrã da factura e a resolução
+- [x] Testes do endpoint pela API e testes do componente para a resolução
+
+## Comments
+
+Resolved on 2026-11-19 (CHG-0061), before ticket 04, which needs this endpoint to find a line's job and description.

@@ -2,8 +2,12 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Final
 
 from sextante.ingestion.domain.statuses import InvoiceStatus
+
+# The entity verdict that waits for a reviewer (REQ-ENT-004, D-3.15).
+AMBIGUOUS_VERDICT: Final = "AMBIGUOUS"
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,3 +139,53 @@ class InvoiceState:
     status: InvoiceStatus
     entity_verdict: str | None = None
     entity_reason: str | None = None
+
+    def awaits_entity_resolution(self) -> bool:
+        """Whether a reviewer can resolve its entity: ambiguous, and not coded (D-3.15).
+
+        Example:
+            InvoiceState("j1", InvoiceStatus.NOT_CODED, "AMBIGUOUS").awaits_entity_resolution()
+        """
+        return self.entity_verdict == AMBIGUOUS_VERDICT and self.status is InvoiceStatus.NOT_CODED
+
+
+@dataclass(frozen=True, slots=True)
+class EntityResolutionView:
+    """A reviewer's resolution of an ambiguous entity, as recorded."""
+
+    verdict: str
+    note: str
+    resolved_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class EarlierInvoice:
+    """The invoice a possible duplicate repeats (REQ-ING-011)."""
+
+    invoice_id: str
+    invoice_number: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class InvoiceHeaderView:
+    """What was extracted from an invoice's header, and what was decided of its entity."""
+
+    supplier_name: str | None
+    supplier_nif: str | None
+    invoice_number: str | None
+    invoice_date: str | None
+    currency: str | None
+    billed_entity_detected: str | None
+    target_sheet: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class InvoiceView:
+    """One invoice for the reviewer: its state, header, resolution and earlier copy."""
+
+    invoice_id: str
+    state: InvoiceState
+    status_reason: str | None
+    header: InvoiceHeaderView
+    resolution: EntityResolutionView | None
+    earlier: EarlierInvoice | None

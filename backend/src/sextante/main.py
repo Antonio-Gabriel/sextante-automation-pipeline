@@ -28,6 +28,7 @@ from sextante.ingestion.api.routes import ingestion_router
 from sextante.ingestion.api.routes import reprocess_invoice as reprocess_invoice_route
 from sextante.ingestion.api.routes import resolve_entity as resolve_entity_route
 from sextante.ingestion.api.routes import upload_invoices as upload_invoices_route
+from sextante.ingestion.application.read_invoice import ReadInvoice
 from sextante.ingestion.application.read_job_status import JobNotFoundError, ReadJobStatus
 from sextante.ingestion.application.reprocess_invoice import (
     InvoiceNotFoundError,
@@ -326,10 +327,7 @@ def _wire_use_cases(
     app.state.upload_invoices = UploadInvoices(
         engine, ingestion, store, adapters.clock, adapters.identifiers
     )
-    app.state.read_job_status = ReadJobStatus(engine, ingestion)
-    app.state.read_job_progress = ReadJobProgress(
-        engine, app.state.read_job_status, MatchingRepository()
-    )
+    _wire_readers(app, engine, ingestion)
     app.state.reprocess_invoice = ReprocessInvoice(
         ingestion, AuditEventRepository(), adapters.clock, adapters.identifiers
     )
@@ -341,6 +339,14 @@ def _wire_use_cases(
     app.state.export_job = ExportJob(build_export, SpreadsheetExportWriter(settings.csv_separator))
     _wire_review(app, engine, settings, reference.catalog, adapters)
     app.state.worker = _build_worker(engine, settings, reference, adapters, store, classifier)
+
+
+def _wire_readers(app: FastAPI, engine: AsyncEngine, ingestion: IngestionRepository) -> None:
+    app.state.read_job_status = ReadJobStatus(engine, ingestion)
+    app.state.read_invoice = ReadInvoice(engine, ingestion)
+    app.state.read_job_progress = ReadJobProgress(
+        engine, app.state.read_job_status, MatchingRepository()
+    )
 
 
 def _wire_review(

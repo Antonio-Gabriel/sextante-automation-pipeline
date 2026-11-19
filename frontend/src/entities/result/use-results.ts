@@ -8,8 +8,11 @@ import type { ResultFilters } from "./result-filters";
  * Example:
  *   const page = useResults(jobId, { confidence: "LOW" }).data;
  */
-export function useResults(jobId: string, filters: ResultFilters) {
-  return $api.useQuery("get", "/api/jobs/{job_id}/results", {
+export function useResults(jobId: string, filters: ResultFilters, enabled = true) {
+  return $api.useQuery(
+    "get",
+    "/api/jobs/{job_id}/results",
+    {
     params: {
       path: { job_id: jobId },
       query: {
@@ -21,5 +24,7 @@ export function useResults(jobId: string, filters: ResultFilters) {
         ...(filters.limit === undefined ? {} : { limit: filters.limit }),
       },
     },
-  });
+    },
+    { enabled },
+  );
 }

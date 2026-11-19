@@ -266,6 +266,32 @@
         "title": "CorrectionRequest",
         "type": "object"
       },
+      "EarlierInvoiceResponse": {
+        "description": "The invoice a possible duplicate repeats.",
+        "properties": {
+          "invoice_id": {
+            "title": "Invoice Id",
+            "type": "string"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number"
+          }
+        },
+        "required": [
+          "invoice_id",
+          "invoice_number"
+        ],
+        "title": "EarlierInvoiceResponse",
+        "type": "object"
+      },
       "EntityResolutionRequest": {
         "additionalProperties": false,
         "description": "Input contract of an entity resolution: a verdict and a mandatory note (SEC-08).",
@@ -290,6 +316,30 @@
           "note"
         ],
         "title": "EntityResolutionRequest",
+        "type": "object"
+      },
+      "EntityResolutionResponse": {
+        "description": "A reviewer's resolution of the entity, as recorded.",
+        "properties": {
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "resolved_at": {
+            "title": "Resolved At",
+            "type": "string"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict",
+          "note",
+          "resolved_at"
+        ],
+        "title": "EntityResolutionResponse",
         "type": "object"
       },
       "ErrorResponse": {
@@ -326,7 +376,7 @@
         "type": "string"
       },
       "FlagResponse": {
-        "description": "A flag or a note: the stable code and its Portuguese text (REQ-CNF-004, REQ-PLT-006).",
+        "description": "A flag, a note or a reason: the stable code and its Portuguese text (REQ-CNF-004).",
         "properties": {
           "code": {
             "title": "Code",
@@ -362,6 +412,175 @@
           "catalog_digest"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "InvoiceResponse": {
+        "description": "One invoice for the reviewer (SEC-18: explicit projection, no storage detail).",
+        "properties": {
+          "billed_entity_detected": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Billed Entity Detected"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "entity_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FlagResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entity_resolution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EntityResolutionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entity_verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Verdict"
+          },
+          "invoice_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Date"
+          },
+          "invoice_id": {
+            "title": "Invoice Id",
+            "type": "string"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "possible_duplicate_of": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EarlierInvoiceResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resolvable": {
+            "title": "Resolvable",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FlagResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "supplier_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplier Name"
+          },
+          "supplier_nif": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplier Nif"
+          },
+          "target_sheet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Sheet"
+          }
+        },
+        "required": [
+          "invoice_id",
+          "job_id",
+          "status",
+          "status_reason",
+          "supplier_name",
+          "supplier_nif",
+          "invoice_number",
+          "invoice_date",
+          "currency",
+          "billed_entity_detected",
+          "entity_verdict",
+          "entity_reason",
+          "entity_resolution",
+          "resolvable",
+          "target_sheet",
+          "possible_duplicate_of"
+        ],
+        "title": "InvoiceResponse",
         "type": "object"
       },
       "JobProgressResponse": {
@@ -1178,6 +1397,66 @@
           }
         ],
         "summary": "Upload Invoices"
+      }
+    },
+    "/api/invoices/{invoice_id}": {
+      "get": {
+        "description": "Return an invoice's extracted header, entity decision, state and earlier copy.\n\nExample:\n    GET /api/invoices/3f2a... -> {\"status\": \"not_coded\", \"resolvable\": true, ...}",
+        "operationId": "read_invoice_api_invoices__invoice_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Read Invoice"
       }
     },
     "/api/invoices/{invoice_id}/entity-resolution": {

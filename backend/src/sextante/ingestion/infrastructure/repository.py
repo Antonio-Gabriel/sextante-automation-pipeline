@@ -3,9 +3,9 @@
 import json
 from dataclasses import asdict
 from datetime import datetime
-from typing import Final
+from typing import Any, Final
 
-from sqlalchemy import Row, Select, Subquery, func, literal, select, tuple_, update
+from sqlalchemy import Column, Row, Select, Subquery, func, literal, select, tuple_, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -13,11 +13,15 @@ from sextante.ingestion.application.records import (
     ClaimedJob,
     DuplicateContentError,
     EarlierCopy,
+    EarlierInvoice,
     EntityCheckRecord,
     EntityResolutionRecord,
+    EntityResolutionView,
     ExportInvoice,
     ExportLine,
+    InvoiceHeaderView,
     InvoiceState,
+    InvoiceView,
     JobLine,
     JobSummary,
     NewInvoice,
@@ -290,6 +294,13 @@ class IngestionRepository:
         status = InvoiceStatus(str(row.status))
         return InvoiceState(str(row.job_id), status, row.entity_verdict, row.entity_reason)
 
+    async def read_invoice_view(
+        self, connection: AsyncConnection, invoice_id: str
+    ) -> InvoiceView | None:
+        """Return the invoice's state, header, resolution and earlier copy, or None."""
+        row = (await connection.execute(_invoice_view_query(invoice_id))).first()
+        return None if row is None else _invoice_view(invoice_id, row)
+
     async def record_entity_resolution(
         self, connection: AsyncConnection, invoice_id: str, resolution: EntityResolutionRecord
     ) -> bool:
@@ -399,6 +410,73 @@ def _same_number_query(invoice_id: str) -> Select[tuple[object, ...]]:
         .order_by(INVOICE_TABLE.c.created_at, INVOICE_TABLE.c.id)
         .limit(1)
     )
+
+
+def _invoice_view_query(invoice_id: str) -> Select[tuple[object, ...]]:
+    # An explicit projection: storage name, digest and file name never leave (SEC-18).
+    header, resolution = INVOICE_HEADER_TABLE, ENTITY_RESOLUTION_TABLE
+    earlier = INVOICE_HEADER_TABLE.alias("earlier_header")
+    return (
+        select(
+            INVOICE_TABLE.c.job_id,
+            INVOICE_TABLE.c.status,
+            INVOICE_TABLE.c.status_reason,
+            *_header_columns(),
+            earlier.c.invoice_number.label("earlier_number"),
+            resolution.c.verdict.label("resolution_verdict"),
+            resolution.c.note.label("resolution_note"),
+            resolution.c.resolved_at,
+        )
+        .select_from(INVOICE_TABLE)
+        .outerjoin(header, header.c.invoice_id == INVOICE_TABLE.c.id)
+        .outerjoin(earlier, earlier.c.invoice_id == header.c.possible_duplicate_of)
+        .outerjoin(resolution, resolution.c.invoice_id == INVOICE_TABLE.c.id)
+        .where(INVOICE_TABLE.c.id == invoice_id)
+    )
+
+
+def _header_columns() -> tuple[Column[Any], ...]:
+    columns = INVOICE_HEADER_TABLE.c
+    names = (
+        "supplier_name supplier_nif invoice_number invoice_date currency billed_entities "
+        "target_sheet entity_verdict entity_reason possible_duplicate_of"
+    ).split()
+    return tuple(columns[name] for name in names)
+
+
+def _invoice_view(invoice_id: str, row: Row[tuple[object, ...]]) -> InvoiceView:
+    state = InvoiceState(
+        str(row.job_id), InvoiceStatus(str(row.status)), row.entity_verdict, row.entity_reason
+    )
+    return InvoiceView(
+        invoice_id, state, row.status_reason, _header_view(row), _resolution(row), _earlier(row)
+    )
+
+
+def _header_view(row: Row[tuple[object, ...]]) -> InvoiceHeaderView:
+    return InvoiceHeaderView(
+        supplier_name=row.supplier_name,
+        supplier_nif=row.supplier_nif,
+        invoice_number=row.invoice_number,
+        invoice_date=row.invoice_date,
+        currency=row.currency,
+        billed_entity_detected=_detected_entity(_blocks(row.billed_entities)),
+        target_sheet=row.target_sheet,
+    )
+
+
+def _resolution(row: Row[tuple[object, ...]]) -> EntityResolutionView | None:
+    if row.resolution_verdict is None:
+        return None
+    return EntityResolutionView(
+        str(row.resolution_verdict), str(row.resolution_note), str(row.resolved_at)
+    )
+
+
+def _earlier(row: Row[tuple[object, ...]]) -> EarlierInvoice | None:
+    if row.possible_duplicate_of is None:
+        return None
+    return EarlierInvoice(str(row.possible_duplicate_of), row.earlier_number)
 
 
 def _job_lines_query(job_id: str, invoice_id: str | None) -> Select[tuple[object, ...]]:

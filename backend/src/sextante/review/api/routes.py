@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from sextante.catalog.contracts import ITEM_NUMBER_PATTERN, TargetSheet
 from sextante.matching.contracts import Confidence
+from sextante.platform.coded_text import FlagResponse
 from sextante.platform.http_params import IdentifierPath
 from sextante.platform.idempotency import JsonBody
 from sextante.platform.idempotent_route import IDEMPOTENCY_KEY_DECLARED, run_idempotently
@@ -30,15 +31,6 @@ ReviewNote = Annotated[str | None, Field(max_length=MAX_REVIEW_NOTE_LENGTH)]
 ITEM_NUMBER_MAX_LENGTH = 32
 
 review_router = APIRouter(prefix="/api")
-
-
-class FlagResponse(BaseModel):
-    """A flag or a note: the stable code and its Portuguese text (REQ-CNF-004, REQ-PLT-006)."""
-
-    model_config = ConfigDict(frozen=True)
-
-    code: str
-    message: str
 
 
 class ResultLineResponse(BaseModel):

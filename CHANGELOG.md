@@ -67,6 +67,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                         └── CHG-0058  fix       Correcções da revisão do ticket 02 do frontend
                                                                                                                             └── CHG-0059  feat      Resultados com filtros na rota
                                                                                                                                 └── CHG-0060  fix       Correcções da revisão do ticket 03 do frontend
+                                                                                                                                    └── CHG-0061  feat      Ecrã da factura e resolução de entidade
 ```
 
 ## Regras
@@ -131,6 +132,24 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0061 · Ecrã da factura e resolução de entidade
+
+- **Data:** 2026-11-19
+- **Tipo:** feat
+- **Pai:** CHG-0060
+- **Estado:** activa
+- **Requisitos:** REQ-REV-006, REQ-ENT-006, REQ-ING-011, SEC-18, SEC-19, REQ-PLT-006
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `backend/src/sextante/ingestion/api/routes.py`, `ingestion/application/read_invoice.py` (novo), `ingestion/application/records.py`, `ingestion/application/ports.py`, `ingestion/application/resolve_entity.py`, `ingestion/infrastructure/repository.py`, `platform/coded_text.py` (novo), `review/api/routes.py`, `main.py`, `tests/api/test_invoice_view.py`; `frontend/openapi.json`, tipos gerados, `frontend/src/entities/invoice/*`, `features/entity-resolution/*`, `pages/invoice-page.tsx`, `shared/api/use-idempotency-key.ts`, `shared/ui-kit/textarea.tsx`; `README.md`, ticket 05 do frontend
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 384 testes do backend e o `xfail` estrito; 36 testes do frontend. `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos; `tsc`, ESLint, licenças.
+
+**Servidor.** `GET /api/invoices/{invoice_id}` devolve o cabeçalho extraído, o estado e o seu motivo, a entidade facturada, o veredicto e o motivo em Português, a resolução registada, a aba de destino, a factura anterior de um duplicado provável e se a factura pode ser resolvida; projecção explícita, sem nome de ficheiro, digest nem caminho (SEC-18), e 404 para uma factura inexistente. A regra de quando uma factura espera resolução passa a viver num só sítio (`InvoiceState.awaits_entity_resolution`), usada pela resolução e pela leitura. O par código e texto (`FlagResponse`) passa à plataforma, partilhado pelos dois módulos.
+
+**Frontend.** Ecrã da factura com o cabeçalho, a entidade, as linhas e o aviso de duplicado com ligação. Formulário de resolução com decisão e nota obrigatória, limite lido do OpenAPI e contador, `Idempotency-Key` feita antes do primeiro envio e mantida numa nova tentativa, botão desactivado durante o envio.
 
 ### CHG-0060 · Correcções da revisão do ticket 03 do frontend
 

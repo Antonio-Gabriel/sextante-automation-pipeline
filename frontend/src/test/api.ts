@@ -97,3 +97,28 @@ export function resultLine(position: number, fields: Partial<ResultLine> = {}): 
     ...fields,
   };
 }
+
+type Invoice = components["schemas"]["InvoiceResponse"];
+
+/** An invoice of the generated type; fields override the defaults. */
+export function invoiceView(fields: Partial<Invoice> = {}): Invoice {
+  return {
+    invoice_id: "inv-1",
+    job_id: "job-0001-aaaa",
+    status: "encoded",
+    status_reason: null,
+    supplier_name: "Fornecedor Sintético Lda",
+    supplier_nif: "5419990001",
+    invoice_number: "FT 2026/17",
+    invoice_date: "2026-01-12",
+    currency: "AOA",
+    billed_entity_detected: "Synthetic Billed Entity Lda",
+    entity_verdict: "MATCH",
+    entity_reason: null,
+    entity_resolution: null,
+    resolvable: false,
+    target_sheet: "OUTLAYS",
+    possible_duplicate_of: null,
+    ...fields,
+  };
+}

@@ -6,6 +6,8 @@ from fastapi import APIRouter, File, Request, Response, UploadFile
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from sextante.ingestion.application.read_invoice import ReadInvoice
+from sextante.ingestion.application.records import InvoiceView
 from sextante.ingestion.application.reprocess_invoice import ReprocessInvoice
 from sextante.ingestion.application.resolve_entity import ResolveEntity
 from sextante.ingestion.application.upload_invoices import (
@@ -14,6 +16,7 @@ from sextante.ingestion.application.upload_invoices import (
     UploadInvoices,
     check_file_count,
 )
+from sextante.platform.coded_text import FlagResponse, coded_text
 from sextante.platform.http_params import IdentifierPath
 from sextante.platform.idempotency import JsonBody
 from sextante.platform.idempotent_route import IDEMPOTENCY_KEY_DECLARED, run_idempotently
@@ -100,6 +103,99 @@ async def _read_bounded(upload: UploadFile) -> IncomingFile:
             f"File is larger than {MAX_UPLOAD_BYTES} bytes. Expected at most that size."
         )
     return IncomingFile(display_name=upload.filename or "", content=content)
+
+
+class EntityResolutionResponse(BaseModel):
+    """A reviewer's resolution of the entity, as recorded."""
+
+    model_config = ConfigDict(frozen=True)
+
+    verdict: str
+    note: str
+    resolved_at: str
+
+
+class EarlierInvoiceResponse(BaseModel):
+    """The invoice a possible duplicate repeats."""
+
+    model_config = ConfigDict(frozen=True)
+
+    invoice_id: str
+    invoice_number: str | None
+
+
+class InvoiceResponse(BaseModel):
+    """One invoice for the reviewer (SEC-18: explicit projection, no storage detail)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    invoice_id: str
+    job_id: str
+    status: str
+    status_reason: FlagResponse | None
+    supplier_name: str | None
+    supplier_nif: str | None
+    invoice_number: str | None
+    invoice_date: str | None
+    currency: str | None
+    billed_entity_detected: str | None
+    entity_verdict: str | None
+    entity_reason: FlagResponse | None
+    entity_resolution: EntityResolutionResponse | None
+    resolvable: bool
+    target_sheet: str | None
+    possible_duplicate_of: EarlierInvoiceResponse | None
+
+
+@ingestion_router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)
+async def read_invoice(request: Request, invoice_id: IdentifierPath) -> InvoiceResponse:
+    """Return an invoice's extracted header, entity decision, state and earlier copy.
+
+    Example:
+        GET /api/invoices/3f2a... -> {"status": "not_coded", "resolvable": true, ...}
+    """
+    use_case: ReadInvoice = request.app.state.read_invoice
+    return _invoice_response(await use_case.execute(invoice_id))
+
+
+def _invoice_response(view: InvoiceView) -> InvoiceResponse:
+    header = view.header
+    return InvoiceResponse(
+        invoice_id=view.invoice_id,
+        job_id=view.state.job_id,
+        status=view.state.status.value,
+        status_reason=coded_text("rejections", view.status_reason),
+        supplier_name=header.supplier_name,
+        supplier_nif=header.supplier_nif,
+        invoice_number=header.invoice_number,
+        invoice_date=header.invoice_date,
+        currency=header.currency,
+        billed_entity_detected=header.billed_entity_detected,
+        entity_verdict=view.state.entity_verdict,
+        entity_reason=coded_text("flags", view.state.entity_reason),
+        entity_resolution=_resolution_response(view),
+        resolvable=view.state.awaits_entity_resolution(),
+        target_sheet=header.target_sheet,
+        possible_duplicate_of=_earlier_response(view),
+    )
+
+
+def _resolution_response(view: InvoiceView) -> EntityResolutionResponse | None:
+    resolution = view.resolution
+    if resolution is None:
+        return None
+    return EntityResolutionResponse(
+        verdict=resolution.verdict, note=resolution.note, resolved_at=resolution.resolved_at
+    )
+
+
+def _earlier_response(view: InvoiceView) -> EarlierInvoiceResponse | None:
+    earlier = view.earlier
+    if earlier is None:
+        return None
+    return EarlierInvoiceResponse(
+        invoice_id=earlier.invoice_id, invoice_number=earlier.invoice_number
+    )
 
 
 class EntityResolutionRequest(BaseModel):

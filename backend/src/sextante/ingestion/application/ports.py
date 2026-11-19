@@ -11,6 +11,7 @@ from sextante.ingestion.application.records import (
     EntityResolutionRecord,
     ExportInvoice,
     InvoiceState,
+    InvoiceView,
     JobLine,
     JobSummary,
     NewInvoice,
@@ -162,6 +163,16 @@ class JobLinesReader(Protocol):
         self, connection: AsyncConnection, invoice_id: str, line_id: str
     ) -> bool:
         """True when the invoice line exists and is a line of this invoice."""
+        ...
+
+
+class InvoiceViewReader(Protocol):
+    """Port: one invoice as a reviewer sees it."""
+
+    async def read_invoice_view(
+        self, connection: AsyncConnection, invoice_id: str
+    ) -> InvoiceView | None:
+        """Return the invoice's state, header, resolution and earlier copy, or None."""
         ...
 
 
