@@ -166,7 +166,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0086
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-008
-- **Commit:** pendente
+- **Commit:** `c111278`
 - **Migração:** nenhuma
 - **Ficheiros:** `.github/workflows/release.yml`, `scripts/setup_shardcloud.sh`, `deploy/shardcloud/push_context.sh` e `deploy/shardcloud/wait_for_release.sh` (apagados), `backend/tests/deploy/test_shardcloud_deploy.py` (apagado), `backend/tests/deploy/test_workflows.py`, `docs/00` §3.29, `README.md`
 - **Reversibilidade:** total
