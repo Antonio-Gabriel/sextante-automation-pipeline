@@ -84,6 +84,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                             └── CHG-0075  fix       Correcções da revisão do CI/CD e da publicação na ShardCloud
                                                                                                                                                                                                 └── CHG-0076  fix       Versão escrita no contexto da ShardCloud
                                                                                                                                                                                                     └── CHG-0077  infra     Assistente da configuração única da ShardCloud, do Docker Hub e do GitHub
+                                                                                                                                                                                                        └── CHG-0078  fix       Assistente parado com uma resposta vazia
 ```
 
 ## Regras
@@ -148,6 +149,31 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0078 · Assistente parado com uma resposta vazia
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0077
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `scripts/setup_shardcloud.sh`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** `bash -n` sem erros. A pergunta nova foi testada sem terminal: Enter numa pergunta com sugestão dá a sugestão (`<utilizador>/sextante`), e uma resposta inválida é recusada e pedida de novo.
+
+**Defeito relatado pelo responsável.** Na fase 2, a pergunta do repositório recebeu Enter. O exemplo entre parênteses não era um valor por omissão, por isso o valor ficou vazio. `gh variable set` com corpo vazio fica à espera de um valor no terminal, sem o dizer, e o assistente parecia parado.
+
+**Correcção.** Uma pergunta nova, `ask_required`, repete-se até a resposta ter a forma esperada, e o Enter aceita a sugestão quando há uma. Passa a servir:
+- o utilizador e o repositório do Docker Hub;
+- a entidade alvo e o NIF;
+- o revisor;
+- o subdomínio;
+- a memória.
+
+Os valores por omissão, quando existem, aparecem na própria pergunta.
 
 ### CHG-0077 · Assistente da configuração única da ShardCloud, do Docker Hub e do GitHub
 

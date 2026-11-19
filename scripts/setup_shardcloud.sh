@@ -230,6 +230,23 @@ env_json() {
   python3 -c 'import json,os,sys; print(json.dumps({"env":[{"key":k,"value":os.environ[k]} for k in sys.argv[1:]]}))' "$@"
 }
 
+# ask_required KEY "Prompt" PATTERN [DEFAULT]: asks until the answer matches PATTERN.
+# Enter takes DEFAULT (or the value saved by an earlier run). An empty value never goes
+# on: `gh variable set` with an empty body silently waits for input.
+ask_required() {
+  local key="$1" prompt="$2" pattern="$3" fallback="${4:-}"
+  while :; do
+    if [[ -n "$fallback" && -z "$(_existing "$key" || true)" ]]; then
+      ask "$key" "$prompt [Enter: $fallback]"
+      [[ -z "${!key}" ]] && printf -v "$key" '%s' "$fallback"
+    else
+      ask "$key" "$prompt"
+    fi
+    [[ "${!key}" =~ $pattern ]] && return 0
+    warn "Not valid: '${!key}'. Try again."
+  done
+}
+
 run_wizard() {
 
 TOTAL_STAGES=8
@@ -264,8 +281,9 @@ stage "Docker Hub: private repository"
 open_url "https://hub.docker.com/repositories"
 step "Sign in, then Create a repository."
 step "Name it (for example: sextante), set Visibility to Private, and Create."
-ask DOCKERHUB_USERNAME "Your Docker Hub username:"
-ask DOCKERHUB_REPOSITORY "Repository, as <username>/<name> (e.g. $DOCKERHUB_USERNAME/sextante):"
+ask_required DOCKERHUB_USERNAME "Your Docker Hub username:" '^[a-z0-9]{4,30}$'
+ask_required DOCKERHUB_REPOSITORY "Repository, as <username>/<name>:" \
+  '^[a-z0-9]{4,30}/[a-z0-9._-]+$' "$DOCKERHUB_USERNAME/sextante"
 write_env DOCKERHUB_USERNAME "$DOCKERHUB_USERNAME"
 write_env DOCKERHUB_REPOSITORY "$DOCKERHUB_REPOSITORY"
 set_var DOCKERHUB_REPOSITORY "$DOCKERHUB_REPOSITORY"
@@ -338,13 +356,13 @@ if [[ -z "$SEXTANTE_ACCESS_TOKEN" ]]; then
 fi
 SEXTANTE_API_KEY=$(random_secret)
 note "An API key for programs was generated; it is visible in the app's variables in ShardCloud."
-ask SEXTANTE_TARGET_ENTITY_NAME "Target entity name (as on AMT's invoices):"
-ask SEXTANTE_TARGET_ENTITY_NIF "Target entity NIF (as on AMT's invoices):"
-ask SEXTANTE_REVIEWER_ID "Reviewer id for the audit trail (e.g. revisor-1):"
-ask SHARDCLOUD_SUBDOMAIN "Subdomain, letters and digits only (site at <subdomain>.shardweb.app):"
-ask SHARDCLOUD_RAM "Memory for the app in MB (2048 recommended):"
-[[ "$SHARDCLOUD_SUBDOMAIN" =~ ^[A-Za-z0-9]{1,100}$ ]] || { warn "Invalid subdomain."; exit 1; }
-[[ "$SHARDCLOUD_RAM" =~ ^[0-9]+$ ]] && (( SHARDCLOUD_RAM >= 512 )) || { warn "Memory must be a number of MB, at least 512."; exit 1; }
+ask_required SEXTANTE_TARGET_ENTITY_NAME "Target entity name (as on AMT's invoices):" \
+  '^.{3,200}$' "Advanced Maritime Transports - Transitarios Limitada"
+ask_required SEXTANTE_TARGET_ENTITY_NIF "Target entity NIF (as on AMT's invoices):" '^[0-9A-Za-z]{5,20}$'
+ask_required SEXTANTE_REVIEWER_ID "Reviewer id for the audit trail:" '^[A-Za-z0-9._-]{1,64}$' "revisor-1"
+ask_required SHARDCLOUD_SUBDOMAIN "Subdomain, letters and digits only (site at <subdomain>.shardweb.app):" \
+  '^[A-Za-z0-9]{1,100}$'
+ask_required SHARDCLOUD_RAM "Memory for the app in MB (at least 512):" '^([5-9][0-9]{2}|[1-9][0-9]{3,4})$' "2048"
 write_env SEXTANTE_TARGET_ENTITY_NAME "$SEXTANTE_TARGET_ENTITY_NAME"
 write_env SEXTANTE_TARGET_ENTITY_NIF "$SEXTANTE_TARGET_ENTITY_NIF"
 write_env SEXTANTE_REVIEWER_ID "$SEXTANTE_REVIEWER_ID"
