@@ -158,15 +158,18 @@ def test_the_compose_images_run_without_root(context: str) -> None:
 
 
 @pytest.mark.requirement("SEC-04", "D-3.27")
-def test_the_shardcloud_image_keeps_root_to_binding_port_80_only() -> None:
-    """The API runs as uid 10001 without capabilities, on 127.0.0.1; nginx workers as www-data."""
+def test_the_shardcloud_image_drops_root_where_the_platform_allows_it() -> None:
+    """Where it can, the API runs as uid 10001 without capabilities and nginx workers as
+    www-data; always on 127.0.0.1, and never failing where users cannot be changed."""
     entrypoint = (SHARDCLOUD / "entrypoint.sh").read_text()
     nginx = (SHARDCLOUD / "nginx.conf").read_text()
 
     assert "setpriv --reuid=sextante --regid=sextante --init-groups --inh-caps=-all" in entrypoint
     assert "--host 127.0.0.1 --port 8000" in entrypoint
     assert "umask 077" in entrypoint
-    assert re.search(r"^user www-data;", nginx, flags=re.MULTILINE)
+    # The workers switch to www-data only where changing user works; never set in the file.
+    assert 'nginx_globals="daemon off; user www-data;"' in entrypoint
+    assert not re.search(r"^user ", nginx, flags=re.MULTILINE)
     assert "proxy_pass http://127.0.0.1:8000;" in nginx
 
 

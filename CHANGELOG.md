@@ -95,6 +95,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                                                         └── CHG-0086  fix       Artefacto do release com o Dockerfile na raiz
                                                                                                                                                                                                                                             └── CHG-0087  infra     O release acaba no zip; sem deploy automático na ShardCloud
                                                                                                                                                                                                                                                 └── CHG-0088  fix       Imagem da ShardCloud a correr com qualquer utilizador
+                                                                                                                                                                                                                                                    └── CHG-0089  fix       Imagem da ShardCloud como root sem capacidades
 ```
 
 ## Regras
@@ -159,6 +160,36 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0089 · Imagem da ShardCloud como root sem capacidades
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0088
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008, SEC-04
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `deploy/shardcloud/entrypoint.sh`, `deploy/shardcloud/nginx.conf`, `backend/tests/deploy/test_container_config.py`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:**
+  - `tests/deploy` com 31 testes.
+  - Imagem construída sem argumentos e corrida de cinco formas; em todas, o *health check* e as páginas responderam:
+    - root com capacidades: dados do uid 10001;
+    - root sem capacidades (`--cap-drop ALL`, o caso da ShardCloud): dados do uid 0;
+    - utilizador 4242: dados do uid 4242;
+    - root com capacidades num volume;
+    - depois, root sem capacidades excepto `CHOWN` no mesmo volume, deixado pelo uid 10001: dados retomados pelo uid 0.
+
+**Relato do responsável.** Com CHG-0088 a app passou a falhar com `setpriv: setresuid failed: Operation not permitted`. A ShardCloud corre o contentor como root, mas sem as capacidades de mudar de utilizador. O `chown` do arranque anterior funcionou, por isso a capacidade `CHOWN` existe.
+
+**Correcções.**
+- **Largar privilégios só se der.** O *entrypoint* experimenta primeiro mudar de utilizador e só larga os privilégios se isso funcionar. Não funcionando, os dois processos ficam com o utilizador recebido.
+- **Pastas de outro dono.** Uma pasta deixada a outro dono por um arranque anterior é retomada: primeiro cada pasta, para se poder ler o seu conteúdo, depois tudo o que está dentro.
+- **nginx.** O `user www-data` sai de `nginx.conf` e passa ao *entrypoint*, só onde mudar de utilizador funciona. Como root sem capacidades, o nginx serve num só processo como root, sem mudar o dono das suas pastas temporárias, o que falhava com `chown … failed`.
+
+**Efeito na segurança, declarado.** Na ShardCloud, a API e o nginx correm como uid 0 sem capacidades. Não há a separação de utilizadores que existe noutros sítios, porque a plataforma não a permite. Sem capacidades, o root do contentor não pode mudar de utilizador, montar sistemas de ficheiros nem ligar-se a portas além das permitidas. A API continua só em `127.0.0.1`. Fica registado como risco residual da instalação na ShardCloud (§3.27).
 
 ### CHG-0088 · Imagem da ShardCloud a correr com qualquer utilizador
 

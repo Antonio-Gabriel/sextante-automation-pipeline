@@ -2,8 +2,10 @@
 # Starts the two processes of the ShardCloud container and stops the container when
 # either one stops, so the platform restarts it whole (decision 3.27 of docs/00).
 #
-# It runs as whatever user the platform chooses: ShardCloud does not run containers as
-# root. As root, it hands the data folder to the API's user and drops privileges.
+# It runs as whatever user the platform chooses. ShardCloud runs it as root without
+# capabilities: then nothing can change user, and both processes keep the one given. Only
+# where changing user works does it hand the data folder to the API's user and drop
+# privileges.
 set -euo pipefail
 
 # The database and the invoice files are readable by their owner only (SEC-04).
@@ -19,11 +21,29 @@ export SEXTANTE_DATABASE_URL="${SEXTANTE_DATABASE_URL:-sqlite+aiosqlite:///$data
 export SEXTANTE_UPLOAD_DIR="${SEXTANTE_UPLOAD_DIR:-$data/uploads}"
 
 api_command=(uvicorn --factory sextante.main:create_app --host 127.0.0.1 --port 8000 --no-server-header)
-if [[ "$(id -u)" == "0" ]]; then
+nginx_globals="daemon off; user www-data;"
+if setpriv --reuid=sextante --regid=sextante --init-groups true 2>/dev/null; then
     # The data may come back from a backup with other owners: handed back each start.
     chown -R sextante:sextante "$data"
-    # The API without root and without capabilities.
+    # The API without root and without capabilities; nginx workers as www-data.
     api_command=(setpriv --reuid=sextante --regid=sextante --init-groups --inh-caps=-all "${api_command[@]}")
+else
+    # No user can be changed to. A folder left to another owner by an earlier start is
+    # taken back if the platform allows it; the start stops above if it stays unwritable.
+    if [[ ! -w "$data/tmp" || ! -w "$data/uploads" ]]; then
+        # Each folder first, so its content can be read, then everything inside.
+        chown "$(id -u):$(id -g)" "$data" "$data"/* 2>/dev/null || true
+        chown -R "$(id -u):$(id -g)" "$data" 2>/dev/null || true
+    fi
+    if [[ ! -w "$data/tmp" || ! -w "$data/uploads" ]]; then
+        echo "sextante: $data/tmp or $data/uploads is not writable by uid $(id -u)." >&2
+        exit 1
+    fi
+    # As root, nginx would switch its workers to another user, which needs the
+    # capabilities it lacks here: it serves from a single process, as root, instead.
+    if [[ "$(id -u)" == "0" ]]; then
+        nginx_globals="daemon off; master_process off; user root root;"
+    fi
 fi
 
 # A stop request before or while both start still stops whatever has started.
@@ -40,7 +60,7 @@ api=$!
 
 # nginx on port 80; as root its workers run as www-data (nginx.conf). Its own log goes to
 # the standard error from the start, so it never needs a writable /var/log.
-nginx -e stderr -g "daemon off;" &
+nginx -e stderr -g "$nginx_globals" &
 web=$!
 
 # The first of the two to stop ends the container, with its status; the other is stopped.
