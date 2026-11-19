@@ -77,6 +77,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                 └── CHG-0068  feat      Interface em Inglês e Português, com os textos do servidor no idioma escolhido
                                                                                                                                                                     └── CHG-0069  fix       Correcções da revisão da interface em dois idiomas
                                                                                                                                                                         └── CHG-0070  infra     Contentor da API e docker compose
+                                                                                                                                                                            └── CHG-0071  infra     Contentor do frontend e correcções da revisão do contentor da API
 ```
 
 ## Regras
@@ -142,6 +143,75 @@ Três casos estão sempre limitados:
 
 ## Alterações
 
+### CHG-0071 · Contentor do frontend e correcções da revisão do contentor da API
+
+- **Data:** 2026-11-19
+- **Tipo:** infra
+- **Pai:** CHG-0070
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008, SEC-02, SEC-03, SEC-04, SEC-06, SEC-11, SEC-16, SEC-20
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `frontend/Dockerfile`, `frontend/.dockerignore`, `frontend/nginx/{default,security-headers}.conf` (novos); `backend/requirements.lock`, `backend/scripts/lock_dependencies.sh` (novos), `backend/Dockerfile`, `backend/.dockerignore`, `backend/Makefile`, `compose.yaml`, `backend/tests/deploy/test_container_config.py`; `config/.env.example`, `docs/03` SEC-11, `README.md`, ticket 02 do deploy
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit; `docker compose down` pára os contentores, e `docker compose down -v` apaga também o volume com os dados.
+- **Verificação:**
+  - Backend: `make test`, 435 testes e 1 xfail. `make golden`, 12 amostras sem divergências. Matriz de rastreabilidade, 68 de 79. Licenças.
+  - Frontend: 79 testes, `tsc`, ESLint, licenças, build.
+  - Projecto compose de verificação nas portas 18000 e 18080, com uma chave do modelo inválida. Os resultados estão no bloco de segurança abaixo.
+
+**Ticket 02.**
+- **Imagem do frontend.** Multi-etapa: Node 22 compila (`tsc -b && vite build`) e o nginx sem privilégios serve os ficheiros compilados.
+- **Imagem base.** Variante slim, `mainline-alpine-slim`, fixada por digest. Foi escolhida pelo Trivy: a primeira escolhida, `1.28-alpine`, tinha 82 vulnerabilidades HIGH ou CRITICAL com correcção; `stable-alpine` tinha 19; a slim de mainline tem 3.
+- **Encaminhamento de `/api`.** O nginx encaminha `/api` para o contentor da API na mesma origem. O nome da API resolve-se a cada pedido, por isso o nginx arranca mesmo antes da API.
+- **Cabeçalhos de SEC-11.** Estão em todas as `location`, através de um ficheiro incluído, porque um `add_header` numa `location` apagaria os do servidor.
+- **Outros pormenores.** `server_tokens off`. Recursos compilados guardados um ano, por terem o hash no nome; as páginas não ficam em cache. Corpo até 1260 MiB, que cobre 50 ficheiros de 25 MiB.
+
+**Correcções da revisão de CHG-0070.**
+- **Dependências bloqueadas (SEC-20, falha dura).** `requirements.lock` fixa as 40 dependências por versão e hash, e a imagem instala com `--require-hashes`. `make lock` regenera o ficheiro num contentor da mesma base, e a regeneração dá exactamente o mesmo ficheiro.
+- **Bloco de segurança.** Estava em falta em CHG-0070 e fica abaixo, para os dois tickets.
+- **Endurecimento do compose.** Uma âncora partilhada pelos dois contentores, com `/tmp` `noexec,nosuid,nodev` limitado a 256 MiB, `pids_limit` e `mem_limit`.
+- **SEC-04.** A API arranca com `umask 077` e `/data` tem modo 700, por isso a base de dados e os ficheiros ficam `-rw-------`.
+- **Imagem da API.** A imagem base é um só `ARG`. A verificação de saúde passa a correr de 30 em 30 segundos. `*.egg-info` fica fora da imagem.
+- **Guarda do `0.0.0.0`.** Passa a ler todos os ficheiros do repositório excepto Markdown, e também `[::]` e `--host ::`. Só `backend/Dockerfile` pode ter um destes endereços.
+- **`config/.env`.** O exemplo e o README avisam que o compose não é uma shell: os valores ficam sem `$`, crases nem `#`.
+- **Doc.** SEC-11 deixa de dizer que a API não tem `DELETE`.
+
+**Fica como está, com o motivo.**
+- Os caminhos dentro do contentor aparecem no `environment` e nos `volumes` do compose. Juntá-los exigiria variáveis de interpolação que tornam o ficheiro mais difícil de ler.
+- A sessão vive em memória, por isso reiniciar a API termina as sessões (SEC-06, já declarado).
+
+```
+SEGURANÇA
+- Itens aplicáveis: 2, 3, 4, 5, 6, 11, 15, 16, 20
+- Verificados:
+  2  grep no bundle servido por SEXTANTE_API_KEY, SEXTANTE_ACCESS_TOKEN, ANTHROPIC e sk-ant:
+     só o nome SEXTANTE_API_KEY, no texto da descrição OpenAPI, nenhum valor;
+     .dockerignore de ambas as imagens sem .env; test_no_secret_or_local_data_enters_an_image
+  3  git status antes do commit: nenhum .env, .db nem carregamento; .gitignore inalterado
+  4  contentores com uid 10001 (API) e 101 (nginx), raiz só de leitura, cap_drop ALL,
+     no-new-privileges; ls -ln /data: base de dados, WAL e uploads -rw------- 10001;
+     test_each_container_is_locked_down[api|web]
+  5  sem TLS local, tráfego confinado a 127.0.0.1 (SEC-05, já declarado)
+  6  docker port: 127.0.0.1:18000->8000 e 127.0.0.1:18080->8080;
+     test_every_published_port_is_on_127_0_0_1_only;
+     test_only_the_api_image_listens_on_every_interface (excepção D-3.26 num só ficheiro)
+  11 curl -D - às páginas: os oito cabeçalhos de §11.2, CSP não em modo de relatório;
+     test_the_served_frontend_carries_every_security_header_in_every_location
+  15 grep da chave da API no log do contentor da API (verificação de CHG-0070): zero;
+     o nginx regista só a linha do pedido, nunca o corpo da entrada; Server sem versão
+  16 corpo limitado no nginx a 50 × 25 MiB; os limites por ficheiro continuam na API
+  20 Trivy (HIGH e CRITICAL com correcção): sextante-api 0; sextante-web 3 (ver pendentes);
+     requirements.lock com hashes e --require-hashes; make licenses e npm run licenses verdes;
+     test_base_images_are_pinned_by_digest_and_run_without_root;
+     test_the_api_dependencies_install_from_the_hashed_lock
+- Pendentes: imagem web com 3 achados HIGH (musl CVE-2026-107891, zlib CVE-2026-85091)
+  já corrigidos no Alpine mas ainda não na imagem oficial; actualizar o digest quando sair
+- Não suportado pelo stack: nenhum nesta alteração
+- Risco residual: médio, o de SEC-06: quem aceda à máquina alcança a API com a chave ou o
+  token; HSTS é ignorado em HTTP local até haver TLS.
+```
+
 ### CHG-0070 · Contentor da API e docker compose
 
 - **Data:** 2026-11-19
@@ -149,7 +219,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0069
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-008, SEC-02, SEC-03, SEC-04, SEC-06, SEC-20
-- **Commit:** pendente
+- **Commit:** `47ecdf4`
 - **Migração:** nenhuma
 - **Ficheiros:** `backend/Dockerfile` (novo), `backend/.dockerignore` (novo), `compose.yaml` (novo), `backend/tests/deploy/` (novo); `docs/00` §3.26, `docs/03` SEC-06, `CLAUDE.md`, `README.md`, ticket 01 do deploy
 - **Reversibilidade:** total

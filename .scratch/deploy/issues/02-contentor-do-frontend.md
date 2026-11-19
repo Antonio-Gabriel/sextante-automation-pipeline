@@ -4,12 +4,16 @@
 
 **Blocked by:** 01 (Contentor da API e docker compose), frontend 01 (Esqueleto do frontend e login por token)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Imagem multi-etapa do frontend, com o código compilado servido por um servidor estático mínimo, sem segredos no código compilado
-- [ ] `/api` encaminhado para o contentor da API, na mesma origem, para que o cookie de sessão funcione
-- [ ] Os cabeçalhos de segurança de SEC-11 aplicados ao frontend servido
-- [ ] Porta publicada só em `127.0.0.1`
-- [ ] Sem Docker, o servidor de desenvolvimento do frontend continua a funcionar
-- [ ] O `README.md` documenta o arranque completo com e sem Docker
-- [ ] Verificação: `docker compose up`, abrir o endereço, entrar com o token e ver o estado do servidor
+- [x] Imagem multi-etapa do frontend, com o código compilado servido por um servidor estático mínimo, sem segredos no código compilado
+- [x] `/api` encaminhado para o contentor da API, na mesma origem, para que o cookie de sessão funcione
+- [x] Os cabeçalhos de segurança de SEC-11 aplicados ao frontend servido
+- [x] Porta publicada só em `127.0.0.1`
+- [x] Sem Docker, o servidor de desenvolvimento do frontend continua a funcionar
+- [x] O `README.md` documenta o arranque completo com e sem Docker
+- [x] Verificação: `docker compose up`, abrir o endereço, entrar com o token e ver o estado do servidor
+
+## Comments
+
+Resolved on 2026-11-19 (CHG-0071). Checked in a separate compose project on ports 18000/18080: both containers healthy, every SEC-11 header on pages, assets and /api, sign-in through nginx answers 204 with the session cookie, the session check and the health answer through the same address, and a job survives `docker compose down` and `up`. The nginx base is the slim mainline variant: 3 HIGH findings left (musl, zlib), fixed upstream but not yet in the image.

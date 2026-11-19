@@ -4,7 +4,13 @@ VENV := .venv
 BIN := $(VENV)/bin
 ENV_FILE := ../config/.env
 
-.PHONY: install run test test-unit typecheck lint fmt boundaries licenses golden golden-model openapi traceability-matrix check
+.PHONY: lock install run test test-unit typecheck lint fmt boundaries licenses golden golden-model openapi traceability-matrix check
+
+# Pins the runtime dependencies by version and hash for the container image (SEC-20).
+# Run after changing the dependencies of pyproject.toml; the base is that of the image.
+PYTHON_IMAGE := python:3.12-slim-bookworm@sha256:935c3c5b12357a7e10caa9c1e6ca5692344d97cf229832ef584be2cec9fc03df
+lock:
+	scripts/lock_dependencies.sh $(PYTHON_IMAGE)
 
 install:
 	python3 -m venv $(VENV)

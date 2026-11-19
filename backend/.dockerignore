@@ -1,7 +1,9 @@
-# Only pyproject.toml, src and migrations enter the image: never data, secrets or tooling.
+# Only the lock file, the code and the migrations enter the image: never data, secrets,
+# tests or tooling.
 *
-!pyproject.toml
+!requirements.lock
 !src/
 !migrations/
 **/__pycache__
 **/*.pyc
+**/*.egg-info

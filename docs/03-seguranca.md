@@ -424,7 +424,7 @@ Regras que não se negociam:
 
 - **Nunca `allow_origins=["*"]`.** Nem em desenvolvimento, porque a configuração de desenvolvimento é a que acaba em produção.
 - **Nunca origem universal combinada com `allow_credentials=True`.** É recusado pelos navegadores e é um erro de configuração. O arranque valida e falha se detectar essa combinação.
-- `allow_methods` lista os métodos que a API usa, não `["*"]`. Esta API não tem `DELETE` nem `PUT`, e a lista diz isso.
+- `allow_methods` lista os métodos que a API usa, não `["*"]`. Esta API não tem `PUT`; `DELETE` existe só para apagar um trabalho (00-decisoes-e-lacunas.md §3.24), e a lista diz isso.
 - `allow_headers` lista os cabeçalhos que a API lê. `Authorization` entra quando a autenticação entrar, não antes. A sessão do frontend vai em cookie, não em `Authorization`; em desenvolvimento o Vite encaminha `/api` e a origem é a mesma, pelo que esta configuração não chega a ser montada.
 - Nenhuma origem com protocolo `http` na lista de produção.
 

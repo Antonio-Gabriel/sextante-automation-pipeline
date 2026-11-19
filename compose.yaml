@@ -1,12 +1,27 @@
 # Sextante with Docker (deploy tickets 01 and 02). From the repository root:
 #   cp config/.env.example config/.env   # then fill it in
 #   docker compose up --build
-# Ports are published on 127.0.0.1 only: nothing is reachable from another machine (SEC-06).
+# Then open http://127.0.0.1:8080. Ports are published on 127.0.0.1 only: nothing is
+# reachable from another machine (SEC-06, decision 3.26 of docs/00).
 
 name: sextante
 
+# The same lock-down for both containers: read-only root, a private /tmp that runs
+# nothing, no Linux capabilities, no privilege gain, bounded memory and processes.
+x-locked-down: &locked-down
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,size=256m
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  pids_limit: 256
+  restart: unless-stopped
+
 services:
   api:
+    <<: *locked-down
     build: ./backend
     image: sextante-api:local
     # Secrets and settings come from config/.env at start; none is built into the image.
@@ -21,16 +36,23 @@ services:
       - sextante-data:/data
       - ./sources/catalog.xlsx:/config/catalog.xlsx:ro
       - ./config/entity_denylist.yaml:/config/entity_denylist.yaml:ro
+    # For programs and the interactive API documentation, with the API key.
     ports:
       - "127.0.0.1:8000:8000"
-    read_only: true
-    tmpfs:
-      - /tmp
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    restart: unless-stopped
+    # The PDF extraction of each file is bounded at 512 MiB by default (SEC-16).
+    mem_limit: 2g
+
+  web:
+    <<: *locked-down
+    build: ./frontend
+    image: sextante-web:local
+    # The pages, and /api forwarded to the API on the same origin, for people.
+    ports:
+      - "127.0.0.1:8080:8080"
+    mem_limit: 256m
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   # The database and the uploaded invoices: they survive restarts and rebuilds.
