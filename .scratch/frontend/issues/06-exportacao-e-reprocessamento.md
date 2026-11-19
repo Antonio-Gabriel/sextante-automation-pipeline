@@ -15,3 +15,5 @@
 ## Comments
 
 Resolved on 2026-11-19 (CHG-0064). The Radix alert dialog was not added: it brings `tslib` (0BSD), outside NFR-LIC-001.
+
+Review fixes on 2026-11-19 (CHG-0065): download link in the document and delayed revocation, confirmation focus starting on Cancel and returning to the button, Escape, polling after reprocessing.

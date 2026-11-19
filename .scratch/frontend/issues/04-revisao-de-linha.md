@@ -19,3 +19,5 @@
 ## Comments
 
 Resolved on 2026-11-19 (CHG-0063), after ticket 05: the line's job and description come from the invoice endpoint and the invoice's results.
+
+Review fixes on 2026-11-19 (CHG-0065): idempotency keys tied to the body, line found across result pages, read failures shown, accessible choice column and live counter.

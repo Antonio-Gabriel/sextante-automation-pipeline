@@ -9,16 +9,22 @@ import { useLineReview } from "@/features/line-review/use-line-review";
 import { useReviewActions } from "@/features/line-review/use-review-actions";
 import type { components } from "@/shared/api/schema";
 import { Page } from "@/shared/layout/page";
-import { t } from "@/shared/i18n/t";
+import { t, type MessageKey } from "@/shared/i18n/t";
 import { Badge } from "@/shared/ui-kit/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui-kit/card";
 
 type ResultLine = components["schemas"]["ResultLineResponse"];
+type Candidate = components["schemas"]["CandidateResponse"];
 
 const route = getRouteApi("/_app/invoices/$invoiceId/lines/$lineId");
 const NONE = "common.none" as const;
 
-/** The review of one line: coding in force, every item of its sheet, decision, history. */
+/**
+ * The review of one line: coding in force, every item of its sheet, decision, history.
+ *
+ * Example:
+ *   route "/invoices/$invoiceId/lines/$lineId" -> <LineReviewPage />
+ */
 export function LineReviewPage() {
   const { invoiceId, lineId } = route.useParams();
   const review = useLineReview(invoiceId, lineId);
@@ -28,25 +34,19 @@ export function LineReviewPage() {
     <Page
       title={t("review.title", { position: line?.line_position ?? "" })}
       description={line?.line_description}
-      breadcrumb={
-        invoice !== undefined && (
-          <Link to="/invoices/$invoiceId" params={{ invoiceId }} className="text-xs text-brand-700 hover:underline">
-            {t("review.breadcrumb", { number: invoice.invoice_number ?? t(NONE) })}
-          </Link>
-        )
-      }
+      breadcrumb={invoice !== undefined && <InvoiceLink invoiceId={invoiceId} label={t("review.breadcrumb", { number: invoice.invoice_number ?? t(NONE) })} />}
     >
-      {review.isPending && <p className="text-sm text-slate-500">{t("review.loading")}</p>}
-      {(review.notFound || (!review.isPending && line === undefined)) && (
-        <p className="text-sm text-slate-600">{t("review.notFound")}</p>
+      {review.stateText !== null && <p className="text-sm text-slate-600">{t(review.stateText)}</p>}
+      {review.failure !== null && (
+        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{review.failure}</p>
       )}
-      {line !== undefined && (
+      {review.state === "ready" && line !== undefined && (
         <>
           <CurrentCoding line={line} />
-          {review.targetSheet === null || line.encoded_line_id === null ? (
-            <NoSheet invoiceId={invoiceId} />
+          {review.decision === "ready" && line.encoded_line_id !== null && review.targetSheet !== null ? (
+            <Decision encodedLineId={line.encoded_line_id} currentItem={line.item_number} reviewPending={review.reviewPending} sheet={review.targetSheet} candidates={review.candidates} />
           ) : (
-            <Decision line={line} encodedLineId={line.encoded_line_id} sheet={review.targetSheet} candidates={review.candidates} />
+            <Blocked text={review.decision === "noSheet" ? "review.noSheet" : "review.notCoded"} invoiceId={invoiceId} />
           )}
           <CodingHistory codings={review.history} />
         </>
@@ -55,28 +55,43 @@ export function LineReviewPage() {
   );
 }
 
-interface DecisionProps {
-  line: ResultLine;
-  encodedLineId: string;
-  sheet: string;
-  candidates: components["schemas"]["CandidateResponse"][];
+function InvoiceLink({ invoiceId, label }: { invoiceId: string; label: string }) {
+  return (
+    <Link to="/invoices/$invoiceId" params={{ invoiceId }} className="text-xs text-brand-700 hover:underline">
+      {label}
+    </Link>
+  );
 }
 
-function Decision({ line, encodedLineId, sheet, candidates }: DecisionProps) {
+interface DecisionProps {
+  encodedLineId: string;
+  currentItem: string | null;
+  reviewPending: boolean;
+  sheet: string;
+  candidates: Candidate[];
+}
+
+function Decision({ encodedLineId, currentItem, reviewPending, sheet, candidates }: DecisionProps) {
   const actions = useReviewActions(encodedLineId);
   return (
     <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
       <section className="flex flex-col gap-2">
         <h2 className="text-base font-semibold">{t("review.candidates.title", { sheet })}</h2>
         <p className="text-sm text-slate-500">{t("review.candidates.description")}</p>
-        <CandidatesTable
-          candidates={candidates}
-          currentItem={line.item_number}
-          choice={actions.form.register("item_number")}
-          disabled={actions.isPending}
-        />
+        <CandidatesTable candidates={candidates} currentItem={currentItem} choice={actions.register("item_number")} disabled={actions.isPending} />
       </section>
-      <ReviewActions actions={actions} pending={line.review_status === "pending"} />
+      <ReviewActions
+        registerNote={actions.register("note")}
+        noteError={actions.noteError}
+        remaining={actions.remaining}
+        reviewPending={reviewPending}
+        isPending={actions.isPending}
+        canCorrect={actions.canCorrect}
+        correctLabel={actions.correctLabel}
+        failure={actions.failure}
+        onAccept={() => void actions.accept()}
+        onCorrect={() => void actions.correct()}
+      />
     </div>
   );
 }
@@ -115,11 +130,11 @@ function CurrentCoding({ line }: { line: ResultLine }) {
   );
 }
 
-function NoSheet({ invoiceId }: { invoiceId: string }) {
+function Blocked({ text, invoiceId }: { text: MessageKey; invoiceId: string }) {
   return (
     <div role="status" className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
       <TriangleAlert className="size-5 shrink-0" aria-hidden />
-      <p className="flex-1">{t("review.noSheet")}</p>
+      <p className="flex-1">{t(text)}</p>
       <Link to="/invoices/$invoiceId" params={{ invoiceId }} className="font-medium underline">
         {t("review.openInvoice")}
       </Link>

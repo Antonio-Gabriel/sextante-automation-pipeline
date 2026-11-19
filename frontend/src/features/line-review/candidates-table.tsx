@@ -27,11 +27,14 @@ interface CandidatesTableProps {
  */
 export function CandidatesTable({ candidates, currentItem, choice, disabled }: CandidatesTableProps) {
   return (
-    <div className="max-h-[28rem] overflow-auto rounded-xl border border-slate-200 bg-white">
+    <fieldset className="max-h-[28rem] overflow-auto rounded-xl border border-slate-200 bg-white">
+      <legend className="sr-only">{t("review.candidates.legend")}</legend>
       <table className="w-full text-left text-sm">
         <thead className="sticky top-0 border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
           <tr>
-            <th scope="col" className="w-10 px-3 py-2" />
+            <th scope="col" className="w-10 px-3 py-2">
+              <span className="sr-only">{t("review.candidates.chooseColumn")}</span>
+            </th>
             <th scope="col" className="px-3 py-2 font-medium">{t("review.candidates.rank")}</th>
             <th scope="col" className="px-3 py-2 font-medium">{t("review.candidates.item")}</th>
             <th scope="col" className="px-3 py-2 font-medium">{t("review.candidates.catalogDescription")}</th>
@@ -71,6 +74,6 @@ export function CandidatesTable({ candidates, currentItem, choice, disabled }: C
           ))}
         </tbody>
       </table>
-    </div>
+    </fieldset>
   );
 }

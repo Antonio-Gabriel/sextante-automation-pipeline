@@ -1,13 +1,13 @@
 import { confidenceView, reviewView } from "@/entities/result/result-labels";
 import type { components } from "@/shared/api/schema";
+import { shortDigest } from "@/shared/format";
 import { t } from "@/shared/i18n/t";
 import { Badge } from "@/shared/ui-kit/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui-kit/card";
 
 type Coding = components["schemas"]["CodingHistoryResponse"];
 
-const DIGEST_SHOWN = 12;
-const NONE = "results.noValue" as const;
+const NONE = "common.none" as const;
 
 /**
  * Every coding of the line, newest first, in force or superseded, with its review.
@@ -60,7 +60,7 @@ function CodingEntry({ coding }: { coding: Coding }) {
         <dt className="text-slate-500">{t("review.history.model")}</dt>
         <dd>{coding.model_id ?? t(NONE)}</dd>
         <dt className="text-slate-500">{t("review.history.catalog")}</dt>
-        <dd className="font-mono" title={coding.catalog_digest}>{coding.catalog_digest.slice(0, DIGEST_SHOWN)}</dd>
+        <dd className="font-mono" title={coding.catalog_digest}>{shortDigest(coding.catalog_digest)}</dd>
         <dt className="text-slate-500">{t("review.history.review")}</dt>
         <dd>
           {review === null ? t("review.history.noReview") : <Badge tone={review.tone}>{t(review.label)}</Badge>}

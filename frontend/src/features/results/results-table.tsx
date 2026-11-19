@@ -65,7 +65,7 @@ interface ResultRowProps {
 }
 
 function ResultRow({ line, onFilterInvoice }: ResultRowProps) {
-  const invoice = line.invoice_number ?? t("results.noValue");
+  const invoice = line.invoice_number ?? t("common.none");
   const filterLabel = t("results.filters.filterByInvoice", { invoice });
   const confidence = confidenceView(line.confidence);
   const review = reviewView(line.review_status);
@@ -88,18 +88,18 @@ function ResultRow({ line, onFilterInvoice }: ResultRowProps) {
           </button>
         </div>
       </td>
-      <td className={CELL}>{line.billed_entity_detected ?? t("results.noValue")}</td>
+      <td className={CELL}>{line.billed_entity_detected ?? t("common.none")}</td>
       <td className={CELL}>{t(yesNo(line.exact_entity_match))}</td>
-      <td className={CELL}>{line.target_sheet ?? t("results.noValue")}</td>
+      <td className={CELL}>{line.target_sheet ?? t("common.none")}</td>
       <td className={`${CELL} max-w-xs`}>
         <Link to="/invoices/$invoiceId/lines/$lineId" params={lineParams} className="text-slate-900 hover:text-brand-700 hover:underline" title={t("results.openLine")}>
           {line.line_description.trim() === "" ? t("results.openLine") : line.line_description}
         </Link>
       </td>
-      <td className={`${CELL} font-mono`}>{line.item_number ?? t("results.noValue")}</td>
-      <td className={`${CELL} max-w-xs text-slate-600`}>{line.catalog_description ?? t("results.noValue")}</td>
+      <td className={`${CELL} font-mono`}>{line.item_number ?? t("common.none")}</td>
+      <td className={`${CELL} max-w-xs text-slate-600`}>{line.catalog_description ?? t("common.none")}</td>
       <td className={CELL}>
-        {confidence === null ? t("results.noValue") : <Badge tone={confidence.tone}>{t(confidence.label)}</Badge>}
+        {confidence === null ? t("common.none") : <Badge tone={confidence.tone}>{t(confidence.label)}</Badge>}
       </td>
       <td className={CELL}>
         <Badge tone={review.tone}>{t(review.label)}</Badge>
@@ -113,7 +113,7 @@ function ResultRow({ line, onFilterInvoice }: ResultRowProps) {
           ))}
         </ul>
       </td>
-      <td className={`${CELL} max-w-xs text-slate-600`}>{line.review_note ?? t("results.noValue")}</td>
+      <td className={`${CELL} max-w-xs text-slate-600`}>{line.review_note ?? t("common.none")}</td>
     </tr>
   );
 }

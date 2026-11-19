@@ -16,9 +16,9 @@ export function ExportButtons({ jobId }: { jobId: string }) {
   return (
     <>
       {EXPORT_FORMATS.map((format) => (
-        <Button key={format} variant="outline" disabled={exporter.isPending} onClick={() => exporter.mutate(format)}>
+        <Button key={format} variant="outline" disabled={exporter.isPending} onClick={() => exporter.download(format)}>
           <Download />
-          {exporter.isPending && exporter.variables === format ? t("export.exporting") : t(`export.${format}`)}
+          {exporter.pendingFormat === format ? t("export.exporting") : t(`export.${format}`)}
         </Button>
       ))}
     </>

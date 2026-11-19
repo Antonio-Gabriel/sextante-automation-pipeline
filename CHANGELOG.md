@@ -71,6 +71,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                         └── CHG-0062  fix       Correcções da revisão do ticket 05 do frontend
                                                                                                                                             └── CHG-0063  feat      Revisão de linha
                                                                                                                                                 └── CHG-0064  feat      Exportação e reprocessamento na interface
+                                                                                                                                                    └── CHG-0065  fix       Correcções da revisão dos tickets 04 e 06 do frontend
 ```
 
 ## Regras
@@ -135,6 +136,32 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0065 · Correcções da revisão dos tickets 04 e 06 do frontend
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0064
+- **Estado:** activa
+- **Requisitos:** REQ-REV-002, REQ-REV-003, SEC-19, NFR-REL-002, REQ-PLT-006
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `frontend/src/shared/api/use-idempotency-key.ts`, `shared/api/use-invoice-changed.ts` (novo), `shared/api/query-keys.ts`, `shared/format.ts`, `features/line-review/*`, `features/reprocess/*`, `features/export/*`, `features/entity-resolution/use-resolution-form.ts`, `entities/invoice/use-invoice.ts`, `entities/health/server-status.tsx`, `pages/line-review-page.tsx`, `shared/i18n/pt.ts`, testes
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 64 testes do frontend; `tsc`, ESLint, licenças, build. Backend sem alterações.
+
+**Chaves de idempotência.** Uma chave passa a valer para um corpo: mantém-se enquanto o corpo é o mesmo (duplo clique, nova tentativa depois de uma falha) e muda quando o corpo muda. Antes, depois de uma recusa, corrigir para outro item ou mudar a nota reutilizava a chave e o servidor recusava sempre (SEC-19). Vale para a revisão, a resolução e o reprocessamento.
+
+**Revisão de linha.** A linha é procurada página a página nos resultados da factura, e uma factura com mais de 100 linhas encontra a sua última. Uma falha a ler a linha, os candidatos ou o histórico mostra-se como falha, e o histórico deixa de parecer vazio enquanto carrega. Uma linha por codificar já não culpa a entidade. A recusa do servidor aparece também junto às acções; a coluna de escolha tem nome e as escolhas estão num `fieldset`; o contador é anunciado. Estado, decisão e textos dos botões passam ao gancho, e as acções recebem props estreitas. O limite da nota falha alto se faltar no OpenAPI, em vez de valer 0.
+
+**Exportação e reprocessamento.** A ligação de descarga entra no documento e o endereço do ficheiro é revogado depois, para não cancelar a descarga. A confirmação começa no "Cancelar", mantém o foco, fecha com Escape e devolve o foco ao botão. A factura reprocessada é seguida pela fila com intervalo que recomeça a cada vez que fica em fila. As leituras afectadas por uma alteração da factura vivem numa lista só (`useInvoiceChanged`).
+
+**Normas.** Um só texto para "sem valor" (`common.none`); digest encurtado num só sítio.
+
+**Fica como está, com o motivo.** O estado de confirmação aberta é local ao componente: é um passo de uma acção, não um painel nem uma preferência de vista (§8.3). A invalidação por prefixo pede mais leituras do que o mínimo, em troca de nunca deixar uma vista desactualizada. Os testes do frontend não têm marca de requisito: a matriz de rastreabilidade só lê os testes do backend.
+
+**Correcção do registo.** CHG-0063 lista `shared/i18n/pt.ts` nos ficheiros, mas as chaves da revisão já tinham entrado em CHG-0062.
 
 ### CHG-0064 · Exportação e reprocessamento na interface
 

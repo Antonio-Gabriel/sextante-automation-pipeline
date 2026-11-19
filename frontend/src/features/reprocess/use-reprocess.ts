@@ -1,16 +1,15 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import type { InvoiceStatus } from "@/entities/job/job-status";
 import { $api } from "@/shared/api/client";
 import { errorMessage, isKeyReused } from "@/shared/api/errors";
-import { queryKeys } from "@/shared/api/query-keys";
 import { useIdempotencyKey } from "@/shared/api/use-idempotency-key";
+import { useInvoiceChanged } from "@/shared/api/use-invoice-changed";
 import { t } from "@/shared/i18n/t";
 
 // The statuses the server reprocesses (NFR-REL-002): a failed or an already coded invoice.
-const REPROCESSABLE: ReadonlySet<string> = new Set(["failed", "encoded"]);
-const AFFECTED = [queryKeys.allInvoices, queryKeys.allResults, queryKeys.allJobs];
+const REPROCESSABLE: ReadonlySet<string> = new Set<InvoiceStatus>(["failed", "encoded"]);
 
 /**
  * Whether the screen offers reprocessing for an invoice in this status.
@@ -30,32 +29,31 @@ export function isReprocessable(status: string): boolean {
  *   reprocess.ask(); reprocess.confirm();
  */
 export function useReprocess(invoiceId: string) {
-  const queryClient = useQueryClient();
-  const idempotency = useIdempotencyKey();
-  const [asking, setAsking] = useState(false);
-  const refresh = () => Promise.all(AFFECTED.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+  const invoiceChanged = useInvoiceChanged();
+  const keys = useIdempotencyKey();
+  const [confirming, setConfirming] = useState(false);
   const mutation = $api.useMutation("post", "/api/invoices/{invoice_id}/reprocess", {
     onSuccess: async () => {
-      idempotency.renew();
-      setAsking(false);
+      keys.renew();
+      setConfirming(false);
       toast.success(t("reprocess.done"));
-      await refresh();
+      await invoiceChanged();
     },
     onError: async (error) => {
       toast.error(errorMessage(error));
-      if (isKeyReused(error)) idempotency.renew();
-      setAsking(false);
-      await refresh();
+      if (isKeyReused(error)) keys.renew();
+      setConfirming(false);
+      await invoiceChanged();
     },
   });
   return {
-    asking,
+    confirming,
     isPending: mutation.isPending,
-    ask: () => setAsking(true),
-    cancel: () => setAsking(false),
+    ask: () => setConfirming(true),
+    cancel: () => setConfirming(false),
     confirm: () =>
       mutation.mutate({
-        params: { path: { invoice_id: invoiceId }, header: { "Idempotency-Key": idempotency.key } },
+        params: { path: { invoice_id: invoiceId }, header: { "Idempotency-Key": keys.keyFor(invoiceId) } },
       }),
   };
 }

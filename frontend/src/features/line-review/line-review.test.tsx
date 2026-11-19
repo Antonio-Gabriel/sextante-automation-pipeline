@@ -117,7 +117,65 @@ describe("line review (frontend ticket 04)", () => {
     await user.click(await screen.findByRole("radio", { name: "Escolher O00007 para a correcção" }));
     await user.click(screen.getByRole("button", { name: "Corrigir para O00007" }));
 
-    expect(await screen.findByText("O item escolhido não pertence à aba de destino da linha.")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("O item escolhido não pertence à aba de destino da linha.");
+  });
+
+  it("takes a new key when the reviewer changes the correction after a refusal", async () => {
+    let first = true;
+    const sent = withLine({}, {
+      answer: () => {
+        if (!first) return HttpResponse.json({ encoded_line_id: "coded-1", review_status: "corrected", confidence: "HIGH", item_number: "O00004", catalog_description: null, review_note: null, target_sheet: "OUTLAYS" });
+        first = false;
+        return refused("errors.review.item_not_in_sheet", "O item escolhido não pertence à aba de destino da linha.", 422);
+      },
+    });
+    const { user } = renderApp(PATH);
+
+    await user.click(await screen.findByRole("radio", { name: "Escolher O00007 para a correcção" }));
+    await user.click(screen.getByRole("button", { name: "Corrigir para O00007" }));
+    await screen.findByRole("alert");
+    await user.click(screen.getByRole("radio", { name: "Escolher O00004 para a correcção" }));
+    await user.click(screen.getByRole("button", { name: "Corrigir para O00004" }));
+
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]?.key).not.toBe(sent[0]?.key);
+  });
+
+  it("finds a line past the first page of its invoice", async () => {
+    withLine();
+    server.use(
+      http.get("/api/jobs/:jobId/results", ({ request }) => {
+        const offset = Number(new URL(request.url).searchParams.get("offset") ?? 0);
+        const lines = offset === 0
+          ? Array.from({ length: 100 }, (_, n) => resultLine(n + 2, { invoice_line_id: `other-${n}` }))
+          : [resultLine(1)];
+        return HttpResponse.json({ lines, limit: 100, offset, limit_truncated: false });
+      }),
+    );
+    renderApp(PATH);
+
+    expect(await screen.findByRole("heading", { name: "Revisão da linha 1" })).toBeInTheDocument();
+  });
+
+  it("shows a failure to read the history, instead of an empty history", async () => {
+    withLine();
+    server.use(
+      http.get("/api/invoices/:invoiceId/lines/:lineId/history", () =>
+        refused("errors.internal", "Ocorreu um erro interno.", 500),
+      ),
+    );
+    renderApp(PATH);
+
+    expect(await screen.findByRole("alert", {}, { timeout: 4000 })).toHaveTextContent("Ocorreu um erro interno.");
+    expect(screen.queryByText("Sem codificações registadas.")).not.toBeInTheDocument();
+  });
+
+  it("explains a line not yet coded without blaming the entity", async () => {
+    withLine({ encoded_line_id: null, item_number: null });
+    renderApp(PATH);
+
+    expect(await screen.findByText("Esta linha ainda não tem codificação para rever.")).toBeInTheDocument();
+    expect(screen.queryByText(/resolva primeiro a entidade/)).not.toBeInTheDocument();
   });
 
   it("offers acceptance only to a pending line", async () => {

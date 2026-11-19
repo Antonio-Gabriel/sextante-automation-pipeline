@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -8,9 +7,9 @@ import { components as openapiComponents } from "../../../openapi.json";
 import { RESOLUTIONS } from "@/entities/invoice/entity-resolutions";
 import { $api } from "@/shared/api/client";
 import { errorMessage, isKeyReused } from "@/shared/api/errors";
-import { queryKeys } from "@/shared/api/query-keys";
 import type { components } from "@/shared/api/schema";
 import { useIdempotencyKey } from "@/shared/api/use-idempotency-key";
+import { useInvoiceChanged } from "@/shared/api/use-invoice-changed";
 import { t } from "@/shared/i18n/t";
 
 // The note's limits come from the OpenAPI document, so they follow the server's (§8.4).
@@ -29,8 +28,6 @@ const resolutionSchema = z.object({
 type ResolutionInput = z.input<typeof resolutionSchema>;
 type ResolutionOutput = z.output<typeof resolutionSchema>;
 
-const AFFECTED = [queryKeys.allInvoices, queryKeys.allResults, queryKeys.allJobs];
-
 /**
  * The resolution form of an ambiguous invoice: validated, sent once per key (SEC-19).
  *
@@ -38,15 +35,13 @@ const AFFECTED = [queryKeys.allInvoices, queryKeys.allResults, queryKeys.allJobs
  *   const { form, submit, isPending, remaining } = useResolutionForm(invoiceId, focusEntity);
  */
 export function useResolutionForm(invoiceId: string, onResolved: () => void) {
-  const queryClient = useQueryClient();
   const idempotency = useIdempotencyKey();
   const form = useForm<ResolutionInput, unknown, ResolutionOutput>({
     resolver: zodResolver(resolutionSchema),
     mode: "onBlur",
     defaultValues: { note: "" },
   });
-  const refresh = () =>
-    Promise.all(AFFECTED.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+  const refresh = useInvoiceChanged();
   const mutation = $api.useMutation("post", "/api/invoices/{invoice_id}/entity-resolution", {
     onSuccess: async () => {
       idempotency.renew();
@@ -68,7 +63,7 @@ export function useResolutionForm(invoiceId: string, onResolved: () => void) {
   });
   const submit = form.handleSubmit((values) =>
     mutation.mutate({
-      params: { path: { invoice_id: invoiceId }, header: { "Idempotency-Key": idempotency.key } },
+      params: { path: { invoice_id: invoiceId }, header: { "Idempotency-Key": idempotency.keyFor(values) } },
       body: values,
     }),
   );

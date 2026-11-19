@@ -115,7 +115,6 @@ export const pt = {
       range: "Linhas {from} a {to}",
     },
     openLine: "Rever a linha",
-    noValue: "—",
   },
   invoice: {
     title: "Factura {number}",
@@ -170,6 +169,7 @@ export const pt = {
     breadcrumb: "Factura {number}",
     loading: "A carregar a linha…",
     notFound: "Esta linha não existe.",
+    notCoded: "Esta linha ainda não tem codificação para rever.",
     current: "Codificação em vigor",
     description: "Descrição",
     item: "Código",
@@ -189,6 +189,8 @@ export const pt = {
       model: "Modelo",
       chosenByModel: "Escolha do modelo",
       choose: "Escolher {item} para a correcção",
+      chooseColumn: "Escolher",
+      legend: "Item para a correcção",
       current: "Em vigor",
     },
     actions: {

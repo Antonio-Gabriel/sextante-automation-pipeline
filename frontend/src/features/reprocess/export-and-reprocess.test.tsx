@@ -98,14 +98,63 @@ describe("reprocessing (frontend ticket 06)", () => {
 
     const dialog = screen.getByRole("alertdialog", { name: "Reprocessar esta factura?" });
     expect(dialog).toHaveAccessibleDescription(/fica substituída .* voltam à revisão/);
-    expect(screen.getByRole("button", { name: "Sim, reprocessar" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Cancelar" })).toHaveFocus();
     expect(keys).toEqual([]);
 
     await user.click(screen.getByRole("button", { name: "Sim, reprocessar" }));
 
     expect(await screen.findByText(/voltou à fila/)).toBeInTheDocument();
     expect(keys).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Reprocessar a factura" })).toHaveFocus();
     expect(keys[0]).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("keeps the key when retrying after a server failure", async () => {
+    let first = true;
+    const keys = withInvoice("encoded", () => {
+      if (!first) return accepted();
+      first = false;
+      return refused("errors.internal", "Ocorreu um erro interno.", 500);
+    });
+    const { user } = renderApp("/invoices/inv-1");
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await user.click(await screen.findByRole("button", { name: "Reprocessar a factura" }));
+      await user.click(screen.getByRole("button", { name: "Sim, reprocessar" }));
+      await waitFor(() => expect(keys).toHaveLength(attempt + 1));
+    }
+
+    expect(keys[1]).toBe(keys[0]);
+  });
+
+  it("follows the invoice back through the queue after reprocessing", async () => {
+    let status = "encoded";
+    server.use(
+      ...sessionHandlers(),
+      withLines(),
+      http.get("/api/invoices/:invoiceId", () => HttpResponse.json(invoiceView({ status }))),
+      http.post("/api/invoices/:invoiceId/reprocess", () => {
+        status = "queued";
+        return accepted();
+      }),
+    );
+    const { user } = renderApp("/invoices/inv-1");
+
+    await user.click(await screen.findByRole("button", { name: "Reprocessar a factura" }));
+    await user.click(screen.getByRole("button", { name: "Sim, reprocessar" }));
+
+    expect(await screen.findByText("A factura está a ser codificada de novo…")).toBeInTheDocument();
+  });
+
+  it("cancels with Escape, without sending anything", async () => {
+    const keys = withInvoice("failed");
+    const { user } = renderApp("/invoices/inv-1");
+
+    await user.click(await screen.findByRole("button", { name: "Reprocessar a factura" }));
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(keys).toEqual([]);
   });
 
   it("cancels without sending anything", async () => {

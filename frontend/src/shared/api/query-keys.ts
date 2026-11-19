@@ -7,4 +7,7 @@ export const queryKeys = {
   allCandidates: ["get", "/api/invoices/{invoice_id}/lines/{invoice_line_id}/candidates"] as const,
   allHistories: ["get", "/api/invoices/{invoice_id}/lines/{invoice_line_id}/history"] as const,
   allInvoices: ["get", "/api/invoices/{invoice_id}"] as const,
+  // One line found among its invoice's results, page by page.
+  allInvoiceLines: ["invoice-line"] as const,
+  invoiceLine: (invoiceId: string, lineId: string) => ["invoice-line", invoiceId, lineId] as const,
 } as const;

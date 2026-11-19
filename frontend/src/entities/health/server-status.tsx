@@ -1,3 +1,4 @@
+import { shortDigest } from "@/shared/format";
 import { t } from "@/shared/i18n/t";
 import { cn } from "@/shared/ui-kit/cn";
 
@@ -15,7 +16,7 @@ export function ServerStatus() {
       </dd>
       <dt className="text-slate-500">{t("health.catalog")}</dt>
       <dd className="truncate font-mono text-slate-700" title={health.catalogDigest}>
-        {health.catalogDigest?.slice(0, 12) ?? t("health.notAvailable")}
+        {health.catalogDigest === undefined ? t("health.notAvailable") : shortDigest(health.catalogDigest)}
       </dd>
     </dl>
   );
