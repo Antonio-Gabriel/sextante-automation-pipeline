@@ -88,6 +88,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                             └── CHG-0079  fix       Assistente explica a recusa do token da ShardCloud
                                                                                                                                                                                                                 └── CHG-0080  fix       Retirada a recusa de tokens de audiência /mcp
                                                                                                                                                                                                                     └── CHG-0081  fix       Assistente mostra a razão da ShardCloud para uma recusa
+                                                                                                                                                                                                                        └── CHG-0082  infra     Deploy na ShardCloud por um repositório de deploy
 ```
 
 ## Regras
@@ -152,6 +153,36 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0082 · Deploy na ShardCloud por um repositório de deploy
+
+- **Data:** 2026-11-19
+- **Tipo:** infra
+- **Pai:** CHG-0081
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008, SEC-02, SEC-06
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `deploy/shardcloud/push_context.sh` e `deploy/shardcloud/wait_for_release.sh` (novos), `deploy/shardcloud/deploy.sh` (apagado), `.github/workflows/release.yml`, `scripts/setup_shardcloud.sh`, `backend/tests/deploy/test_shardcloud_deploy.py` (reescrito), `.gitignore`, `docs/00` §3.28, `README.md`
+- **Reversibilidade:** total no repositório. O repositório de deploy e a *deploy key* criados pelo assistente apagam-se no GitHub.
+- **Reversão:** reverter o commit.
+- **Verificação:**
+  - Backend: 463 testes e 1 xfail; `tests/deploy` com 35 testes. `push_context.sh` foi testado contra um repositório git local, e `wait_for_release.sh` contra um servidor local.
+  - A chave de anfitrião ed25519 do github.com foi conferida em `api.github.com/meta`.
+  - O assistente não foi corrido pelo agente.
+
+**Problema.** A API REST da ShardCloud (`/api/*`) responde com um desafio do Cloudflare a clientes automáticos, tanto ao `curl` como à CLI oficial. O agente leu o código da CLI (`shard-cloud-cli` 2.0.0, do npm, com integridade verificada, e o código Go de `github.com/shard-cloud/cli`) e confirmou que usa o mesmo endereço e a mesma autenticação. O desafio não é contornado (`CLAUDE.md`). As alternativas foram dadas ao responsável, que escolheu o repositório de deploy (§3.28).
+
+**Pipeline.** Depois da aprovação, `push_context.sh` substitui o `main` do repositório de deploy pelo contexto da versão, num só commit «Release X.Y.Z». Recusa um contexto sem `Dockerfile` na raiz. A *deploy key* vem de um segredo, com a chave de anfitrião do github.com fixada e `StrictHostKeyChecking=yes`. O resumo do trabalho diz o que fazer na ShardCloud: esperar pela construção, fazer o backup e reiniciar a app. `wait_for_release.sh` espera até 60 minutos pela versão no endereço público.
+
+**Assistente.** Já não chama a API da ShardCloud. Usa o `gh` e o `ssh-keygen` locais para:
+- criar o repositório privado de deploy;
+- gerar a *deploy key*, registá-la com escrita e guardá-la como o segredo `SHARDCLOUD_DEPLOY_KEY`, sem nunca a escrever num ficheiro do projecto;
+- enviar o primeiro contexto e deixar o mesmo como `build/sextante-setup.zip`.
+
+No dashboard da ShardCloud, guia a ligação ao GitHub, a imagem ligada ao repositório e a app com as variáveis. A chave da API e o token de acesso são gerados e mostrados uma vez, e o ecrã limpa-se depois.
+
+**Perde-se:** o backup e o reinício automáticos de §3.27, que passam a ser feitos à mão no dashboard até a API aceitar a chave.
 
 ### CHG-0081 · Assistente mostra a razão da ShardCloud para uma recusa
 

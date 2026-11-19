@@ -24,3 +24,6 @@ graphify-out/
 
 # Claude Code settings of this machine (graphify hooks hold an absolute path)
 .claude/settings.local.json
+
+# Build contexts and zips assembled for ShardCloud (deploy/shardcloud/build_context.sh)
+build/

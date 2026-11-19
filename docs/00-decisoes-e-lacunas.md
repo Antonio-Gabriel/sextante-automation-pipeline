@@ -348,6 +348,16 @@ Decisão tomada pelo responsável em 18-11-2026 (ticket 14). Revê 3.20, que lim
 - **Quando se lê a revisão.** A verificação de que uma linha foi revista corre na transacção que substitui a codificação. Uma revisão gravada enquanto o modelo respondia também é vista. O mesmo vale quando a recodificação dá uma entidade ambígua.
 - **Pedidos repetidos** (confirmado pelo responsável em 18-11-2026). SEC-19 pede que o trabalhador não repita um efeito que já existe. Interpretação aplicada: um segundo pedido com a mesma `Idempotency-Key` repete a resposta; um segundo pedido com outra chave, enquanto a factura está na fila, não faz nada, porque uma factura em fila não volta a ser posta na fila. Um pedido feito depois de a recodificação terminar é uma recodificação nova, pedida por uma pessoa, e paga uma chamada nova ao modelo. Recusá-lo impediria recodificar depois de mudar um limiar, que vive em código e não tem versão.
 
+### 3.28 Deploy na ShardCloud por um repositório de deploy
+
+Decisão tomada pelo responsável em 19-11-2026. Revê a parte de §3.27 que publicava pela API REST da ShardCloud.
+
+- **Porque se mudou.** `https://shardcloud.app/api` responde a clientes automáticos com um desafio do Cloudflare («Just a moment…», 403), antes de a ShardCloud ver a chave. Aconteceu com `curl` e com a CLI oficial da ShardCloud (`shard-cloud-cli` 2.0.0, lida antes de ser usada), a partir da máquina do responsável. Contornar o desafio está fora de questão (`CLAUDE.md`). Pediu-se ao responsável que teste noutra rede e que fale com o suporte da ShardCloud.
+- **Como fica.** A imagem da ShardCloud está ligada a um repositório privado de deploy. Segundo a documentação da ShardCloud, cada push nesse repositório reconstrói a imagem. Numa tag `vX.Y.Z`, depois da aprovação no ambiente `production`, o pipeline substitui o `main` desse repositório pelo contexto da versão, com o `Dockerfile` na raiz, num commit «Release X.Y.Z». Usa uma *deploy key* com escrita só nesse repositório e a chave de anfitrião do github.com fixada, nunca aceite à primeira.
+- **O que passa a ser feito à mão.** A ShardCloud não reinicia a app depois de reconstruir a imagem. Uma pessoa faz o backup e o *restart* no dashboard, e o pipeline espera até o endereço público responder com a versão nova. O backup automático antes de cada deploy (§3.27) deixa de ser possível sem a API e passa a ser este passo à mão, indicado no resumo do trabalho.
+- **O assistente** (`scripts/setup_shardcloud.sh`) cria o repositório de deploy, gera a *deploy key*, guarda-a como segredo e envia o primeiro contexto. Os passos na ShardCloud (ligar o GitHub, criar e ligar a imagem, criar a app e as variáveis) ficam guiados no dashboard.
+- **Quando a API voltar a aceitar a chave,** o backup e o *restart* podem voltar ao pipeline. Fica registado como melhoria, não como dívida escondida.
+
 ### 3.27 CI/CD, imagem versionada no Docker Hub e publicação na ShardCloud
 
 Decisão tomada pelo responsável em 19-11-2026. Revê SEC-06 e a parte de L-07 que só admitia `127.0.0.1`. As perguntas e as respostas:

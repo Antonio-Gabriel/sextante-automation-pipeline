@@ -152,15 +152,15 @@ Two GitHub Actions workflows live in `.github/workflows/` (decision 3.27 of `doc
   3. It builds the three images and scans them with Trivy. The public ShardCloud image fails the run on any fixable HIGH or CRITICAL vulnerability; the two compose images fail it on any fixable CRITICAL.
 
   CI uses no secret and never calls the model. The golden set needs the private samples, so it is run locally with `make golden`.
-- **Release** (`release.yml`) runs when a tag `vX.Y.Z` is pushed.
+- **Release** (`release.yml`) runs when a tag `vX.Y.Z` is pushed (decision 3.28).
   1. It runs CI in full.
   2. It builds the ShardCloud image from the git context and pushes it to the private Docker Hub repository as `X.Y.Z`, then scans it.
   3. It waits for a person to approve the `production` environment.
-  4. Once approved, it backs up the ShardCloud app and waits for the backup to finish. ShardCloud keeps up to 10 backups per app, so when the app already holds 10, the oldest is deleted first.
-  5. It has ShardCloud rebuild the app's image from the same context, and waits for a build newer than the previous one.
-  6. It restarts the app and waits until `https://<app>/api/health` answers `"version": "X.Y.Z"`.
+  4. It pushes the same context to the **deploy repository**: a private repository whose `main` holds only the context, with the `Dockerfile` at its root. The ShardCloud image is linked to that repository and rebuilds on every push.
+  5. In ShardCloud's dashboard, a person waits for the build, backs up the app and restarts it. The job's summary lists these steps.
+  6. The job waits until `https://<app>/api/health` answers `"version": "X.Y.Z"`.
 
-  If the backup fails, nothing else happens. If the build fails, the running version stays.
+  ShardCloud's REST API is not used: it answers automated clients with a Cloudflare challenge.
 
 ```bash
 git tag v1.0.0 && git push origin v1.0.0   # publishes version 1.0.0
@@ -191,34 +191,40 @@ Run the setup wizard from the repository root. It walks you through each step, a
 scripts/setup_shardcloud.sh
 ```
 
-It needs `docker`, `zip`, `python3` and the GitHub CLI (`gh`), logged in. It doesn't install the ShardCloud CLI; it uses ShardCloud's REST API.
+It needs `docker`, `git`, `zip`, `ssh-keygen`, `python3` and the GitHub CLI (`gh`), logged in.
 
-It opens the Docker Hub, ShardCloud and Anthropic pages, and does the rest itself:
+What it does:
 
-- builds and uploads the image;
-- creates the app with its variables and web access;
+- creates the private deploy repository and a deploy key that can write only to it, and stores the key as a GitHub secret;
+- pushes the first context to the deploy repository and leaves the same context as `build/sextante-setup.zip`;
 - sets the GitHub secrets and variables;
-- creates the `production` environment with you as reviewer.
+- creates the `production` environment.
 
-Secrets go straight to ShardCloud or GitHub, never to a file. Only identifiers are kept, in `config/.env.shardcloud` (ignored by git), so running it again resumes. It pushes nothing.
+In ShardCloud's dashboard it guides you through:
 
-What the wizard does, step by step:
+- connecting GitHub;
+- creating the image from that zip and linking it to the deploy repository;
+- creating the app with its variables (the API key and the access token are generated and shown once).
+
+Only non-secret values are kept, in `config/.env.shardcloud` (ignored by git). It pushes nothing of this repository.
+
+The same setup by hand, if you prefer:
 
 1. **Docker Hub.** Create a private repository (for example `<user>/sextante`) and an access token with *Read & Write* on it.
-2. **ShardCloud image.**
-   1. Assemble the context and zip it: `deploy/shardcloud/build_context.sh build/shardcloud && (cd build/shardcloud && zip -qr ../sextante.zip .)`.
-   2. In the dashboard, create a Custom Docker Image from `build/sextante.zip`, and note its ID.
-3. **ShardCloud app.**
-   1. Deploy an app from that image with at least 2048 MB of RAM. PDF reading alone may use up to 512 MiB.
-   2. Turn on its web access (subdomain or your domain), and note the app ID and its `https://` address.
-   3. Set its environment variables: `SEXTANTE_ANTHROPIC_API_KEY`, `SEXTANTE_API_KEY`, `SEXTANTE_ACCESS_TOKEN`, `SEXTANTE_TARGET_ENTITY_NAME`, `SEXTANTE_TARGET_ENTITY_NIF` and `SEXTANTE_REVIEWER_ID`, plus any optional ones from `config/.env.example`. Do not set the paths: the image sets them.
-   4. Create a ShardCloud API key (Settings → Integrations → API Key → Manage).
+2. **Deploy repository.**
+   1. Create an empty private GitHub repository (for example `<owner>/sextante-shardcloud`).
+   2. Add a deploy key **with write access** to it (`ssh-keygen -t ed25519`, then Settings → Deploy keys).
+   3. Push a first context: `SHARDCLOUD_DEPLOY_REMOTE=git@github.com:<owner>/sextante-shardcloud.git deploy/shardcloud/push_context.sh <context> setup`, after `deploy/shardcloud/build_context.sh <context> HEAD setup`.
+3. **ShardCloud.**
+   1. In Config → Integrations, connect GitHub with access to the deploy repository.
+   2. Create a Custom Docker Image from the zipped context, then link it to the deploy repository from the image's page.
+   3. Deploy an app from the image with at least 2048 MB of RAM (PDF reading alone may use up to 512 MiB), and turn on its web access.
+   4. Set the app's environment variables: `SEXTANTE_ANTHROPIC_API_KEY`, `SEXTANTE_API_KEY`, `SEXTANTE_ACCESS_TOKEN`, `SEXTANTE_TARGET_ENTITY_NAME`, `SEXTANTE_TARGET_ENTITY_NIF` and `SEXTANTE_REVIEWER_ID`, plus any optional ones from `config/.env.example`. Do not set the paths: the image sets them.
 4. **GitHub**, under Settings → Secrets and variables → Actions:
-   - **Secrets:** `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, `SHARD_CLOUD_API_KEY`.
+   - **Secrets:** `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, `SHARDCLOUD_DEPLOY_KEY` (the private half of the deploy key).
    - **Variables:**
-     - `DOCKERHUB_REPOSITORY` (for example `<user>/sextante`);
-     - `SHARDCLOUD_APP_ID`;
-     - `SHARDCLOUD_IMAGE_ID`;
+     - `DOCKERHUB_REPOSITORY`;
+     - `SHARDCLOUD_DEPLOY_REPOSITORY` (`<owner>/sextante-shardcloud`);
      - `SHARDCLOUD_URL` (the app's `https://` address, with no trailing slash).
 5. **GitHub environment.** Under Settings → Environments, create `production` with *Required reviewers*, so each release waits for a person.
 
@@ -229,7 +235,7 @@ The published app is on the internet, protected by one shared access token, with
 - AMT confirms that supplier invoices may be kept at ShardCloud.
 - ShardCloud confirms that files in the container (the SQLite database and the uploaded invoices) survive a redeploy.
 
-The pipeline backs the app up before every deploy, but a backup is not a substitute for knowing.
+Back the app up in ShardCloud before every restart; a backup is not a substitute for knowing.
 
 ## Rate limits
 

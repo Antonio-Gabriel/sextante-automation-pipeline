@@ -1,11 +1,14 @@
-# Release (decision 3.27 of docs/00): a tag vX.Y.Z publishes version X.Y.Z.
+# Release (decisions 3.27 and 3.28 of docs/00): a tag vX.Y.Z publishes version X.Y.Z.
 #   1. CI runs in full;
 #   2. the image is built from the git context and pushed to the private Docker Hub
 #      repository as X.Y.Z, then scanned;
-#   3. after a person approves the "production" environment, ShardCloud rebuilds the app's
-#      image from that same context, the app restarts, and its health check must answer X.Y.Z.
-# Secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN, SHARD_CLOUD_API_KEY.
-# Variables: DOCKERHUB_REPOSITORY, SHARDCLOUD_APP_ID, SHARDCLOUD_IMAGE_ID, SHARDCLOUD_URL.
+#   3. after a person approves the "production" environment, the same context is pushed
+#      to the deploy repository, whose push makes ShardCloud rebuild the app's image;
+#   4. a person backs the app up and restarts it in ShardCloud's dashboard, and the job
+#      waits until the public health check answers X.Y.Z.
+# ShardCloud's API is not used: it answers automated clients with a Cloudflare challenge.
+# Secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN, SHARDCLOUD_DEPLOY_KEY.
+# Variables: DOCKERHUB_REPOSITORY, SHARDCLOUD_DEPLOY_REPOSITORY, SHARDCLOUD_URL.
 name: Release
 
 on:
@@ -85,7 +88,7 @@ jobs:
     name: Deploy to ShardCloud
     needs: publish
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 70
     # Configure required reviewers on this environment: a person approves each release.
     environment:
       name: production
@@ -98,11 +101,29 @@ jobs:
         with:
           name: shardcloud-context
           path: build
-      - name: Backup, rebuild, restart and check
+      - name: Push the context to the deploy repository
         env:
-          SHARD_CLOUD_API_KEY: ${{ secrets.SHARD_CLOUD_API_KEY }}
-          SHARDCLOUD_APP_ID: ${{ vars.SHARDCLOUD_APP_ID }}
-          SHARDCLOUD_IMAGE_ID: ${{ vars.SHARDCLOUD_IMAGE_ID }}
-          SHARDCLOUD_URL: ${{ vars.SHARDCLOUD_URL }}
           VERSION: ${{ needs.publish.outputs.version }}
-        run: deploy/shardcloud/deploy.sh "build/sextante-$VERSION.zip" "$VERSION"
+          SHARDCLOUD_DEPLOY_REMOTE: git@github.com:${{ vars.SHARDCLOUD_DEPLOY_REPOSITORY }}.git
+          SHARDCLOUD_DEPLOY_KEY: ${{ secrets.SHARDCLOUD_DEPLOY_KEY }}
+        run: |
+          mkdir build/context
+          unzip -q "build/sextante-$VERSION.zip" -d build/context
+          deploy/shardcloud/push_context.sh build/context "$VERSION"
+      - name: What to do in ShardCloud now
+        env:
+          VERSION: ${{ needs.publish.outputs.version }}
+        run: |
+          {
+            echo "### Release $VERSION: finish it in ShardCloud"
+            echo "1. Wait until the app's Custom Image shows the build as *success*."
+            echo "2. Create a backup of the app (Backups)."
+            echo "3. Restart the app."
+            echo ""
+            echo "This job waits for the public address to answer $VERSION."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Wait for the release to answer
+        env:
+          VERSION: ${{ needs.publish.outputs.version }}
+          SHARDCLOUD_URL: ${{ vars.SHARDCLOUD_URL }}
+        run: deploy/shardcloud/wait_for_release.sh "$SHARDCLOUD_URL" "$VERSION" 60
