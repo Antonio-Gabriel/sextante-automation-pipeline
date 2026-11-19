@@ -154,7 +154,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0074
 - **Estado:** activa
 - **Requisitos:** SEC-03, SEC-09, SEC-20, REQ-PLT-008
-- **Commit:** pendente
+- **Commit:** `83440fa`
 - **Migração:** nenhuma
 - **Ficheiros:** `.github/workflows/{ci,release}.yml`, `deploy/shardcloud/{deploy.sh,entrypoint.sh,Dockerfile}`, `backend/src/sextante/platform/{health,settings}.py`, `backend/tests/deploy/*`, `frontend/openapi.json`, `schema.d.ts`; `docs/00` §3.27, `README.md`
 - **Reversibilidade:** total
