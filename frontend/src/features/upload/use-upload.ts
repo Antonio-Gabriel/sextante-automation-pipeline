@@ -17,8 +17,9 @@ export function useUpload() {
   const remember = useRecentJobs((state) => state.remember);
   const mutation = $api.useMutation("post", "/api/invoices", {
     onSuccess: async (receipt) => {
-      remember(receipt.job_id);
       const { existing_job_ids: already, restored_job_ids: restored } = receipt;
+      // A restored job is back in view: it returns to the recent jobs too.
+      for (const jobId of [...restored, receipt.job_id]) remember(jobId);
       await queryClient.invalidateQueries({ queryKey: queryKeys.jobList });
       await navigate({
         to: "/jobs/$jobId",

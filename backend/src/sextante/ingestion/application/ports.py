@@ -190,8 +190,8 @@ class JobRecordsPort(Protocol):
 
     async def mark_job_deleted(
         self, connection: AsyncConnection, job_id: str, now: datetime
-    ) -> None:
-        """Hide the job from every read; its rows stay."""
+    ) -> bool:
+        """Hide a finished job from every read; its rows stay. True when it was hidden now."""
         ...
 
     async def restore_job(self, connection: AsyncConnection, job_id: str) -> bool:

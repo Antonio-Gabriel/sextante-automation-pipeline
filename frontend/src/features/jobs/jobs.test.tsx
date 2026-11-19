@@ -117,4 +117,24 @@ describe("list and delete jobs (frontend ticket 07)", () => {
 
     expect(await screen.findByText(/trouxe de volta trabalhos apagados/)).toBeInTheDocument();
   });
+
+  it("an upload that restores a deleted job puts it back among the recent jobs", async () => {
+    withJobs();
+    server.use(
+      http.post("/api/invoices", () =>
+        HttpResponse.json(
+          { job_id: "job-newj-0003", status: "queued", invoice_count: 2, existing_job_ids: [DONE], restored_job_ids: [DONE] },
+          { status: 202 },
+        ),
+      ),
+      http.get("/api/jobs/:jobId", () => HttpResponse.json(jobProgress(DONE, "completed", { encoded: 1 }))),
+    );
+    const { user } = renderApp("/");
+    await user.upload(await screen.findByLabelText("Ficheiros a carregar"), new File(["%PDF-1.7"], "a.pdf", { type: "application/pdf" }));
+    await user.click(screen.getByRole("button", { name: "Carregar 1 ficheiro" }));
+
+    expect(await screen.findByText(/trouxe de volta trabalhos apagados/)).toBeInTheDocument();
+    const sidebar = screen.getByRole("navigation", { name: "Navegação principal" });
+    expect(within(sidebar).getByRole("link", { name: "job-done" })).toBeInTheDocument();
+  });
 });

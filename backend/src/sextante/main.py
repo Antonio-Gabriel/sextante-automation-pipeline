@@ -29,7 +29,7 @@ from sextante.ingestion.api.routes import reprocess_invoice as reprocess_invoice
 from sextante.ingestion.api.routes import resolve_entity as resolve_entity_route
 from sextante.ingestion.api.routes import upload_invoices as upload_invoices_route
 from sextante.ingestion.application.errors import InvoiceNotFoundError
-from sextante.ingestion.application.manage_jobs import (
+from sextante.ingestion.application.job_lifecycle import (
     DeleteJob,
     JobCollaborators,
     JobNotDeletableError,
@@ -334,7 +334,7 @@ def _wire_use_cases(
     ingestion = IngestionRepository()
     restore = _wire_jobs(app, engine, ingestion, settings, adapters)
     app.state.upload_invoices = UploadInvoices(
-        engine, ingestion, store, (adapters.clock, adapters.identifiers), restore
+        engine, ingestion, store, adapters.clock, adapters.identifiers, restore
     )
     _wire_readers(app, engine, ingestion)
     app.state.reprocess_invoice = ReprocessInvoice(

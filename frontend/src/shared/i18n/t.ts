@@ -19,3 +19,18 @@ export function t(key: MessageKey, values: Record<string, string | number> = {})
     name in values ? String(values[name]) : match,
   );
 }
+
+/**
+ * The text for one or for many, the count filled in {count}.
+ *
+ * Example:
+ *   tCount(1, "upload.submitOne", "upload.submit") // "Carregar 1 ficheiro"
+ */
+export function tCount(
+  count: number,
+  one: MessageKey,
+  many: MessageKey,
+  values: Record<string, string | number> = {},
+): string {
+  return t(count === 1 ? one : many, { ...values, count });
+}

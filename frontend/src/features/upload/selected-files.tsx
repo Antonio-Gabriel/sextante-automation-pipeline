@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 
-import { t } from "@/shared/i18n/t";
+import { t, tCount } from "@/shared/i18n/t";
 import { Button } from "@/shared/ui-kit/button";
 
 import { formatBytes } from "./format-bytes";
@@ -20,7 +20,7 @@ export function SelectedFiles({ files, onRemove, onClear, disabled }: SelectedFi
     <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium text-slate-700">
-          {files.length === 1 ? t("upload.summaryOne", { size }) : t("upload.summary", { count: files.length, size })}
+          {tCount(files.length, "upload.summaryOne", "upload.summary", { size })}
         </p>
         <Button variant="ghost" size="sm" disabled={disabled} onClick={onClear}>
           {t("upload.clear")}

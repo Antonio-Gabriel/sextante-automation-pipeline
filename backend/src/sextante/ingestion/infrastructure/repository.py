@@ -38,7 +38,12 @@ from sextante.ingestion.domain.model import (
     StoredLine,
 )
 from sextante.ingestion.domain.normalization import normalize_extraction
-from sextante.ingestion.domain.statuses import CLAIMED_JOB_STATUSES, InvoiceStatus, JobStatus
+from sextante.ingestion.domain.statuses import (
+    CLAIMED_JOB_STATUSES,
+    DELETABLE_JOB_STATUSES,
+    InvoiceStatus,
+    JobStatus,
+)
 from sextante.ingestion.infrastructure.tables import (
     ENTITY_RESOLUTION_TABLE,
     INVOICE_HEADER_TABLE,
@@ -102,7 +107,7 @@ class IngestionRepository:
         (D-3.4).
         """
         oldest = select(JOB_TABLE.c.id, JOB_TABLE.c.correlation_id).where(
-            JOB_TABLE.c.status == JobStatus.QUEUED
+            JOB_TABLE.c.status == JobStatus.QUEUED, _JOB_ACTIVE
         )
         row = (await connection.execute(oldest.order_by(JOB_TABLE.c.created_at).limit(1))).first()
         if row is None:
@@ -288,7 +293,7 @@ class IngestionRepository:
         return [
             JobListEntry(
                 str(job.id),
-                str(job.status),
+                JobStatus(str(job.status)),
                 str(job.created_at),
                 job.finished_at,
                 counts.get(str(job.id), {}),
@@ -302,17 +307,27 @@ class IngestionRepository:
         """Return the job's status and whether it is deleted, or None when unknown."""
         query = select(JOB_TABLE.c.status, JOB_TABLE.c.deleted_at).where(JOB_TABLE.c.id == job_id)
         row = (await connection.execute(query)).first()
-        return None if row is None else JobRemovalState(str(row.status), row.deleted_at is not None)
+        if row is None:
+            return None
+        return JobRemovalState(JobStatus(str(row.status)), row.deleted_at is not None)
 
     async def mark_job_deleted(
         self, connection: AsyncConnection, job_id: str, now: datetime
-    ) -> None:
-        """Hide the job from every read; its rows stay."""
-        await connection.execute(
+    ) -> bool:
+        """Hide a finished job from every read; its rows stay. True when it was hidden now.
+
+        The status is checked in the same statement, so a job requeued meanwhile stays.
+        """
+        hide = (
             update(JOB_TABLE)
-            .where(JOB_TABLE.c.id == job_id, _JOB_ACTIVE)
+            .where(
+                JOB_TABLE.c.id == job_id,
+                _JOB_ACTIVE,
+                JOB_TABLE.c.status.in_(DELETABLE_JOB_STATUSES),
+            )
             .values(deleted_at=now.isoformat())
         )
+        return (await connection.execute(hide)).rowcount == 1
 
     async def restore_job(self, connection: AsyncConnection, job_id: str) -> bool:
         """Show a deleted job again. True when it was deleted."""
@@ -499,7 +514,9 @@ def _same_number_query(invoice_id: str) -> Select[tuple[object, ...]]:
         select(earlier.c.invoice_id)
         .join(this, same_invoice)
         .join(INVOICE_TABLE, INVOICE_TABLE.c.id == earlier.c.invoice_id)
-        .where(before)
+        .join(JOB_TABLE, JOB_TABLE.c.id == INVOICE_TABLE.c.job_id)
+        # An invoice of a deleted job is hidden: it is no earlier copy either.
+        .where(before, _JOB_ACTIVE)
         .order_by(INVOICE_TABLE.c.created_at, INVOICE_TABLE.c.id)
         .limit(1)
     )

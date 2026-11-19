@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Final
 
-from sextante.ingestion.domain.statuses import InvoiceStatus
+from sextante.ingestion.domain.statuses import InvoiceStatus, JobStatus
 
 # The entity verdict that waits for a reviewer (REQ-ENT-004, D-3.15). It mirrors
 # EntityVerdict.AMBIGUOUS of the matching module, which ingestion may not import.
@@ -55,17 +55,22 @@ class JobListEntry:
     """One job as listed: when it was uploaded, its state and its invoices by status."""
 
     job_id: str
-    status: str
+    status: JobStatus
     created_at: str
     finished_at: str | None
     invoice_counts: dict[str, int]
+
+    @property
+    def invoice_total(self) -> int:
+        """Every invoice of the job, whatever its status."""
+        return sum(self.invoice_counts.values())
 
 
 @dataclass(frozen=True, slots=True)
 class JobRemovalState:
     """What decides whether a job may be deleted: its status, and whether it already is."""
 
-    status: str
+    status: JobStatus
     deleted: bool
 
 

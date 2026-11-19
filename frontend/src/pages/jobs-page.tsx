@@ -45,10 +45,10 @@ export function JobsPage() {
           <nav aria-label={t("jobs.pagination")} className="flex justify-end gap-2">
             <Button variant="outline" size="sm" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - JOBS_PAGE_SIZE))}>
               <ChevronLeft />
-              {t("results.pagination.previous")}
+              {t("jobs.previous")}
             </Button>
             <Button variant="outline" size="sm" disabled={jobs.length < JOBS_PAGE_SIZE} onClick={() => setOffset(offset + JOBS_PAGE_SIZE)}>
-              {t("results.pagination.next")}
+              {t("jobs.next")}
               <ChevronRight />
             </Button>
           </nav>

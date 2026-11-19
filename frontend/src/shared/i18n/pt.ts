@@ -70,6 +70,8 @@ export const pt = {
     emptyHint: "Carregue facturas para criar o primeiro.",
     noMore: "Não há mais trabalhos depois desta página.",
     pagination: "Paginação dos trabalhos",
+    previous: "Anterior",
+    next: "Seguinte",
     viewResults: "Resultados",
     invoiceCount: "{count} {label}",
     invoiceTotal: "{count} facturas",

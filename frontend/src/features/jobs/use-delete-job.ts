@@ -29,7 +29,12 @@ export function useDeleteJob(jobId: string, onDeleted?: () => Promise<void>) {
       forget(jobId);
       toast.success(t("jobs.delete.done"));
       await onDeleted?.();
-      await queryClient.invalidateQueries({ queryKey: queryKeys.jobList });
+      // The list, and every read of the job that is now gone (§8.5).
+      await Promise.all(
+        [queryKeys.jobList, queryKeys.allJobs, queryKeys.allResults].map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
+      );
     },
     onError: (error) => {
       toast.error(errorMessage(error));

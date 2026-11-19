@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { jobStatusView, shortJobId } from "@/entities/job/job-status";
 import { useJobs } from "@/entities/job/use-jobs";
 import { formatDateTime } from "@/shared/format";
-import { t } from "@/shared/i18n/t";
+import { t, tCount } from "@/shared/i18n/t";
 import { Badge } from "@/shared/ui-kit/badge";
 import { Card, CardHeader, CardTitle } from "@/shared/ui-kit/card";
 
@@ -31,7 +31,7 @@ export function LatestJobs() {
               <Link to="/jobs/$jobId" params={{ jobId: job.job_id }} className="flex items-center gap-4 px-5 py-3 text-sm hover:bg-slate-50">
                 <span className="font-mono font-medium text-brand-700">{shortJobId(job.job_id)}</span>
                 <span className="tabular-nums text-slate-500">{formatDateTime(job.created_at)}</span>
-                <span className="flex-1 text-slate-600">{job.invoice_total === 1 ? t("jobs.invoiceTotalOne") : t("jobs.invoiceTotal", { count: job.invoice_total })}</span>
+                <span className="flex-1 text-slate-600">{tCount(job.invoice_total, "jobs.invoiceTotalOne", "jobs.invoiceTotal")}</span>
                 <Badge tone={status.tone}>{t(status.label)}</Badge>
               </Link>
             </li>

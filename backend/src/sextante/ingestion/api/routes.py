@@ -6,7 +6,7 @@ from fastapi import APIRouter, File, Query, Request, Response, UploadFile
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from sextante.ingestion.application.manage_jobs import DeleteJob, ListJobs
+from sextante.ingestion.application.job_lifecycle import DeleteJob, ListJobs
 from sextante.ingestion.application.read_invoice import ReadInvoice
 from sextante.ingestion.application.records import InvoiceView
 from sextante.ingestion.application.reprocess_invoice import ReprocessInvoice
@@ -128,7 +128,7 @@ async def list_jobs(
                 created_at=job.created_at,
                 finished_at=job.finished_at,
                 invoice_counts=job.invoice_counts,
-                invoice_total=sum(job.invoice_counts.values()),
+                invoice_total=job.invoice_total,
             )
             for job in jobs
         ],

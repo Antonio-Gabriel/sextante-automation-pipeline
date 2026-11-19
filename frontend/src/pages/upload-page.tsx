@@ -7,7 +7,7 @@ import { UploadHints } from "@/features/upload/upload-hints";
 import { useFileSelection } from "@/features/upload/use-file-selection";
 import { useUpload } from "@/features/upload/use-upload";
 import { Page } from "@/shared/layout/page";
-import { t } from "@/shared/i18n/t";
+import { t, tCount } from "@/shared/i18n/t";
 import { Button } from "@/shared/ui-kit/button";
 import { Card, CardContent } from "@/shared/ui-kit/card";
 
@@ -29,7 +29,7 @@ export function UploadPage() {
                 <SelectedFiles files={selection.files} onRemove={selection.remove} onClear={selection.clear} disabled={isPending} />
                 <Button className="h-10 w-full" disabled={isPending} onClick={() => upload(selection.files)}>
                   <Upload />
-                  {isPending ? t("upload.submitting") : count === 1 ? t("upload.submitOne") : t("upload.submit", { count })}
+                  {isPending ? t("upload.submitting") : tCount(count, "upload.submitOne", "upload.submit")}
                 </Button>
               </>
             )}

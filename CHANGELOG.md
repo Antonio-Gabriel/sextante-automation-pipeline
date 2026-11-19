@@ -73,6 +73,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                 └── CHG-0064  feat      Exportação e reprocessamento na interface
                                                                                                                                                     └── CHG-0065  fix       Correcções da revisão dos tickets 04 e 06 do frontend
                                                                                                                                                         └── CHG-0066  feat      Lista e apagamento lógico de trabalhos, e UX da tabela e do carregamento
+                                                                                                                                                            └── CHG-0067  fix       Correcções da revisão do ticket 07 do frontend
 ```
 
 ## Regras
@@ -138,6 +139,45 @@ Três casos estão sempre limitados:
 
 ## Alterações
 
+### CHG-0067 · Correcções da revisão do ticket 07 do frontend
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0066
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-009, REQ-ING-011, SEC-19, REQ-REV-006
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `backend/src/sextante/ingestion/application/job_lifecycle.py` (era `manage_jobs.py`), `ingestion/application/{ports,records,upload_invoices}.py`, `ingestion/domain/statuses.py`, `ingestion/infrastructure/repository.py`, `ingestion/api/routes.py`, `main.py`, `tests/api/test_job_deletion.py`; `frontend/src/features/results/{results-table.tsx,use-row-opens-line.ts}`, `features/jobs/*`, `features/upload/*`, `pages/{jobs,upload}-page.tsx`, `shared/i18n/{t,pt}.ts`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** backend 391 testes e 1 xfail, mypy, ruff, import-linter, funções até 20 linhas, matriz 68 de 79; frontend 74 testes, `tsc`, ESLint, licenças, build.
+
+**Ainda se via um trabalho apagado.** Uma factura de um trabalho apagado deixava de contar como cópia anterior: antes, uma factura nova podia ficar «possível duplicado» de uma escondida, com ligação para um 404.
+
+**Corrida entre apagar e reprocessar.** O `UPDATE` do apagamento verifica o estado na mesma instrução, por isso um trabalho reposto na fila entretanto é recusado. O trabalhador também não reclama trabalhos apagados. Dois apagamentos simultâneos, com chaves diferentes, respondem ambos 200 e gravam um só evento.
+
+**Testes novos.** Correcção e resolução de entidade num trabalho apagado, dois apagamentos em simultâneo, carregamento misto (ficheiro novo mais ficheiro de um trabalho apagado), e cópia de uma factura apagada.
+
+**Normas.**
+- Estados como `JobStatus` em vez de texto livre, e `invoice_total` passa a viver no registo.
+- O resultado de gravar um carregamento passa a registo com nome, e o relógio e os identificadores deixam de viajar num tuplo.
+- `manage_jobs.py` passa a `job_lifecycle.py`.
+- A mensagem de «não encontrado» diz o que se esperava.
+
+**Frontend.**
+- Um trabalho restaurado volta aos trabalhos recentes.
+- Apagar actualiza também o estado e os resultados guardados em cache.
+- O singular e o plural passam a usar uma só função (`tCount`).
+- A navegação da linha passa a gancho, com a rota num só sítio.
+- A paginação dos trabalhos tem os seus próprios textos.
+
+**Fica como está, com o motivo.**
+- `JobCollaborators` é partilhado pelos três casos de uso, que vivem no mesmo módulo, embora a listagem use só dois campos. É a forma de §4 para injectar dependências, e separá-lo dava três registos quase iguais.
+- O filtro do trabalho activo repete-se em quatro consultas. Uma vista SQL esconderia o filtro a quem lê a consulta.
+- Se o restauro falhar depois de o trabalho novo ter sido gravado, a resposta é 500 e o trabalho novo fica na fila. Repetir o carregamento restaura, porque o restauro é idempotente.
+- As chaves `invoice_counts` continuam texto, como em `JobSummary`.
+
 ### CHG-0066 · Lista e apagamento lógico de trabalhos, e UX da tabela e do carregamento
 
 - **Data:** 2026-11-19
@@ -145,7 +185,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0065
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-009 (novo), REQ-PLT-004, REQ-ING-007, SEC-18, SEC-19, REQ-AUD-002, REQ-PLT-006
-- **Commit:** pendente
+- **Commit:** `aa13ccb`
 - **Migração:** `0010_job_soft_delete` (coluna `job.deleted_at`; a descida remove-a e os trabalhos apagados voltam a aparecer)
 - **Ficheiros:** `backend/migrations/versions/0010_job_soft_delete.py` (novo), `ingestion/application/manage_jobs.py` (novo), `ingestion/application/{ports,records,upload_invoices}.py`, `ingestion/infrastructure/{repository,tables}.py`, `ingestion/api/routes.py`, `review/application/review_line.py`, `platform/user_messages.py`, `main.py`, `tests/api/test_job_deletion.py` (novo), dois testes ajustados; `frontend/src/pages/jobs-page.tsx` (novo), `features/jobs/*` (novo), `entities/job/use-jobs.ts` (novo), `shared/ui-kit/confirm-dialog.tsx` (novo), `shared/ui-kit/use-confirmation-focus.ts` (movido de `features/reprocess`), `features/results/results-table.tsx`, `features/upload/*`, `pages/{upload,job}-page.tsx`, `app-shell.tsx`, `router.tsx`, `shared/i18n/pt.ts`, `shared/format.ts`, testes; `docs/00` §3.24, `docs/01` REQ-PLT-009, `docs/02` §6, `docs/03` SEC-19, `README.md`, ticket 07 do frontend
 - **Reversibilidade:** total

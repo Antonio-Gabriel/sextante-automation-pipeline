@@ -18,3 +18,5 @@
 ## Comments
 
 Decisions taken by the owner on 19-11-2026: restore on re-upload, only finished jobs, a «Trabalhos» page with a server list. Recorded in docs/00 §3.24 and REQ-PLT-009.
+
+Review fixes on 2026-11-19 (CHG-0067): deleted invoices no longer count as earlier copies, atomic delete guard, worker skips deleted jobs, more tests, restored jobs back in recents.

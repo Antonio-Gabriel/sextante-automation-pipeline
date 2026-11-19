@@ -1,5 +1,6 @@
 """Frontend ticket 07: list jobs, delete a finished one softly, restore it by uploading."""
 
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Final
 
 import pytest
@@ -8,7 +9,12 @@ from sqlalchemy import create_engine, text
 from tests.api.encoding_harness import EncodingHarness, idempotency_headers, running_application
 from tests.api.test_encoding_safeguards import _database_file, _query
 from tests.fakes.fake_item_classifier import FakeItemClassifier
-from tests.fixtures.synthetic_invoices import air_ticket_to_amt, hotel_stay_to_amt
+from tests.fixtures.synthetic_invoices import (
+    air_ticket_to_amt,
+    billed_to,
+    hotel_stay_to_amt,
+    reexported,
+)
 
 JOB_FIELDS: Final = {
     "job_id",
@@ -88,6 +94,11 @@ def test_a_deleted_job_leaves_every_read_and_action(valid_environment: dict[str,
                 f"/api/encoded-lines/{line['encoded_line_id']}/accept",
                 json={},
                 headers=idempotency_headers("a-1"),
+            ).status_code,
+            app.client.patch(
+                f"/api/encoded-lines/{line['encoded_line_id']}",
+                json={"item_number": "O00004"},
+                headers=idempotency_headers("c-1"),
             ).status_code,
         ]
 
@@ -195,3 +206,81 @@ def test_an_upload_of_a_file_of_a_job_not_deleted_restores_nothing(
         again = app.upload(invoice)
 
     assert (again["job_id"], again["restored_job_ids"]) == (job_id, [])
+
+
+@pytest.mark.requirement("REQ-PLT-009", "REQ-REV-006")
+def test_an_ambiguous_invoice_of_a_deleted_job_is_not_resolved(
+    valid_environment: dict[str, str],
+) -> None:
+    """The resolution answers as if the invoice were unknown, and codes nothing."""
+    invoice = billed_to("AMBIG", "Advanced Maritime Transports Moçambique Limitada")
+    with running_application(valid_environment, [invoice], FakeItemClassifier({1: None})) as app:
+        job_id = app.upload(invoice)["job_id"]
+        app.wait_for_job(job_id)
+        [(invoice_id,)] = _query(valid_environment, "SELECT id FROM invoice")
+        _delete(app, job_id)
+        response = app.client.post(
+            f"/api/invoices/{invoice_id}/entity-resolution",
+            json={"resolution": "NO_MATCH", "note": "Empresa irmã."},
+            headers=idempotency_headers("resolve-1"),
+        )
+
+    assert (response.status_code, response.json()["code"]) == (404, "errors.invoice.not_found")
+    assert _query(valid_environment, "SELECT count(*) FROM entity_resolution") == [(0,)]
+
+
+@pytest.mark.requirement("REQ-PLT-009", "SEC-19")
+def test_two_deletions_at_once_delete_once(valid_environment: dict[str, str]) -> None:
+    """Two requests with different keys, sent together: both answer 200, one audit event."""
+    invoice = air_ticket_to_amt()
+    with running_application(
+        valid_environment, [invoice], FakeItemClassifier({1: "O00004"})
+    ) as app:
+        job_id = app.upload(invoice)["job_id"]
+        app.wait_for_job(job_id)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            answers = list(pool.map(lambda key: _delete(app, job_id, key), ["d-1", "d-2"]))
+
+    assert sorted(a.status_code for a in answers) == [200, 200]
+    events = _query(
+        valid_environment, "SELECT count(*) FROM audit_event WHERE event_type = 'job_deleted'"
+    )
+    assert events == [(1,)]
+
+
+@pytest.mark.requirement("REQ-PLT-009", "REQ-ING-007")
+def test_an_upload_mixing_new_files_and_a_deleted_job_restores_it_and_codes_the_new(
+    valid_environment: dict[str, str],
+) -> None:
+    """A new job holds the new file; the deleted job of the old one comes back."""
+    old, new = air_ticket_to_amt(), hotel_stay_to_amt()
+    classifier = FakeItemClassifier({1: "O00004"})
+    with running_application(valid_environment, [old, new], classifier) as app:
+        old_job = app.upload(old)["job_id"]
+        app.wait_for_job(old_job)
+        _delete(app, old_job)
+        mixed = app.upload(old, new)
+        app.wait_for_job(mixed["job_id"])
+        listed = [job["job_id"] for job in app.client.get("/api/jobs").json()["jobs"]]
+
+    assert mixed["job_id"] != old_job
+    assert (mixed["existing_job_ids"], mixed["restored_job_ids"]) == ([old_job], [old_job])
+    assert listed == [mixed["job_id"], old_job]
+
+
+@pytest.mark.requirement("REQ-PLT-009", "REQ-ING-011")
+def test_an_invoice_of_a_deleted_job_is_no_earlier_copy(valid_environment: dict[str, str]) -> None:
+    """A copy uploaded after its original's job was deleted is not flagged as a duplicate."""
+    original = air_ticket_to_amt()
+    copy = reexported(original, "INV-001-again")
+    classifier = FakeItemClassifier({1: "O00004"})
+    with running_application(valid_environment, [original, copy], classifier) as app:
+        first_job = app.upload(original)["job_id"]
+        app.wait_for_job(first_job)
+        _delete(app, first_job)
+        second_job = app.upload(copy)["job_id"]
+        app.wait_for_job(second_job)
+        [line] = app.lines(second_job)
+        body = app.client.get(f"/api/invoices/{line['invoice_id']}").json()
+
+    assert body["possible_duplicate_of"] is None

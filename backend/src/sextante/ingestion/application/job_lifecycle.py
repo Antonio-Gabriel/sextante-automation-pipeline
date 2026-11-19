@@ -7,20 +7,16 @@ Uploading again a file of a deleted job restores the job: one invoice per conten
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Final
 
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from sextante.ingestion.application.ports import JobRecordsPort
 from sextante.ingestion.application.read_job_status import JobNotFoundError
 from sextante.ingestion.application.records import JobListEntry
-from sextante.ingestion.domain.statuses import JobStatus
+from sextante.ingestion.domain.statuses import DELETABLE_JOB_STATUSES
 from sextante.platform.audit import AuditEventRepository
 from sextante.platform.clock import Clock, IdentifierGenerator
 from sextante.platform.errors import DomainError
-
-# A queued or running job is still being coded: deleting it would hide work in progress.
-DELETABLE_STATUSES: Final = frozenset({JobStatus.COMPLETED, JobStatus.FAILED})
 
 
 class JobNotDeletableError(DomainError):
@@ -77,16 +73,28 @@ class DeleteJob:
         deps = self._deps
         state = await deps.repository.job_removal_state(connection, job_id)
         if state is None:
-            raise JobNotFoundError(f"Job {job_id!r} does not exist.")
+            raise JobNotFoundError(
+                f"Job {job_id!r} does not exist. Expected the id of a listed job."
+            )
         if state.deleted:
             return
-        if JobStatus(state.status) not in DELETABLE_STATUSES:
+        # The update checks the status again, so a job requeued meanwhile is refused too.
+        if state.status in DELETABLE_JOB_STATUSES and await deps.repository.mark_job_deleted(
+            connection, job_id, deps.clock.now()
+        ):
+            await _audit(deps, connection, "job_deleted", job_id)
+            return
+        await self._refuse_unless_deleted(connection, job_id, state.status.value)
+
+    async def _refuse_unless_deleted(
+        self, connection: AsyncConnection, job_id: str, status: str
+    ) -> None:
+        # Another request may have deleted it in between: that is the same effect.
+        again = await self._deps.repository.job_removal_state(connection, job_id)
+        if again is None or not again.deleted:
             raise JobNotDeletableError(
-                f"Job {job_id!r} is {state.status}. Expected a completed or failed job."
+                f"Job {job_id!r} is {status}. Expected a completed or failed job."
             )
-        now = deps.clock.now()
-        await deps.repository.mark_job_deleted(connection, job_id, now)
-        await _audit(deps, connection, "job_deleted", job_id)
 
 
 class RestoreJobs:

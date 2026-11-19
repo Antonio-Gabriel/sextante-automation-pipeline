@@ -1,12 +1,13 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { ChevronRight, Filter } from "lucide-react";
-import type { MouseEvent } from "react";
 
 import { confidenceView, reviewView, yesNo } from "@/entities/result/result-labels";
 import type { components } from "@/shared/api/schema";
 import { t, type MessageKey } from "@/shared/i18n/t";
 import { Badge } from "@/shared/ui-kit/badge";
 import { cn } from "@/shared/ui-kit/cn";
+
+import { LINE_ROUTE, useRowOpensLine } from "./use-row-opens-line";
 
 
 type ResultLine = components["schemas"]["ResultLineResponse"];
@@ -78,16 +79,9 @@ function ResultRow({ line, onFilterInvoice }: ResultRowProps) {
   const confidence = confidenceView(line.confidence);
   const review = reviewView(line.review_status);
   const lineParams = { invoiceId: line.invoice_id, lineId: line.invoice_line_id };
-  const navigate = useNavigate();
+  const openFromRow = useRowOpensLine(lineParams);
   const pending = line.review_status === "pending";
   const actionLabel = t(pending ? "results.reviewLine" : "results.openLineN", { position: line.line_position });
-  // The row is a larger target for the pointer; keyboards use the links it holds.
-  const openFromRow = (event: MouseEvent<HTMLTableRowElement>) => {
-    const target = event.target;
-    if (target instanceof Element && target.closest("a, button") !== null) return;
-    if (window.getSelection()?.toString()) return;
-    void navigate({ to: "/invoices/$invoiceId/lines/$lineId", params: lineParams });
-  };
   return (
     <tr className="group cursor-pointer hover:bg-slate-50" onClick={openFromRow}>
       <td className={CELL}>
@@ -111,7 +105,7 @@ function ResultRow({ line, onFilterInvoice }: ResultRowProps) {
       <td className={CELL}>{line.target_sheet ?? t("common.none")}</td>
       <td className={`${CELL} max-w-xs`}>
         <Link
-          to="/invoices/$invoiceId/lines/$lineId"
+          to={LINE_ROUTE}
           params={lineParams}
           className="font-medium text-brand-700 underline decoration-brand-200 decoration-1 underline-offset-[3px] hover:decoration-brand-700"
           title={t("results.openLine")}
@@ -139,7 +133,7 @@ function ResultRow({ line, onFilterInvoice }: ResultRowProps) {
       <td className={`${CELL} max-w-xs text-slate-600`}>{line.review_note ?? t("common.none")}</td>
       <td className={ACTION_CELL}>
         <Link
-          to="/invoices/$invoiceId/lines/$lineId"
+          to={LINE_ROUTE}
           params={lineParams}
           aria-label={actionLabel}
           className={cn(
