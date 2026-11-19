@@ -14,10 +14,11 @@
 # release replaces it whole, in one commit named after the version.
 set -euo pipefail
 
-context="$1"
 version="$2"
 : "${SHARDCLOUD_DEPLOY_REMOTE:?}"
-[[ -f "$context/Dockerfile" ]] || { echo "::error::$context has no Dockerfile at its root." >&2; exit 1; }
+[[ -f "$1/Dockerfile" ]] || { echo "::error::$1 has no Dockerfile at its root." >&2; exit 1; }
+# Absolute: the copy below runs from inside the clone, where a relative path means nothing.
+context="$(cd "$1" && pwd)"
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT

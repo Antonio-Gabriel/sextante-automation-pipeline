@@ -91,6 +91,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                                         └── CHG-0082  infra     Deploy na ShardCloud por um repositório de deploy
                                                                                                                                                                                                                             └── CHG-0083  fix       Assistente aceita o endereço da app em qualquer forma
                                                                                                                                                                                                                                 └── CHG-0084  fix       O desafio do Cloudflare no endereço da app é detectado
+                                                                                                                                                                                                                                    └── CHG-0085  fix       Deploy com caminho relativo, e deploy automático opcional
 ```
 
 ## Regras
@@ -155,6 +156,26 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0085 · Deploy com caminho relativo, e deploy automático opcional
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0084
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `deploy/shardcloud/push_context.sh`, `.github/workflows/release.yml`, `backend/tests/deploy/test_shardcloud_deploy.py`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** `tests/deploy` com 37 testes, incluindo o caminho relativo tal como o release o passa. O log do trabalho que falhou foi lido com o `gh` do responsável: `cp: cannot stat 'build/context/.'`.
+
+**Defeito, no primeiro release real (v1.0.0).** `push_context.sh` recebia o contexto como caminho relativo e copiava-o depois de entrar no clone, onde esse caminho não existe. Os testes passavam caminhos absolutos. O caminho passa a ser resolvido antes da cópia.
+
+**Deploy automático opcional, a pedido.** Se a variável `SHARDCLOUD_DEPLOY_REPOSITORY` não existir, o trabalho de deploy não corre e o release acaba no zip. Em qualquer caso, o resumo do trabalho de publicação mostra a imagem do Docker Hub, o nome do zip e os passos para o enviar à mão.
+
+**v1.0.0.** A imagem e o zip dessa versão ficaram publicados. Só o envio para o repositório de deploy falhou.
 
 ### CHG-0084 · O desafio do Cloudflare no endereço da app é detectado
 

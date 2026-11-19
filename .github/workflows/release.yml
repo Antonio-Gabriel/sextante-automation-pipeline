@@ -83,6 +83,19 @@ jobs:
           path: build/sextante-${{ steps.version.outputs.version }}.zip
           if-no-files-found: error
           retention-days: 30
+      - name: How to put this version on ShardCloud
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          IMAGE: ${{ vars.DOCKERHUB_REPOSITORY }}
+        run: |
+          {
+            echo "### Release $VERSION"
+            echo "- Docker Hub: \`$IMAGE:$VERSION\`"
+            echo "- ShardCloud build context: artifact **shardcloud-context**, file \`sextante-$VERSION.zip\`."
+            echo ""
+            echo "By hand: ShardCloud → Custom Docker Images → sextante → Rebuild with that zip;"
+            echo "when the build shows success, back the app up and restart it."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
     name: Deploy to ShardCloud
@@ -90,6 +103,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 70
     # Configure required reviewers on this environment: a person approves each release.
+    # Without a deploy repository the release ends at the zip, uploaded by hand (README).
+    if: vars.SHARDCLOUD_DEPLOY_REPOSITORY != ''
     environment:
       name: production
       url: ${{ vars.SHARDCLOUD_URL }}

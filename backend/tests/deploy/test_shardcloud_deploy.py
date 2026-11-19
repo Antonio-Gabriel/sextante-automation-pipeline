@@ -68,6 +68,30 @@ def test_each_release_replaces_the_deploy_repository_whole(tmp_path: Path) -> No
 
 
 @pytest.mark.requirement("D-3.28")
+def test_a_relative_context_path_works_as_the_release_passes_it(tmp_path: Path) -> None:
+    """The release passes build/context, relative to the job's working directory."""
+    remote = tmp_path / "deploy.git"
+    _run("git", "init", "--quiet", "--bare", "--initial-branch", "main", str(remote))
+    _context(tmp_path / "build" / "context", {"Dockerfile": "FROM a"})
+    env = os.environ | {"SHARDCLOUD_DEPLOY_REMOTE": str(remote)}
+    env.pop("SHARDCLOUD_DEPLOY_KEY", None)
+
+    result = subprocess.run(  # noqa: S603 - fixed script, synthetic arguments
+        ["bash", str(SHARDCLOUD / "push_context.sh"), "build/context", "1.0.0"],  # noqa: S607
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    files, _ = _main_of(remote, tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    assert files == {"Dockerfile"}
+
+
+@pytest.mark.requirement("D-3.28")
 def test_a_context_without_a_dockerfile_at_its_root_is_never_pushed(tmp_path: Path) -> None:
     """ShardCloud builds the root; anything else would fail there, after the push."""
     remote = tmp_path / "deploy.git"
