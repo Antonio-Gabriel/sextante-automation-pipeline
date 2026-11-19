@@ -157,7 +157,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0077
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-008
-- **Commit:** pendente
+- **Commit:** `5fed31e`
 - **Migração:** nenhuma
 - **Ficheiros:** `scripts/setup_shardcloud.sh`
 - **Reversibilidade:** total
