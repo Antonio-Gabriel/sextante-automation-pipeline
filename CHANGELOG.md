@@ -174,7 +174,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0094
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** pendente
+- **Commit:** `de35970`
 - **Migração:** nenhuma
 - **Ficheiros:** `docs/sextante-documentacao.pt.{md,pdf}`, `docs/sextante-documentation.en.{md,pdf}`, `scripts/docs/build_pdf.mjs`
 - **Reversibilidade:** total
