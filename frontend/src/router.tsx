@@ -10,7 +10,10 @@ import { z } from "zod";
 
 import { AppShell } from "@/app-shell";
 import { sessionQuery } from "@/entities/session/session-query";
+import { resultFiltersSchema } from "@/entities/result/result-filters";
+import { InvoicePage } from "@/pages/invoice-page";
 import { JobPage } from "@/pages/job-page";
+import { LineReviewPage } from "@/pages/line-review-page";
 import { LoginPage } from "@/pages/login-page";
 import { ResultsPage } from "@/pages/results-page";
 import { UploadPage } from "@/pages/upload-page";
@@ -66,12 +69,25 @@ const jobRoute = createRoute({
 const resultsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/jobs/$jobId/results",
+  validateSearch: resultFiltersSchema,
   component: ResultsPage,
+});
+
+const invoiceRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/invoices/$invoiceId",
+  component: InvoicePage,
+});
+
+const lineReviewRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/invoices/$invoiceId/lines/$lineId",
+  component: LineReviewPage,
 });
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  appRoute.addChildren([uploadRoute, jobRoute, resultsRoute]),
+  appRoute.addChildren([uploadRoute, jobRoute, resultsRoute, invoiceRoute, lineReviewRoute]),
 ]);
 
 export function createAppRouter(queryClient: QueryClient, history?: RouterHistory) {

@@ -65,6 +65,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                 └── CHG-0056  fix       Correcções da revisão do ticket 01 do frontend
                                                                                                                     └── CHG-0057  feat      Painel AMT e carregamento com progresso
                                                                                                                         └── CHG-0058  fix       Correcções da revisão do ticket 02 do frontend
+                                                                                                                            └── CHG-0059  feat      Resultados com filtros na rota
 ```
 
 ## Regras
@@ -129,6 +130,22 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0059 · Resultados com filtros na rota
+
+- **Data:** 2026-11-19
+- **Tipo:** feat
+- **Pai:** CHG-0058
+- **Estado:** activa
+- **Requisitos:** REQ-REV-001, REQ-PLT-006, SEC-08
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `frontend/src/entities/result/*`, `features/results/*`, `pages/results-page.tsx`, `pages/invoice-page.tsx` e `pages/line-review-page.tsx` (rotas, preenchidas nos tickets 04 e 05), `router.tsx`, `shared/ui-kit/select.tsx`, `shared/i18n/*`, testes; `README.md`, ticket 03 do frontend
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 25 testes do frontend; `tsc`, ESLint.
+
+Tabela das linhas de um trabalho com as onze colunas do ticket, texto das facturas sempre como texto. Filtros de confiança, aba, sinalização e factura na rota, validados campo a campo por Zod: um inválido cai, os outros ficam. Paginação pelo limite que o servidor devolve, com aviso quando o pedido foi cortado. Ligações para a revisão da linha e para a factura.
 
 ### CHG-0058 · Correcções da revisão do ticket 02 do frontend
 

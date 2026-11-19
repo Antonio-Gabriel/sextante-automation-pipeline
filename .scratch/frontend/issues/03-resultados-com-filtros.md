@@ -4,12 +4,16 @@
 
 **Blocked by:** 01 (Esqueleto do frontend e login por token)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Os filtros de confiança, aba, sinalização e factura ficam na rota, validados, e um endereço com um filtro inválido cai para a vista sem esse filtro
-- [ ] A paginação respeita o máximo do servidor e mostra quando o pedido foi truncado
-- [ ] As sinalizações e as notas aparecem com o texto em Português que a API devolve
-- [ ] Uma linha leva à revisão dessa linha; uma factura leva ao ecrã da factura
-- [ ] Nenhum `dangerouslySetInnerHTML`; o conteúdo das facturas é sempre texto
-- [ ] O `README.md` descreve o ecrã e os filtros
-- [ ] Testes do componente para cada filtro e para a paginação truncada
+- [x] Os filtros de confiança, aba, sinalização e factura ficam na rota, validados, e um endereço com um filtro inválido cai para a vista sem esse filtro
+- [x] A paginação respeita o máximo do servidor e mostra quando o pedido foi truncado
+- [x] As sinalizações e as notas aparecem com o texto em Português que a API devolve
+- [x] Uma linha leva à revisão dessa linha; uma factura leva ao ecrã da factura
+- [x] Nenhum `dangerouslySetInnerHTML`; o conteúdo das facturas é sempre texto
+- [x] O `README.md` descreve o ecrã e os filtros
+- [x] Testes do componente para cada filtro e para a paginação truncada
+
+## Comments
+
+Resolved on 2026-11-19 (CHG-0059). The invoice and line routes exist and are filled by tickets 05 and 04.

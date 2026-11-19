@@ -69,3 +69,27 @@ export function jobProgress(
     output_tokens: 80,
   };
 }
+
+/** A result line, shaped like ResultLineResponse; fields override the defaults. */
+export function resultLine(position: number, fields: Record<string, unknown> = {}) {
+  return {
+    invoice_id: "inv-1",
+    invoice_line_id: `line-${position}`,
+    invoice_number: "FT 2026/17",
+    line_position: position,
+    line_description: `Synthetic service ${position}`,
+    billed_entity_detected: "Synthetic Billed Entity Lda",
+    exact_entity_match: "YES",
+    target_sheet: "OUTLAYSP",
+    encoded_line_id: `coded-${position}`,
+    item_number: "O00004",
+    catalog_description: "Synthetic catalog item",
+    confidence: "HIGH",
+    review_status: "pending",
+    review_note: null,
+    flags: [],
+    notes: [],
+    possible_duplicate_of: null,
+    ...fields,
+  };
+}

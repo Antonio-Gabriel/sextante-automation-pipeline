@@ -115,6 +115,12 @@ export const pt = {
     openLine: "Rever a linha",
     noValue: "—",
   },
+  invoice: {
+    title: "Factura",
+  },
+  review: {
+    title: "Revisão da linha",
+  },
   units: { B: "B", KB: "KB", MB: "MB", GB: "GB", size: "{value} {unit}" },
   values: {
     yes: "Sim",
