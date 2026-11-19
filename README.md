@@ -212,7 +212,7 @@ What the wizard does, step by step:
    1. Deploy an app from that image with at least 2048 MB of RAM. PDF reading alone may use up to 512 MiB.
    2. Turn on its web access (subdomain or your domain), and note the app ID and its `https://` address.
    3. Set its environment variables: `SEXTANTE_ANTHROPIC_API_KEY`, `SEXTANTE_API_KEY`, `SEXTANTE_ACCESS_TOKEN`, `SEXTANTE_TARGET_ENTITY_NAME`, `SEXTANTE_TARGET_ENTITY_NIF` and `SEXTANTE_REVIEWER_ID`, plus any optional ones from `config/.env.example`. Do not set the paths: the image sets them.
-   4. Create a ShardCloud API token (Dashboard → Settings → API Token).
+   4. Create a ShardCloud API key (Settings → Integrations → API Key → Manage).
 4. **GitHub**, under Settings → Secrets and variables → Actions:
    - **Secrets:** `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, `SHARD_CLOUD_API_KEY`.
    - **Variables:**

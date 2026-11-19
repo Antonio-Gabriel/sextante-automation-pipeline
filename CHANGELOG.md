@@ -86,6 +86,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                     └── CHG-0077  infra     Assistente da configuração única da ShardCloud, do Docker Hub e do GitHub
                                                                                                                                                                                                         └── CHG-0078  fix       Assistente parado com uma resposta vazia
                                                                                                                                                                                                             └── CHG-0079  fix       Assistente explica a recusa do token da ShardCloud
+                                                                                                                                                                                                                └── CHG-0080  fix       Retirada a recusa de tokens de audiência /mcp
 ```
 
 ## Regras
@@ -150,6 +151,22 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0080 · Retirada a recusa de tokens de audiência /mcp
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0079
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `scripts/setup_shardcloud.sh`, `README.md`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** `bash -n` sem erros.
+
+**Correcção de CHG-0079.** O responsável confirmou que o token veio de Settings → Integrations → API Key, a chave da API REST. Essa chave também tem a audiência `…/api/mcp`. A suposição de CHG-0079 estava errada, e a recusa impediria a chave certa. É retirada. O caminho no assistente e no README passa a ser o real: Settings → Integrations → API Key → Manage. O 403 explica-se pela falta de um plano activo, que o assistente já diz, com o caminho Settings → Plan & Billing.
 
 ### CHG-0079 · Assistente explica a recusa do token da ShardCloud
 

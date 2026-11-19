@@ -247,19 +247,6 @@ ask_required() {
   done
 }
 
-# token_audience: the "aud" claim of the token typed, read locally from its public part
-# (a JWT's payload is not encrypted); empty when it is not a JWT. Nothing is sent.
-token_audience() {
-  python3 -c '
-import base64, json, sys
-try:
-    part = sys.stdin.read().strip().split(".")[1]
-    claims = json.loads(base64.urlsafe_b64decode(part + "=" * (-len(part) % 4)))
-    print(claims.get("aud", ""))
-except Exception:
-    print("")' <<<"$SHARD_TOKEN"
-}
-
 # check_shard_token: one call to the API, explaining a refusal in plain words.
 check_shard_token() {
   local code
@@ -268,9 +255,9 @@ check_shard_token() {
       "$SHARD_API/custom-images") || code="000"
   case "$code" in
     200) say "${GREEN}✓${RESET} ShardCloud accepted the token."; return 0 ;;
-    401) warn "ShardCloud does not recognise this token (401). Copy it again, or create a new one." ;;
+    401) warn "ShardCloud does not recognise this key (401). Copy it again, or create a new one." ;;
     403) warn "ShardCloud answered 403: no valid subscription. Custom images need an active"
-         warn "Core plan or higher: finish the purchase, wait until the dashboard shows it, and run again." ;;
+         warn "Core plan or higher: check Settings → Plan & Billing, and run again once it is active." ;;
     000) warn "ShardCloud could not be reached. Check your connection and run again." ;;
     *)   warn "ShardCloud answered HTTP $code. Run again later." ;;
   esac
@@ -333,14 +320,8 @@ unset DOCKERHUB_TOKEN
 stage "ShardCloud: API token"
 open_url "https://shardcloud.app/en"
 step "Sign in and open Dashboard. Your plan must be Core or higher: custom images need it."
-step "In the dashboard, open Settings → API Token, then create or copy your token."
-note "Not the MCP / AI-integration token: the one of Settings → API Token."
-ask_secret SHARD_TOKEN "Paste the ShardCloud API token (hidden):"
-if [[ "$(token_audience)" == */mcp ]]; then
-  warn "This token is for ShardCloud's MCP integration (its audience ends in /mcp), not the"
-  warn "REST API. Create the token in Dashboard → Settings → API Token and run again."
-  exit 1
-fi
+step "In the dashboard, open Settings → Integrations → API Key → Manage, then create a key."
+ask_secret SHARD_TOKEN "Paste the ShardCloud API key (hidden):"
 check_shard_token || exit 1
 set_secret SHARD_CLOUD_API_KEY "$SHARD_TOKEN"
 
