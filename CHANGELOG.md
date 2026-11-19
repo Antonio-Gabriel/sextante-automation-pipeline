@@ -92,6 +92,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                                             └── CHG-0083  fix       Assistente aceita o endereço da app em qualquer forma
                                                                                                                                                                                                                                 └── CHG-0084  fix       O desafio do Cloudflare no endereço da app é detectado
                                                                                                                                                                                                                                     └── CHG-0085  fix       Deploy com caminho relativo, e deploy automático opcional
+                                                                                                                                                                                                                                        └── CHG-0086  fix       Artefacto do release com o Dockerfile na raiz
 ```
 
 ## Regras
@@ -156,6 +157,26 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0086 · Artefacto do release com o Dockerfile na raiz
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0085
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `.github/workflows/release.yml`, `backend/tests/deploy/test_workflows.py`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** `tests/deploy` com 38 testes. O contexto montado não tem ficheiros escondidos, que o `upload-artifact` deixaria de fora, e tem o `Dockerfile` na raiz.
+
+**Relato do responsável.** A ShardCloud recusou `shardcloud-context.zip` com «must contain a Dockerfile at its root». O GitHub embrulha sempre um artefacto num zip, e esse zip continha outro zip, `sextante-1.0.0.zip`.
+
+**Correcção.** O artefacto passa a ser o próprio directório do contexto, `sextante-X.Y.Z-shardcloud`. O zip que o GitHub dá para descarregar tem o `Dockerfile` na raiz e envia-se à ShardCloud tal como está. O trabalho de deploy descarrega o mesmo artefacto para um directório e envia-o. O zip intermédio desaparece.
+
+**Para a v1.0.0, já publicada:** descomprimir `shardcloud-context.zip` e enviar o `sextante-1.0.0.zip` de dentro.
 
 ### CHG-0085 · Deploy com caminho relativo, e deploy automático opcional
 

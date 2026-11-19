@@ -73,14 +73,12 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
-      - name: Zip the ShardCloud build context
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: cd build/shardcloud && zip -q -r -X "../sextante-$VERSION.zip" .
+      # The artifact is the context itself: GitHub zips it on download, so the zip it gives
+      # has the Dockerfile at its root and is uploaded to ShardCloud as it is.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: shardcloud-context
-          path: build/sextante-${{ steps.version.outputs.version }}.zip
+          name: sextante-${{ steps.version.outputs.version }}-shardcloud
+          path: build/shardcloud/
           if-no-files-found: error
           retention-days: 30
       - name: How to put this version on ShardCloud
@@ -91,9 +89,10 @@ jobs:
           {
             echo "### Release $VERSION"
             echo "- Docker Hub: \`$IMAGE:$VERSION\`"
-            echo "- ShardCloud build context: artifact **shardcloud-context**, file \`sextante-$VERSION.zip\`."
+            echo "- ShardCloud build context: artifact **sextante-$VERSION-shardcloud**."
             echo ""
-            echo "By hand: ShardCloud → Custom Docker Images → sextante → Rebuild with that zip;"
+            echo "By hand: download that artifact (a zip with the Dockerfile at its root, as ShardCloud"
+            echo "wants it), then ShardCloud → Custom Docker Images → sextante → Rebuild with it;"
             echo "when the build shows success, back the app up and restart it."
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -114,17 +113,14 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: shardcloud-context
-          path: build
+          name: sextante-${{ needs.publish.outputs.version }}-shardcloud
+          path: build/context
       - name: Push the context to the deploy repository
         env:
           VERSION: ${{ needs.publish.outputs.version }}
           SHARDCLOUD_DEPLOY_REMOTE: git@github.com:${{ vars.SHARDCLOUD_DEPLOY_REPOSITORY }}.git
           SHARDCLOUD_DEPLOY_KEY: ${{ secrets.SHARDCLOUD_DEPLOY_KEY }}
-        run: |
-          mkdir build/context
-          unzip -q "build/sextante-$VERSION.zip" -d build/context
-          deploy/shardcloud/push_context.sh build/context "$VERSION"
+        run: deploy/shardcloud/push_context.sh build/context "$VERSION"
       - name: What to do in ShardCloud now
         env:
           VERSION: ${{ needs.publish.outputs.version }}

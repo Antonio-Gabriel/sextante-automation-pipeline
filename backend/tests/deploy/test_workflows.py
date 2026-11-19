@@ -98,3 +98,13 @@ def test_the_setup_wizard_sets_exactly_what_the_release_reads() -> None:
     }
 
     assert read == set_by_wizard
+
+
+@pytest.mark.requirement("D-3.28")
+def test_the_release_artifact_is_the_context_itself() -> None:
+    """GitHub zips an artifact on download: uploading the context directory gives a zip with
+    the Dockerfile at its root, as ShardCloud wants; a zip inside would be refused."""
+    steps = _steps(_workflow("release.yml"))
+    upload = next(s for s in steps if s.get("uses", "").startswith("actions/upload-artifact@"))
+
+    assert upload["with"]["path"] == "build/shardcloud/"
