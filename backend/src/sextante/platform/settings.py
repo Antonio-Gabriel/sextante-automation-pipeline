@@ -31,6 +31,10 @@ REVIEWER_ID_MAX_LENGTH: Final = 128
 REVIEWER_ID_PATTERN: Final = r"^[A-Za-z0-9._@-]+$"
 
 
+# A release version: X.Y.Z, or a short label such as "dev" (decision 3.27).
+RELEASE_VERSION_MAX_LENGTH: Final = 64
+
+
 class StartupConfigurationError(RuntimeError):
     """Raised when the application cannot start with the configuration it was given."""
 
@@ -85,7 +89,9 @@ class Settings(ModelCallSettings):
     api_docs_enabled: bool = True
     # The release this process runs, set in the image by the release pipeline; shown by
     # the health check so a deploy can be confirmed (decision 3.27).
-    release_version: str = Field(default="dev", max_length=64, pattern=r"^[0-9A-Za-z.+-]+$")
+    release_version: str = Field(
+        default="dev", max_length=RELEASE_VERSION_MAX_LENGTH, pattern=r"^[0-9A-Za-z.+-]+$"
+    )
     entity_denylist_path: Path
     # Author of every review action in the audit trail: there is no login in this
     # version (L-07), so the identity comes from configuration (REQ-REV-004).

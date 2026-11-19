@@ -9,6 +9,14 @@ umask 077
 mkdir -p /data/tmp /data/uploads
 chown -R sextante:sextante /data
 
+# A stop request before or while both start still stops whatever has started.
+api=""
+web=""
+stop() {
+    kill -TERM $api $web 2>/dev/null || true
+}
+trap stop TERM INT
+
 # The API, without root and without capabilities, on this container's 127.0.0.1 only.
 setpriv --reuid=sextante --regid=sextante --init-groups --inh-caps=-all \
     uvicorn --factory sextante.main:create_app --host 127.0.0.1 --port 8000 \
@@ -19,8 +27,9 @@ api=$!
 nginx -g "daemon off;" &
 web=$!
 
-trap 'kill -TERM "$api" "$web" 2>/dev/null' TERM INT
-wait -n "$api" "$web"
-status=$?
-kill -TERM "$api" "$web" 2>/dev/null || true
+# The first of the two to stop ends the container, with its status; the other is stopped.
+status=0
+wait -n "$api" "$web" || status=$?
+stop
+wait || true
 exit "$status"

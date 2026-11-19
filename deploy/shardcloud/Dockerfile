@@ -31,8 +31,11 @@ RUN pip install --require-hashes --no-deps -r /build/requirements.lock
 FROM ${PYTHON_IMAGE}
 
 ARG SEXTANTE_RELEASE_VERSION=dev
+# nginx pinned to the Debian version tested; when Debian replaces it with a security
+# update the build fails, and the pin is raised after testing again (SEC-20).
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends nginx-light \
+    && apt-get install --yes --no-install-recommends \
+        nginx-light=1.22.1-9+deb12u10 nginx=1.22.1-9+deb12u10 \
     && rm -rf /var/lib/apt/lists/* /etc/nginx/sites-enabled /etc/nginx/conf.d \
     && groupadd --system --gid 10001 sextante \
     && useradd --system --uid 10001 --gid sextante --no-create-home --shell /usr/sbin/nologin sextante \

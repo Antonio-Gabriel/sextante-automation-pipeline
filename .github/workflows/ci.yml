@@ -57,46 +57,74 @@ jobs:
       - run: npm ci --no-audit --no-fund --ignore-scripts
       - run: npm run check
 
-  images:
-    name: Images
-    needs: [backend, frontend]
+  security:
+    name: Security audits
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Build the compose images
+          # The whole history: a secret removed later is still in it (SEC-03).
+          fetch-depth: 0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      # SEC-20: known vulnerabilities in the locked dependencies, insecure code patterns,
+      # vulnerable frontend dependencies, and secrets anywhere in the history.
+      - name: Dependencies of the API (pip-audit)
         run: |
-          docker build --tag sextante-api:ci backend
-          docker build --tag sextante-web:ci frontend
-      - name: Build the ShardCloud image from its git context
+          python -m pip install --quiet pip-audit==2.10.1
+          pip-audit --strict --require-hashes --requirement backend/requirements.lock
+      - name: Code of the API (bandit, medium and high)
         run: |
-          deploy/shardcloud/build_context.sh build/shardcloud
-          docker build --tag sextante:ci --build-arg SEXTANTE_RELEASE_VERSION=ci build/shardcloud
-      # The image that goes public must carry no fixable HIGH or CRITICAL vulnerability.
-      - name: Scan the ShardCloud image
+          python -m pip install --quiet bandit==1.9.4
+          bandit --quiet --recursive backend/src --severity-level medium
+      - name: Dependencies of the frontend (npm audit)
+        working-directory: frontend
+        run: npm audit --audit-level=high --omit=dev
+      - name: Secrets in the history (gitleaks)
+        run: |
+          docker run --rm -v "$PWD":/repo:ro \
+            zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+            git /repo --redact --no-banner --exit-code 1
+
+  images:
+    name: Images (${{ matrix.image }})
+    needs: [backend, frontend, security]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The public image: any fixable HIGH or CRITICAL vulnerability fails the run.
+          - image: shardcloud
+            build: |
+              deploy/shardcloud/build_context.sh build/shardcloud
+              docker build --tag sextante-check --build-arg SEXTANTE_RELEASE_VERSION=ci build/shardcloud
+            severity: HIGH,CRITICAL
+          # The compose images run on 127.0.0.1 only: a fixable CRITICAL fails the run (SEC-20).
+          - image: api
+            build: docker build --tag sextante-check backend
+            severity: CRITICAL
+          - image: web
+            build: docker build --tag sextante-check frontend
+            severity: CRITICAL
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build
+        run: ${{ matrix.build }}
+      - name: Scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: sextante:ci
+          image-ref: sextante-check
           scanners: vuln
-          severity: HIGH,CRITICAL
+          severity: ${{ matrix.severity }}
           ignore-unfixed: true
           exit-code: "1"
-      # The compose images run on 127.0.0.1 only: their findings are reported, not blocking.
-      - name: Scan the API compose image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: sextante-api:ci
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "0"
-      - name: Scan the frontend compose image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: sextante-web:ci
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "0"

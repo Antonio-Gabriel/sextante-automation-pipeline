@@ -228,3 +228,20 @@ def test_the_frontend_forwards_the_api_on_the_same_origin() -> None:
     assert "location /api/ {" in server
     assert "set $api_upstream http://api:8000;" in server
     assert "Access-Control-Allow-Origin" not in server
+
+
+@pytest.mark.requirement("SEC-20", "D-3.27")
+def test_the_shardcloud_context_holds_every_file_its_dockerfile_copies(tmp_path: Path) -> None:
+    """The file list of build_context.sh and the COPY lines of the Dockerfile agree."""
+    script = SHARDCLOUD / "build_context.sh"
+    subprocess.run([str(script), str(tmp_path / "context")], cwd=REPOSITORY, check=True)  # noqa: S603
+    dockerfile = (tmp_path / "context" / "Dockerfile").read_text()
+    sources = [
+        line.split()[1]
+        for line in dockerfile.splitlines()
+        if line.startswith("COPY ") and "--from=" not in line
+    ]
+
+    assert sources
+    missing = [source for source in sources if not (tmp_path / "context" / source).exists()]
+    assert missing == []

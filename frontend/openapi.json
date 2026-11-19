@@ -407,6 +407,7 @@
             "type": "string"
           },
           "version": {
+            "maxLength": 64,
             "title": "Version",
             "type": "string"
           }

@@ -3,9 +3,10 @@
 from typing import Literal
 
 from fastapi import APIRouter, Request
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from sextante.catalog.contracts import Catalog
+from sextante.platform.settings import RELEASE_VERSION_MAX_LENGTH
 
 health_router = APIRouter(prefix="/api")
 
@@ -18,7 +19,7 @@ class HealthResponse(BaseModel):
     status: Literal["ok"]
     catalog_digest: str
     # The release running, "dev" outside the release pipeline; not a secret.
-    version: str
+    version: str = Field(max_length=RELEASE_VERSION_MAX_LENGTH)
 
 
 @health_router.get("/health")

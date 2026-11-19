@@ -61,3 +61,26 @@ def test_the_published_image_carries_the_version_and_nothing_floating() -> None:
 
     assert tags == ["${{ vars.DOCKERHUB_REPOSITORY }}:${{ steps.version.outputs.version }}"]
     assert push["with"]["context"] == "build/shardcloud"
+
+
+@pytest.mark.requirement("SEC-20", "SEC-03")
+def test_ci_runs_every_audit_of_sec_20() -> None:
+    """Dependencies of both halves, insecure code and secrets in the whole history."""
+    security = _workflow("ci.yml")["jobs"]["security"]
+    commands = " ".join(step.get("run", "") for step in security["steps"])
+    checkout = security["steps"][0]
+
+    for audit in ("pip-audit", "bandit", "npm audit --audit-level=high", "gitleaks"):
+        assert audit in commands, audit
+    assert checkout["with"]["fetch-depth"] == 0
+
+
+@pytest.mark.requirement("SEC-20")
+@pytest.mark.parametrize("name", ["ci.yml", "release.yml"])
+def test_no_run_step_expands_values_from_outside_the_file(name: str) -> None:
+    """Values from events, tags or steps reach scripts through env, never inside them."""
+    runs = [step["run"] for step in _steps(_workflow(name)) if "run" in step]
+    expansions = [m for run in runs for m in re.findall(r"\$\{\{\s*([^}]*?)\s*\}\}", run)]
+
+    # The matrix is written in the file itself.
+    assert all(expansion.startswith("matrix.") for expansion in expansions), expansions

@@ -81,6 +81,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                 └── CHG-0072  fix       Correcções da revisão do contentor do frontend
                                                                                                                                                                                     └── CHG-0073  fix       API sem rede depois de um conflito de porta, e ecrã de erro da página
                                                                                                                                                                                         └── CHG-0074  infra     CI/CD no GitHub Actions, imagem no Docker Hub e publicação na ShardCloud
+                                                                                                                                                                                            └── CHG-0075  fix       Correcções da revisão do CI/CD e da publicação na ShardCloud
 ```
 
 ## Regras
@@ -146,6 +147,46 @@ Três casos estão sempre limitados:
 
 ## Alterações
 
+### CHG-0075 · Correcções da revisão do CI/CD e da publicação na ShardCloud
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0074
+- **Estado:** activa
+- **Requisitos:** SEC-03, SEC-09, SEC-20, REQ-PLT-008
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `.github/workflows/{ci,release}.yml`, `deploy/shardcloud/{deploy.sh,entrypoint.sh,Dockerfile}`, `backend/src/sextante/platform/{health,settings}.py`, `backend/tests/deploy/*`, `frontend/openapi.json`, `schema.d.ts`; `docs/00` §3.27, `README.md`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:**
+  - Backend: 463 testes e 1 xfail; `tests/deploy` com 35 testes.
+  - Frontend: 80 testes.
+  - Auditorias de SEC-20 corridas localmente com as mesmas versões do CI: `pip-audit` sem vulnerabilidades conhecidas; `bandit` sem achados médios nem altos; `npm audit`, 0; `gitleaks` em 99 commits, sem fugas.
+  - Imagem da ShardCloud reconstruída com o nginx fixado (1.22.1). Trivy: 0. `docker stop` termina em 1 s. Matar a API faz parar o contentor (código 137), para que a plataforma o reinicie inteiro.
+
+**Falhas da revisão corrigidas.**
+- **SEC-20 no CI.** Há um trabalho de segurança com `pip-audit` (dependências bloqueadas, com hash), `bandit` (médio e alto), `npm audit --audit-level=high` e `gitleaks` em todo o histórico, com versões e digest fixados.
+- **Imagens do compose.** Passam a bloquear um CRITICAL com correcção, como pede SEC-20; antes só eram reportadas. As três análises ficam numa matriz.
+- **Backup.** O deploy passa a esperar que o backup termine (`done`), em vez de seguir logo para a reconstrução.
+- **Limite de backups.** A ShardCloud guarda até 10 por app. Quando já há 10, o deploy apaga o mais antigo e pára se a ShardCloud o recusar (idade mínima de retenção).
+- **Construção antiga.** A reconstrução só conta quando o `updated_at` da imagem muda: um «success» da construção anterior já não leva ao reinício.
+- **`entrypoint.sh`.** Com `set -e`, um processo que parasse com erro terminava o script antes da limpeza. O `trap` passa a estar instalado antes de os processos arrancarem.
+- **`version` do health check** com `max_length` (SEC-09.1).
+- **Release.** A versão chega ao `zip` por `env`, não dentro do `run:`. Um teste verifica que nenhum `run:` expande valores de fora do ficheiro.
+- **Contexto e `COPY`.** Um teste verifica que cada `COPY` do Dockerfile da ShardCloud tem o seu ficheiro no contexto montado pelo git.
+- **nginx fixado** em `1.22.1-9+deb12u10`, para que a imagem que a ShardCloud constrói seja igual em conteúdo à do Docker Hub.
+- **Documentação.** A porta 80 passa a ser descrita como suposição a confirmar no primeiro deploy.
+- **Injecção de código.** O identificador do backup entra no Python por argumento, nunca dentro da expressão avaliada.
+
+**Fica como está, com o motivo.**
+- **A imagem que a ShardCloud corre não é analisada.** Fica no registo interno da plataforma, onde o pipeline não chega. As fixações acima tornam-na igual em conteúdo à analisada.
+- **`SEXTANTE_API_DOCS_ENABLED` vem ligado por omissão**, para que `make run` continue a mostrar `/docs`. A única instalação pública é a imagem, que o desliga, e um teste guarda-o.
+- **Sistema de ficheiros só de leitura e utilizador da imagem.** A ShardCloud não documenta nem um nem o outro. A imagem arranca como root só para a porta 80, e um teste guarda que a API e os workers do nginx não correm como root.
+- **`X-Forwarded-For`.** Nada lê o endereço do cliente: SEC-12 conta por credencial.
+- **CI duas vezes num pull request** de um ramo deste repositório, uma pelo push e outra pelo pull request. É o custo de correr em todos os ramos.
+- **A versão é uma `str` com padrão** nas definições e com limite na resposta. Um tipo próprio seria mais do que este valor de texto pede.
+
 ### CHG-0074 · CI/CD no GitHub Actions, imagem no Docker Hub e publicação na ShardCloud
 
 - **Data:** 2026-11-19
@@ -153,7 +194,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0073
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-008, SEC-02, SEC-04, SEC-06, SEC-11, SEC-15, SEC-20
-- **Commit:** pendente
+- **Commit:** `18e9714`
 - **Migração:** nenhuma
 - **Ficheiros:** `.github/workflows/{ci,release}.yml` (novos), `deploy/shardcloud/{Dockerfile,nginx.conf,entrypoint.sh,build_context.sh,deploy.sh}` (novos), `backend/src/sextante/{main.py,platform/health.py,platform/settings.py}`, `backend/tests/api/test_release_settings.py` (novo), `backend/tests/deploy/{test_shardcloud_deploy,test_workflows}.py` (novos), `backend/tests/deploy/test_container_config.py`, `frontend/src/entities/health/*`, `frontend/src/shared/i18n/{pt,en}.ts`, `frontend/src/test/api.ts`, `frontend/openapi.json`, `schema.d.ts`; `docs/00` §3.26 e §3.27, `docs/03` SEC-06, `CLAUDE.md`, `config/.env.example`, `README.md`, ticket 03 do deploy
 - **Reversibilidade:** total no repositório. Uma versão já publicada no Docker Hub ou na ShardCloud apaga-se lá.

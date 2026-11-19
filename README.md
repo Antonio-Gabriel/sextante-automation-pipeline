@@ -142,12 +142,23 @@ The application refuses to start, with a message naming the problem, in either o
 
 Two GitHub Actions workflows live in `.github/workflows/` (decision 3.27 of `docs/00`).
 
-- **CI** (`ci.yml`) runs on every push and pull request. It runs the backend gates (lint, types, module boundaries, tests, traceability matrix, licences) and the frontend check. It then builds the three images and scans them with Trivy: the public ShardCloud image fails the run on any fixable HIGH or CRITICAL vulnerability, while the findings in the two compose images are only reported. CI uses no secret and never calls the model. The golden set needs the private samples, so it is run locally with `make golden`.
+- **CI** (`ci.yml`) runs on every push and pull request.
+  1. It runs the backend gates (lint, types, module boundaries, tests, traceability matrix, licences) and the frontend check.
+  2. It runs the SEC-20 audits:
+     - `pip-audit` on the locked API dependencies;
+     - `bandit` on the API code;
+     - `npm audit` on the frontend;
+     - `gitleaks` over the whole git history.
+  3. It builds the three images and scans them with Trivy. The public ShardCloud image fails the run on any fixable HIGH or CRITICAL vulnerability; the two compose images fail it on any fixable CRITICAL.
+
+  CI uses no secret and never calls the model. The golden set needs the private samples, so it is run locally with `make golden`.
 - **Release** (`release.yml`) runs when a tag `vX.Y.Z` is pushed.
   1. It runs CI in full.
   2. It builds the ShardCloud image from the git context and pushes it to the private Docker Hub repository as `X.Y.Z`, then scans it.
   3. It waits for a person to approve the `production` environment.
-  4. Once approved, it backs up the ShardCloud app, has ShardCloud rebuild the app's image from the same context, restarts the app, and waits until `https://<app>/api/health` answers `"version": "X.Y.Z"`.
+  4. Once approved, it backs up the ShardCloud app and waits for the backup to finish. ShardCloud keeps up to 10 backups per app, so when the app already holds 10, the oldest is deleted first.
+  5. It has ShardCloud rebuild the app's image from the same context, and waits for a build newer than the previous one.
+  6. It restarts the app and waits until `https://<app>/api/health` answers `"version": "X.Y.Z"`.
 
   If the backup fails, nothing else happens. If the build fails, the running version stays.
 
@@ -157,7 +168,7 @@ git tag v1.0.0 && git push origin v1.0.0   # publishes version 1.0.0
 
 ### The ShardCloud image
 
-`deploy/shardcloud/Dockerfile` puts the whole application in one container, because ShardCloud runs one container per app and serves its port 80 over HTTPS.
+`deploy/shardcloud/Dockerfile` puts the whole application in one container, because ShardCloud runs one container per app. Its documentation serves websites on port 80 over HTTPS, but does not say so for custom images. Confirm the port on the first deploy; if ShardCloud expects another, change the `listen` of `deploy/shardcloud/nginx.conf`.
 
 - **Inside:** nginx on port 80 serves the pages, sends the SEC-11 headers and forwards `/api` to the API on the container's `127.0.0.1:8000`. The API runs as an unprivileged user without capabilities. The catalog and the denylist are inside the image.
 - **Turned off:** the interactive API documentation.
