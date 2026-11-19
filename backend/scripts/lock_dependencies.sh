@@ -6,7 +6,7 @@
 set -eu
 image="$1"
 docker run --rm -v "$PWD":/project -w /tmp "$image" sh -c "
-  pip install --quiet pip-tools &&
+  pip install --quiet pip-tools==7.7.0 &&
   cp /project/pyproject.toml . && cp -r /project/src . &&
   pip-compile --quiet --generate-hashes --strip-extras --no-header \
     --output-file /project/requirements.lock pyproject.toml &&

@@ -17,3 +17,5 @@
 ## Comments
 
 Resolved on 2026-11-19 (CHG-0071). Checked in a separate compose project on ports 18000/18080: both containers healthy, every SEC-11 header on pages, assets and /api, sign-in through nginx answers 204 with the session cookie, the session check and the health answer through the same address, and a job survives `docker compose down` and `up`. The nginx base is the slim mainline variant: 3 HIGH findings left (musl, zlib), fixed upstream but not yet in the image.
+
+Review fixes on 2026-11-19 (CHG-0072): uploads spooled to the volume, nginx listen address explicit and recorded in decision 3.26, allowlisted build context. A sign-in in a real browser on port 8080 is still to be done by a person.

@@ -7,7 +7,8 @@ FROM node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc
 
 WORKDIR /build
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
+# No install scripts: a dependency runs nothing while the image is built.
+RUN npm ci --no-audit --no-fund --ignore-scripts
 COPY . .
 # Only VITE_SEXTANTE_ variables reach the compiled code, and none is set here: the
 # bundle holds no secret (SEC-02). The API types come from the committed openapi.json.
@@ -25,5 +26,5 @@ COPY --from=build /build/dist /usr/share/nginx/html
 USER 101:101
 EXPOSE 8080
 
-HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=5 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD ["wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]

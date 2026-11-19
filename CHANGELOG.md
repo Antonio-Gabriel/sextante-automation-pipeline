@@ -78,6 +78,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                     └── CHG-0069  fix       Correcções da revisão da interface em dois idiomas
                                                                                                                                                                         └── CHG-0070  infra     Contentor da API e docker compose
                                                                                                                                                                             └── CHG-0071  infra     Contentor do frontend e correcções da revisão do contentor da API
+                                                                                                                                                                                └── CHG-0072  fix       Correcções da revisão do contentor do frontend
 ```
 
 ## Regras
@@ -143,6 +144,47 @@ Três casos estão sempre limitados:
 
 ## Alterações
 
+### CHG-0072 · Correcções da revisão do contentor do frontend
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0071
+- **Estado:** activa
+- **Requisitos:** SEC-04, SEC-06, SEC-11, SEC-16, SEC-20
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `backend/Dockerfile`, `backend/Makefile`, `backend/scripts/lock_dependencies.sh`, `backend/tests/deploy/test_container_config.py`, `frontend/Dockerfile`, `frontend/.dockerignore`, `frontend/nginx/default.conf`; `docs/00` §3.26, `docs/03` SEC-06 e SEC-11, `CLAUDE.md`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:**
+  - Backend: 436 testes e 1 xfail; `tests/deploy` com 13 testes. Matriz de rastreabilidade, 68 de 79.
+  - Frontend: 79 testes e build.
+  - Projecto compose de verificação nas portas 18000 e 18080, com uma chave do modelo inválida e um token de acesso gerado só para a verificação.
+  - Os dois contentores ficam saudáveis.
+  - Entrada pelo nginx, 204.
+  - Carregamento de 12 ficheiros de 24 MiB, 302 MB no total, pelo nginx: resposta 202, ficheiros no volume em `/data/tmp`, com modo 700, e `/tmp` do contentor a 0%.
+  - Trivy na imagem do frontend: 3 achados, iguais aos de CHG-0071. O projecto de verificação foi removido com o seu volume.
+
+**Carregamentos grandes (falha da revisão).** O Starlette guarda em ficheiro temporário cada ficheiro carregado acima de 1 MiB. Com o `/tmp` de 256 MiB em memória, um carregamento acima disso falhava com 500. A API passa a usar `TMPDIR=/data/tmp`, no disco do volume, criado no arranque com `umask 077`.
+
+**`0.0.0.0` no nginx (falha da revisão).** `listen 8080;` escutava em todas as interfaces sem o dizer, e a guarda não o via.
+- O `listen` passa a nomear o endereço (`0.0.0.0:8080`).
+- A guarda aceita os dois ficheiros dos contentores e falha com um `listen` sem endereço.
+- A decisão 3.26, SEC-06 e o `CLAUDE.md` passam a nomear os dois servidores dos contentores. A opção aceite pelo responsável publicava as duas portas, e o nginx num contentor está sujeito ao mesmo problema que a API; o texto inicial nomeava só a API.
+
+**API publicada em 8000 (contradição com SEC-11).** SEC-11 dizia que o nginx era o único ponto publicado. A porta 8000 fica publicada, por ser a opção aceite pelo responsável, para programas e para a documentação interactiva. §3.26 e SEC-11 passam a dizê-lo: o nginx é o único ponto publicado que serve páginas.
+
+**Outras.**
+- O contexto do frontend passa a lista do que entra, como o do backend, e deixa de fora `.npmrc`, `.env` e o estado incremental do `tsc` (`*.tsbuildinfo`).
+- `npm ci --ignore-scripts`.
+- `pip-tools==7.7.0` fixado.
+- O digest da base da API vive só no `Dockerfile`, e o `Makefile` lê-o de lá.
+- `Host` com a porta (`$http_host`), e `nosniff` só uma vez nos descarregamentos.
+- A verificação de saúde do nginx fica igual à da API.
+- O teste dos cabeçalhos deixa de depender da indentação, e as dependências lêem-se com `tomllib`.
+
+**Fica pendente.** Não foi feita a entrada num navegador real em `http://127.0.0.1:8080`, porque a extensão do navegador não estava ligada. O mesmo cookie `Secure` sobre HTTP em `127.0.0.1` já é aceite pelo navegador do responsável no frontend de desenvolvimento (`127.0.0.1:5173`). Os 3 achados da imagem do nginx continuam, como em CHG-0071.
+
 ### CHG-0071 · Contentor do frontend e correcções da revisão do contentor da API
 
 - **Data:** 2026-11-19
@@ -150,7 +192,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0070
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-008, SEC-02, SEC-03, SEC-04, SEC-06, SEC-11, SEC-16, SEC-20
-- **Commit:** pendente
+- **Commit:** `78c30c0`
 - **Migração:** nenhuma
 - **Ficheiros:** `frontend/Dockerfile`, `frontend/.dockerignore`, `frontend/nginx/{default,security-headers}.conf` (novos); `backend/requirements.lock`, `backend/scripts/lock_dependencies.sh` (novos), `backend/Dockerfile`, `backend/.dockerignore`, `backend/Makefile`, `compose.yaml`, `backend/tests/deploy/test_container_config.py`; `config/.env.example`, `docs/03` SEC-11, `README.md`, ticket 02 do deploy
 - **Reversibilidade:** total

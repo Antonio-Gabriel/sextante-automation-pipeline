@@ -1,8 +1,15 @@
-# The build needs the sources, the configuration and the committed API description.
-node_modules
-dist
-coverage
-.vite
+# Only what the build reads enters the build stage: never node_modules, local state,
+# tokens (.npmrc) or secrets (.env). Test files stay out; the test helpers stay in, because
+# the type check covers vitest.setup.ts. Nothing of the build stage reaches the image.
+*
+!package.json
+!package-lock.json
+!index.html
+!tsconfig.json
+!vite.config.ts
+!vitest.setup.ts
+!openapi.json
+!src/
+!nginx/
 **/*.test.ts
 **/*.test.tsx
-.env*

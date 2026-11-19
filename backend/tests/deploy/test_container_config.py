@@ -7,6 +7,7 @@ served, signing in through the frontend) are recorded in the CHG entries.
 
 import re
 import subprocess
+import tomllib
 from pathlib import Path
 from typing import Any, Final
 
@@ -19,8 +20,9 @@ DOCKERFILES: Final = sorted(REPOSITORY.glob("*/Dockerfile"))
 SERVICES: Final = ("api", "web")
 # Addresses that listen on every interface, IPv4 and IPv6.
 EVERY_INTERFACE: Final = re.compile(r"0\.0\.0\.0|\[::\]|--host[ =]::")
-# The one file allowed to name one, under decision 3.26 (docs/00).
-EVERY_INTERFACE_ALLOWED_IN: Final = "backend/Dockerfile"
+# The two listeners inside a container, under decision 3.26 (docs/00): there a process on
+# 127.0.0.1 receives nothing from a published port.
+EVERY_INTERFACE_ALLOWED_IN: Final = ["backend/Dockerfile", "frontend/nginx/default.conf"]
 # Text that explains the rule, rather than configures a listener.
 EXPLAINING: Final = (".md",)
 THIS_FILE: Final = str(Path(__file__).resolve().relative_to(REPOSITORY))
@@ -36,6 +38,20 @@ SECURITY_HEADERS: Final = (
     "Cross-Origin-Resource-Policy",
 )
 NGINX: Final = REPOSITORY / "frontend" / "nginx"
+
+
+@pytest.mark.requirement("SEC-06", "D-3.26")
+def test_every_nginx_listener_names_its_address() -> None:
+    """A bare `listen 8080;` means every interface without saying so; the guard needs it said."""
+    listens = [
+        line.strip()
+        for conf in NGINX.glob("*.conf")
+        for line in conf.read_text().splitlines()
+        if line.strip().startswith("listen ")
+    ]
+
+    assert listens
+    assert all(re.match(r"listen\s+[\d.]+:\d+;", line) for line in listens), listens
 
 
 def _services() -> dict[str, Any]:
@@ -71,8 +87,8 @@ def test_every_published_port_is_on_127_0_0_1_only() -> None:
 
 
 @pytest.mark.requirement("SEC-06", "D-3.26")
-def test_only_the_api_image_listens_on_every_interface() -> None:
-    """The container needs it; the exception lives in one file of the repository."""
+def test_only_the_container_listeners_listen_on_every_interface() -> None:
+    """The containers need it; the exception lives in their two files only."""
     found = sorted(
         name
         for name in _tracked_files()
@@ -82,7 +98,7 @@ def test_only_the_api_image_listens_on_every_interface() -> None:
         and EVERY_INTERFACE.search((REPOSITORY / name).read_text(errors="ignore"))
     )
 
-    assert found == [EVERY_INTERFACE_ALLOWED_IN]
+    assert found == EVERY_INTERFACE_ALLOWED_IN
     # Without Docker, the server keeps to 127.0.0.1.
     assert "--host 127.0.0.1" in (REPOSITORY / "backend" / "Makefile").read_text()
 
@@ -129,17 +145,13 @@ def test_the_api_dependencies_install_from_the_hashed_lock() -> None:
     """Every runtime dependency of pyproject.toml is pinned there, by version and hash."""
     backend = REPOSITORY / "backend"
     lock = (backend / "requirements.lock").read_text()
-    declared = re.findall(r'^\s+"([A-Za-z0-9_.-]+)', _dependencies_block(backend), re.MULTILINE)
+    project = tomllib.loads((backend / "pyproject.toml").read_text())["project"]
+    declared = [re.split(r"[<>=\[;\s]", entry, maxsplit=1)[0] for entry in project["dependencies"]]
     pinned = {m.lower() for m in re.findall(r"^([A-Za-z0-9_.-]+)==", lock, flags=re.MULTILINE)}
 
     assert "--require-hashes" in (backend / "Dockerfile").read_text()
     assert {name.lower() for name in declared} <= pinned
     assert all("--hash=sha256:" in entry for entry in lock.split("==")[1:])
-
-
-def _dependencies_block(backend: Path) -> str:
-    text = (backend / "pyproject.toml").read_text()
-    return text.split("dependencies = [", 1)[1].split("]", 1)[0]
 
 
 @pytest.mark.requirement("REQ-PLT-008", "D-3.26")
@@ -160,7 +172,8 @@ def test_the_served_frontend_carries_every_security_header_in_every_location() -
     """The headers of §11.2, and no location that drops them."""
     headers = (NGINX / "security-headers.conf").read_text()
     server = (NGINX / "default.conf").read_text()
-    locations = re.findall(r"location\s+\S+\s*\{(.*?)\n    \}", server, flags=re.DOTALL)
+    # Each location block, up to the next one or the end, whatever its indentation.
+    locations = re.split(r"^\s*location\s", server, flags=re.MULTILINE)[1:]
 
     assert all(f'add_header {name} "' in headers for name in SECURITY_HEADERS)
     assert "Content-Security-Policy-Report-Only" not in headers

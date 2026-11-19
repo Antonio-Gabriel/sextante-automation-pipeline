@@ -43,8 +43,11 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2)"]
 
 # umask 077: the database and the invoice files are readable by this user only (SEC-04).
+# Uploads are spooled to /data/tmp (TMPDIR), on the volume's disk: the container's /tmp
+# is a small tmpfs in memory, and one upload may hold 50 files of 25 MiB.
 # The one place the API listens on every interface: inside its container, where a
 # process bound to 127.0.0.1 receives nothing from a published port. The host publishes
 # the port on 127.0.0.1 only (compose.yaml). Without Docker, `make run` keeps 127.0.0.1.
 # Decision 3.26 of docs/00 (SEC-06).
-CMD ["sh", "-c", "umask 077 && exec uvicorn --factory sextante.main:create_app --host 0.0.0.0 --port 8000 --no-server-header"]
+ENV TMPDIR=/data/tmp
+CMD ["sh", "-c", "umask 077 && mkdir -p /data/tmp && exec uvicorn --factory sextante.main:create_app --host 0.0.0.0 --port 8000 --no-server-header"]

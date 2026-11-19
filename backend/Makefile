@@ -8,7 +8,7 @@ ENV_FILE := ../config/.env
 
 # Pins the runtime dependencies by version and hash for the container image (SEC-20).
 # Run after changing the dependencies of pyproject.toml; the base is that of the image.
-PYTHON_IMAGE := python:3.12-slim-bookworm@sha256:935c3c5b12357a7e10caa9c1e6ca5692344d97cf229832ef584be2cec9fc03df
+PYTHON_IMAGE := $(shell sed -n 's/^ARG PYTHON_IMAGE=//p' Dockerfile)
 lock:
 	scripts/lock_dependencies.sh $(PYTHON_IMAGE)
 
