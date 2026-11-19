@@ -155,7 +155,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0075
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-008
-- **Commit:** pendente
+- **Commit:** `1f07865`
 - **Migração:** nenhuma
 - **Ficheiros:** `deploy/shardcloud/build_context.sh`, `.github/workflows/release.yml`, `backend/tests/deploy/test_container_config.py`
 - **Reversibilidade:** total
