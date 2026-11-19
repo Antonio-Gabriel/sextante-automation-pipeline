@@ -98,3 +98,43 @@ def test_a_line_review_answers_the_description_in_the_language(
         ]
 
     assert (english, portuguese) == ("Air ticket", "Bilhete Avião")
+
+
+@pytest.mark.requirement("REQ-PLT-006", "REQ-PLT-005", "SEC-15")
+@pytest.mark.parametrize(
+    ("language", "status", "path", "code", "message"),
+    [
+        ("pt", 422, "/api/jobs?limit=0", "errors.request.invalid", "O pedido é inválido"),
+        ("en", 422, "/api/jobs?limit=0", "errors.request.invalid", "The request is invalid"),
+        ("pt", 404, "/api/nowhere", "errors.request.not_found", "O endereço pedido não existe."),
+        ("en", 404, "/api/nowhere", "errors.request.not_found", "The requested address"),
+    ],
+)
+def test_the_framework_refusals_use_the_same_body_and_language(
+    valid_environment: dict[str, str],
+    language: str,
+    status: int,
+    path: str,
+    code: str,
+    message: str,
+) -> None:
+    """No framework detail in English: the usual body, the message in the language."""
+    with running_application(valid_environment, [], FakeItemClassifier(), language=language) as app:
+        response = app.client.get(path)
+
+    body = response.json()
+    assert response.status_code == status
+    assert set(body) == {"code", "message", "correlation_id"}
+    assert body["code"] == code
+    assert body["message"].startswith(message)
+
+
+@pytest.mark.requirement("REQ-PLT-006", "D-3.25")
+def test_every_answer_says_it_depends_on_the_language(valid_environment: dict[str, str]) -> None:
+    """Vary: Accept-Language, so no cache gives one person's language to another."""
+    with running_application(valid_environment, [], FakeItemClassifier()) as app:
+        listed = app.client.get("/api/jobs")
+        refused = app.client.get("/api/jobs/unknown-job")
+
+    assert "Accept-Language" in listed.headers["Vary"]
+    assert "Accept-Language" in refused.headers["Vary"]

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from sextante.catalog.contracts import ITEM_NUMBER_PATTERN, Catalog, TargetSheet
 from sextante.matching.contracts import Confidence
-from sextante.platform.coded_text import FlagResponse
+from sextante.platform.coded_text import FlagResponse, coded_texts
 from sextante.platform.http_params import IdentifierPath
 from sextante.platform.idempotency import JsonBody
 from sextante.platform.idempotent_route import IDEMPOTENCY_KEY_DECLARED, run_idempotently
@@ -21,7 +21,6 @@ from sextante.platform.limits import (
     MAX_REVIEW_NOTE_LENGTH,
 )
 from sextante.platform.request_language import RequestLanguage
-from sextante.platform.user_messages import user_message
 from sextante.review.application.codings_in_force import CodingInForce
 from sextante.review.application.list_job_results import ListJobResults, ResultFilters, ResultLine
 from sextante.review.application.read_job_progress import ReadJobProgress
@@ -144,8 +143,9 @@ async def read_results(
     list_results: ListJobResults = request.app.state.list_job_results
     filters = ResultFilters(confidence, target_sheet, flagged, invoice_id)
     lines = await list_results.execute(job_id, filters, page_size, offset)
+    localised = _Localised(language, request.app.state.catalog)
     return ResultsPageResponse(
-        lines=[_line_response(line, _Texts(language, request.app.state.catalog)) for line in lines],
+        lines=[_line_response(line, localised) for line in lines],
         limit=page_size,
         offset=offset,
         limit_truncated=limit > MAX_PAGE_SIZE,
@@ -153,21 +153,19 @@ async def read_results(
 
 
 @dataclass(frozen=True, slots=True)
-class _Texts:
-    # The language of one answer: its messages, and the catalog's descriptions in it.
+class _Localised:
+    # One answer's language, with the catalog that names items in it.
     language: Language
     catalog: Catalog
 
     def coded(self, group: str, codes: tuple[str, ...]) -> list[FlagResponse]:
-        return [
-            FlagResponse(code=c, message=user_message(f"{group}.{c}", self.language)) for c in codes
-        ]
+        return coded_texts(group, codes, self.language)
 
     def description(self, item_number: str | None, recorded: str | None) -> str | None:
         return self.catalog.description_in(item_number, self.language, recorded)
 
 
-def _line_response(line: ResultLine, texts: _Texts) -> ResultLineResponse:
+def _line_response(line: ResultLine, texts: _Localised) -> ResultLineResponse:
     # Field by field, never by reflection: the projection is what SEC-18 asks to be explicit.
     return ResultLineResponse(
         invoice_id=line.invoice_id,
@@ -245,7 +243,7 @@ async def correct_line(
         return 200, _review_body(coding)
 
     answer = await run_idempotently(request, response, body.model_dump(), operation)
-    return _review_response(answer, _Texts(language, request.app.state.catalog))
+    return _review_response(answer, _Localised(language, request.app.state.catalog))
 
 
 @review_router.post(
@@ -272,10 +270,10 @@ async def accept_line(
         return 200, _review_body(coding)
 
     answer = await run_idempotently(request, response, body.model_dump(), operation)
-    return _review_response(answer, _Texts(language, request.app.state.catalog))
+    return _review_response(answer, _Localised(language, request.app.state.catalog))
 
 
-def _review_response(answer: JsonBody, texts: _Texts) -> ReviewResponse:
+def _review_response(answer: JsonBody, texts: _Localised) -> ReviewResponse:
     # The stored answer keeps the recorded description; a replay shows it in the language
     # of the replaying request.
     review = ReviewResponse.model_validate(answer)
@@ -391,11 +389,11 @@ async def read_line_history(
     """
     history: ReadLineHistory = request.app.state.read_line_history
     entries = await history.execute(invoice_id, invoice_line_id)
-    texts = _Texts(language, request.app.state.catalog)
+    texts = _Localised(language, request.app.state.catalog)
     return [_history_response(entry, texts) for entry in entries]
 
 
-def _history_response(entry: LineHistoryEntry, texts: _Texts) -> CodingHistoryResponse:
+def _history_response(entry: LineHistoryEntry, texts: _Localised) -> CodingHistoryResponse:
     coding, review = entry.coding, entry.review
     return CodingHistoryResponse(
         encoded_line_id=coding.encoded_line_id,

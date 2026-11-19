@@ -4,6 +4,7 @@ Decision 3.25 (docs/00) revises R12: the interface is in English by default, wit
 Portuguese available. Codes, identifiers and logs stay in English whatever the language.
 """
 
+import math
 from enum import StrEnum
 from typing import Final
 
@@ -32,11 +33,13 @@ def parse_accept_language(header: str | None) -> Language:
         return DEFAULT_LANGUAGE
     ranked = sorted((_ranked_tag(part) for part in header.split(",")), key=lambda tag: -tag[1])
     supported = {language.value: language for language in Language}
-    return next((supported[tag] for tag, _ in ranked if tag in supported), DEFAULT_LANGUAGE)
+    # q=0 means "not this one" (RFC 9110 §12.4.2).
+    accepted = (tag for tag, quality in ranked if quality > 0 and tag in supported)
+    return next((supported[tag] for tag in accepted), DEFAULT_LANGUAGE)
 
 
 def _ranked_tag(part: str) -> tuple[str, float]:
-    # "pt-PT;q=0.9" -> ("pt", 0.9); a malformed quality ranks last.
+    # "pt-PT;q=0.9" -> ("pt", 0.9); a malformed or out-of-range quality counts as 0.
     tag, _, parameters = part.strip().partition(";")
     quality = 1.0
     if parameters.strip().startswith("q="):
@@ -44,4 +47,6 @@ def _ranked_tag(part: str) -> tuple[str, float]:
             quality = float(parameters.strip()[2:])
         except ValueError:
             quality = 0.0
+    if not (math.isfinite(quality) and 0.0 <= quality <= 1.0):
+        quality = 0.0
     return tag.split("-")[0].strip().lower(), quality

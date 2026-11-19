@@ -96,6 +96,7 @@ from sextante.platform.rate_limit import (
     RateRule,
     enforce_rate_limits,
 )
+from sextante.platform.request_language import install_vary_on_language
 from sextante.platform.retry import RetryPolicy, Sleep
 from sextante.platform.session import (
     AccessTokenInvalidError,
@@ -212,6 +213,7 @@ def create_app(
     )
     app.state.catalog = catalog
     app.add_middleware(CorrelationIdMiddleware)
+    install_vary_on_language(app)
     install_error_handlers(app, HTTP_STATUS_BY_ERROR)
     _include_routers(app, settings, adapters.monotonic)
     return app

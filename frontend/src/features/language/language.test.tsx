@@ -35,7 +35,7 @@ describe("English and Portuguese (D-3.25)", () => {
     expect(await screen.findByRole("heading", { name: "Jobs" })).toBeInTheDocument();
     expect(await screen.findByText("Completed")).toBeInTheDocument();
     expect(api.asked.at(-1)).toBe("en");
-    expect(document.documentElement.lang).toBe("en");
+    expect(document.documentElement.lang).toBe("en-GB");
   });
 
   it("switches to Portuguese, texts and server answers alike, and remembers it", async () => {

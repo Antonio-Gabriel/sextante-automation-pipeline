@@ -3,6 +3,7 @@
 import pytest
 
 from sextante.catalog.contracts import Catalog, CatalogDigest, CatalogItem, ItemNumber, TargetSheet
+from sextante.platform.coded_text import coded_texts
 from sextante.platform.language import Language, parse_accept_language
 from sextante.platform.user_messages import USER_MESSAGES_EN, USER_MESSAGES_PT
 
@@ -20,6 +21,12 @@ from sextante.platform.user_messages import USER_MESSAGES_EN, USER_MESSAGES_PT
         ("de, fr", Language.EN),
         ("pt;q=nonsense,en", Language.EN),
         ("pt" + ",x" * 200, Language.EN),
+        # q=0 refuses a language; out-of-range or non-finite qualities count as 0.
+        ("pt;q=0", Language.EN),
+        ("pt;q=0,en;q=0", Language.EN),
+        ("pt;q=nan", Language.EN),
+        ("en;q=inf,pt;q=0.5", Language.PT),
+        ("en;q=2,pt;q=0.5", Language.PT),
     ],
 )
 def test_the_language_comes_from_accept_language_and_defaults_to_english(
@@ -64,3 +71,11 @@ def test_a_description_is_shown_in_the_language_with_portuguese_as_fallback(
     catalog = _catalog(("O00004", "Bilhete Avião", "Air ticket"), ("O00061", "Sem tradução", ""))
 
     assert catalog.description_in(item_number, language, recorded) == expected
+
+
+@pytest.mark.requirement("REQ-PLT-006", "REQ-CNF-004")
+def test_an_unknown_code_is_shown_with_a_text_that_says_so() -> None:
+    """A flag the catalog lacks never fails the answer, in either language."""
+    [flag] = coded_texts("flags", ("brand_new_flag",), Language.EN)
+
+    assert (flag.code, flag.message) == ("brand_new_flag", USER_MESSAGES_EN["reasons.undescribed"])

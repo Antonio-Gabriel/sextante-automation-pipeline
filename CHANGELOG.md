@@ -75,6 +75,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                         └── CHG-0066  feat      Lista e apagamento lógico de trabalhos, e UX da tabela e do carregamento
                                                                                                                                                             └── CHG-0067  fix       Correcções da revisão do ticket 07 do frontend
                                                                                                                                                                 └── CHG-0068  feat      Interface em Inglês e Português, com os textos do servidor no idioma escolhido
+                                                                                                                                                                    └── CHG-0069  fix       Correcções da revisão da interface em dois idiomas
 ```
 
 ## Regras
@@ -140,6 +141,41 @@ Três casos estão sempre limitados:
 
 ## Alterações
 
+### CHG-0069 · Correcções da revisão da interface em dois idiomas
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0068
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-006, REQ-PLT-005, REQ-CNF-004, SEC-15
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `backend/src/sextante/platform/{http_errors,coded_text,language,request_language,user_messages}.py`, `review/api/routes.py`, `export/application/build_job_export.py`, `main.py`, `tests/domain/test_language.py`, `tests/api/test_language.py`; `frontend/src/shared/i18n/language.ts`, `root-layout.tsx`, `index.html`, `features/language/language.test.tsx`; `frontend/openapi.json`, `schema.d.ts`; `docs/04` §8.6, `README.md`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** backend 423 testes e 1 xfail, mypy, ruff, import-linter, funções até 20 linhas; frontend 79 testes, `tsc`, ESLint, licenças, build.
+
+**Recusas do próprio framework.** Um pedido inválido (422 de validação), um endereço inexistente (404) e um método não aceite (405) respondiam com o `detail` do FastAPI, em Inglês e com eco do input. Passam a ter o corpo de erro de sempre, com a mensagem no idioma pedido e sem o detalhe (SEC-15).
+
+**Código desconhecido.** Uma sinalização ou nota sem texto no catálogo fazia falhar os resultados com 500. Passa pela mesma função de `coded_text` (`coded_texts`) e mostra o texto «motivo sem descrição».
+
+**`Accept-Language`.** `q=0` recusa o idioma (RFC 9110). Uma qualidade fora de [0, 1] ou não finita conta como 0. Cada resposta leva `Vary: Accept-Language`, para que nenhuma cache dê a uma pessoa o idioma de outra.
+
+**Normas.**
+- `error_response` exige o idioma, para que nenhum caminho novo responda em Inglês sem querer.
+- O cabeçalho lê-se num só sítio (`request_language`).
+- `_Texts` passa a `_Localised`.
+- O atributo `lang` da página usa o mesmo mapa de locales que os formatos (`en-GB`, `pt-PT`).
+- O §8.6 de `docs/04` deixa de dizer que o texto é só em Português.
+
+**README.** Os nomes dos ecrãs passam a estar em Inglês, com o Português entre parênteses, como a secção «Language» anuncia.
+
+**Fica como está, com o motivo.**
+- `Catalog.description_in` decide o texto a mostrar em cada idioma. Está no catálogo porque só o catálogo conhece a Description 2, e é uma função pura.
+- A data da nota de duplicado na exportação fica `dd-mm-aaaa` nos dois idiomas, legível em ambos.
+- Os testes do frontend correm em Português, porque cobrem o comportamento. Os de idioma cobrem o Inglês por omissão.
+- O trabalho está no ramo `feature/REQ-PLT-007-startup-catalog-validation`, que já acumula várias entregas. Mudar de ramo fica para quando o responsável o pedir.
+
 ### CHG-0068 · Interface em Inglês e Português, com os textos do servidor no idioma escolhido
 
 - **Data:** 2026-11-19
@@ -147,7 +183,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0067
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-006 (revisto), REQ-PLT-005, REQ-CNF-004, REQ-EXP-001, R6, R12 (revista)
-- **Commit:** pendente
+- **Commit:** `e0598a7`
 - **Migração:** nenhuma
 - **Ficheiros:** `backend/src/sextante/platform/{language,request_language}.py` (novos), `platform/{user_messages,http_errors,coded_text}.py`, `catalog/domain/model.py`, `export/application/{build_job_export,export_job}.py`, `export/api/routes.py`, `review/api/routes.py`, `ingestion/api/routes.py`, `main.py`, `tests/domain/test_language.py` e `tests/api/test_language.py` (novos), `tests/api/encoding_harness.py`, `tests/api/test_pdf_ingestion.py`, `tests/domain/test_export_rules.py`; `frontend/src/shared/i18n/{en,language}.ts` (novos), `shared/i18n/{pt,t}.ts`, `shared/api/client.ts`, `shared/format.ts`, `features/language/*` (novo), `root-layout.tsx`, `app-shell.tsx`, `pages/login-page.tsx`, `features/line-review/candidates-table.tsx`, esquemas Zod, `index.html`, `vitest.setup.ts`; `frontend/openapi.json`, `schema.d.ts`; `docs/00` R12 e §3.25, `docs/01` REQ-PLT-006, `docs/04` §1 e §8, `CLAUDE.md`, `README.md`, ticket 08 do frontend
 - **Reversibilidade:** total

@@ -37,7 +37,17 @@ export function currentLanguage(): Language {
   return useLanguage.getState().language;
 }
 
-/** The locale numbers and dates are formatted in for the language in force. */
+/**
+ * The locale of a language: numbers, dates and the page's `lang` attribute use it.
+ *
+ * Example:
+ *   localeOf("pt") // "pt-PT"
+ */
+export function localeOf(language: Language): string {
+  return LOCALES[language];
+}
+
+/** The locale of the language in force. */
 export function currentLocale(): string {
-  return LOCALES[currentLanguage()];
+  return localeOf(currentLanguage());
 }

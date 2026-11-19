@@ -36,8 +36,8 @@ DATE_FORMAT: Final = "%d-%m-%Y"
 
 
 @dataclass(frozen=True, slots=True)
-class _Texts:
-    # The language of one export: its messages, and the catalog's descriptions in it.
+class _Localised:
+    # One export's language, with the catalog that names items in it.
     language: Language
     catalog: Catalog
 
@@ -100,12 +100,12 @@ class BuildJobExport:
             invoices = await self._invoices_reader.read_job_invoices(connection, job_id)
             line_ids = [line.line_id for invoice in invoices for line in invoice.lines]
             codings = await self._codings.read(connection, line_ids)
-        texts = _Texts(language, self._catalog)
+        texts = _Localised(language, self._catalog)
         return [row for invoice in invoices for row in _rows_for(invoice, codings, texts)]
 
 
 def _rows_for(
-    invoice: ExportInvoice, codings: dict[str, CodingInForce], texts: _Texts
+    invoice: ExportInvoice, codings: dict[str, CodingInForce], texts: _Localised
 ) -> list[ExportRow]:
     # A refused or failed document still gets one row, so the reviewer sees it existed
     # (REQ-EXP-007). An invoice still waiting has nothing to export yet.
@@ -114,7 +114,7 @@ def _rows_for(
     return [_line_row(invoice, line, codings.get(line.line_id), texts) for line in invoice.lines]
 
 
-def _lineless_row(invoice: ExportInvoice, texts: _Texts) -> ExportRow:
+def _lineless_row(invoice: ExportInvoice, texts: _Localised) -> ExportRow:
     notes = (
         rejection_message(invoice.status_reason, texts.language)
         if invoice.status is InvoiceStatus.REJECTED
@@ -135,7 +135,7 @@ def _lineless_row(invoice: ExportInvoice, texts: _Texts) -> ExportRow:
 
 
 def _line_row(
-    invoice: ExportInvoice, line: ExportLine, coding: CodingInForce | None, texts: _Texts
+    invoice: ExportInvoice, line: ExportLine, coding: CodingInForce | None, texts: _Localised
 ) -> ExportRow:
     return ExportRow(
         invoice_id=_identifier(invoice),
@@ -150,7 +150,7 @@ def _line_row(
     )
 
 
-def _notes(invoice: ExportInvoice, coding: CodingInForce | None, texts: _Texts) -> str:
+def _notes(invoice: ExportInvoice, coding: CodingInForce | None, texts: _Localised) -> str:
     if coding is None:
         return texts.message("export.line_not_coded")
     notes = [_flag_text(invoice, code, texts) for code in coding.flags]
@@ -165,7 +165,7 @@ def _notes(invoice: ExportInvoice, coding: CodingInForce | None, texts: _Texts) 
     return NOTES_SEPARATOR.join(notes)
 
 
-def _flag_text(invoice: ExportInvoice, code: str, texts: _Texts) -> str:
+def _flag_text(invoice: ExportInvoice, code: str, texts: _Localised) -> str:
     # A possible duplicate names the earlier copy as a person knows it: the file and the
     # day it was uploaded. Both copies share the Invoice_ID, so it would not tell them apart.
     earlier = invoice.earlier_copy

@@ -1,5 +1,7 @@
 """A stable code with its text in the request's language, as the API returns it."""
 
+from collections.abc import Iterable
+
 from pydantic import BaseModel, ConfigDict
 
 from sextante.platform.language import Language
@@ -29,6 +31,18 @@ def coded_text(group: str, code: str | None, language: Language) -> FlagResponse
     """
     if code is None:
         return None
+    return FlagResponse(code=code, message=_text(group, code, language))
+
+
+def coded_texts(group: str, codes: Iterable[str], language: Language) -> list[FlagResponse]:
+    """Each code with its text, as coded_text gives it; an unknown code says so, never fails.
+
+    Example:
+        coded_texts("flags", ("fallback_applied",), Language.EN)
+    """
+    return [FlagResponse(code=c, message=_text(group, c, language)) for c in codes]
+
+
+def _text(group: str, code: str, language: Language) -> str:
     key = f"{group}.{code}"
-    message = user_message(key if has_user_message(key) else UNDESCRIBED_KEY, language)
-    return FlagResponse(code=code, message=message)
+    return user_message(key if has_user_message(key) else UNDESCRIBED_KEY, language)

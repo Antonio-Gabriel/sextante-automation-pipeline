@@ -19,6 +19,9 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
         "errors.upload.too_many_files": "Foram enviados ficheiros a mais num só carregamento.",
         "errors.upload.invalid_file_name": "O nome do ficheiro é inválido.",
         "errors.upload.no_files": "Nenhum ficheiro foi enviado.",
+        "errors.request.invalid": "O pedido é inválido: verifique os campos enviados.",
+        "errors.request.not_found": "O endereço pedido não existe.",
+        "errors.request.method_not_allowed": "Este método não é aceite neste endereço.",
         "errors.job.not_found": "Trabalho não encontrado.",
         "errors.job.not_deletable": (
             "Só um trabalho terminado, concluído ou com falha, pode ser apagado."
@@ -84,6 +87,9 @@ USER_MESSAGES_EN: Final[Mapping[str, str]] = MappingProxyType(
         "errors.upload.too_many_files": "Too many files were sent in one upload.",
         "errors.upload.invalid_file_name": "The file name is invalid.",
         "errors.upload.no_files": "No file was sent.",
+        "errors.request.invalid": "The request is invalid: check the fields sent.",
+        "errors.request.not_found": "The requested address does not exist.",
+        "errors.request.method_not_allowed": "This method is not accepted at this address.",
         "errors.job.not_found": "Job not found.",
         "errors.job.not_deletable": "Only a finished job, completed or failed, can be deleted.",
         "errors.auth.credential_invalid": (
