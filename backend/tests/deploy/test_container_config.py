@@ -16,13 +16,20 @@ import yaml
 
 REPOSITORY: Final = Path(__file__).resolve().parents[3]
 COMPOSE: Final = REPOSITORY / "compose.yaml"
-DOCKERFILES: Final = sorted(REPOSITORY.glob("*/Dockerfile"))
+DOCKERFILES: Final = sorted(
+    path for path in REPOSITORY.glob("**/Dockerfile") if "node_modules" not in path.parts
+)
+SHARDCLOUD: Final = REPOSITORY / "deploy" / "shardcloud"
 SERVICES: Final = ("api", "web")
 # Addresses that listen on every interface, IPv4 and IPv6.
 EVERY_INTERFACE: Final = re.compile(r"0\.0\.0\.0|\[::\]|--host[ =]::")
 # The two listeners inside a container, under decision 3.26 (docs/00): there a process on
 # 127.0.0.1 receives nothing from a published port.
-EVERY_INTERFACE_ALLOWED_IN: Final = ["backend/Dockerfile", "frontend/nginx/default.conf"]
+EVERY_INTERFACE_ALLOWED_IN: Final = [
+    "backend/Dockerfile",
+    "deploy/shardcloud/nginx.conf",
+    "frontend/nginx/default.conf",
+]
 # Text that explains the rule, rather than configures a listener.
 EXPLAINING: Final = (".md",)
 THIS_FILE: Final = str(Path(__file__).resolve().relative_to(REPOSITORY))
@@ -38,6 +45,8 @@ SECURITY_HEADERS: Final = (
     "Cross-Origin-Resource-Policy",
 )
 NGINX: Final = REPOSITORY / "frontend" / "nginx"
+# The servers that answer browsers: compose's web container and the ShardCloud image.
+SERVED_CONFIGS: Final = (NGINX / "default.conf", SHARDCLOUD / "nginx.conf")
 
 
 @pytest.mark.requirement("SEC-06", "D-3.26")
@@ -45,7 +54,7 @@ def test_every_nginx_listener_names_its_address() -> None:
     """A bare `listen 8080;` means every interface without saying so; the guard needs it said."""
     listens = [
         line.strip()
-        for conf in NGINX.glob("*.conf")
+        for conf in SERVED_CONFIGS
         for line in conf.read_text().splitlines()
         if line.strip().startswith("listen ")
     ]
@@ -131,13 +140,40 @@ def test_no_secret_or_local_data_enters_an_image(context: str) -> None:
 
 @pytest.mark.requirement("SEC-20", "D-3.26")
 @pytest.mark.parametrize("dockerfile", DOCKERFILES, ids=lambda path: path.parent.name)
-def test_base_images_are_pinned_by_digest_and_run_without_root(dockerfile: Path) -> None:
-    """A moved tag never changes the build; the last stage never runs as root."""
+def test_base_images_are_pinned_by_digest(dockerfile: Path) -> None:
+    """A moved tag never changes the build."""
     bases = _base_images(dockerfile)
-    users = re.findall(r"^USER\s+(\S+)", dockerfile.read_text(), flags=re.MULTILINE)
 
     assert bases and all(re.search(r"@sha256:[0-9a-f]{64}$", base) for base in bases), bases
+
+
+@pytest.mark.requirement("SEC-04", "D-3.26")
+@pytest.mark.parametrize("context", ["backend", "frontend"])
+def test_the_compose_images_run_without_root(context: str) -> None:
+    """The last stage of each compose image switches to an unprivileged user."""
+    text = (REPOSITORY / context / "Dockerfile").read_text()
+    users = re.findall(r"^USER\s+(\S+)", text, flags=re.MULTILINE)
+
     assert users and users[-1].split(":")[0] not in {"root", "0"}
+
+
+@pytest.mark.requirement("SEC-04", "D-3.27")
+def test_the_shardcloud_image_keeps_root_to_binding_port_80_only() -> None:
+    """The API runs as uid 10001 without capabilities, on 127.0.0.1; nginx workers as www-data."""
+    entrypoint = (SHARDCLOUD / "entrypoint.sh").read_text()
+    nginx = (SHARDCLOUD / "nginx.conf").read_text()
+
+    assert "setpriv --reuid=sextante --regid=sextante --init-groups --inh-caps=-all" in entrypoint
+    assert "--host 127.0.0.1 --port 8000" in entrypoint
+    assert "umask 077" in entrypoint
+    assert re.search(r"^user www-data;", nginx, flags=re.MULTILINE)
+    assert "proxy_pass http://127.0.0.1:8000;" in nginx
+
+
+@pytest.mark.requirement("SEC-15", "D-3.27")
+def test_the_shardcloud_image_hides_the_api_description() -> None:
+    """The public server does not describe its API to everyone."""
+    assert "SEXTANTE_API_DOCS_ENABLED=false" in (SHARDCLOUD / "Dockerfile").read_text()
 
 
 @pytest.mark.requirement("SEC-20")
@@ -168,10 +204,13 @@ def test_the_data_survive_in_a_volume_and_the_reference_files_are_read_only() ->
 
 
 @pytest.mark.requirement("SEC-11")
-def test_the_served_frontend_carries_every_security_header_in_every_location() -> None:
+@pytest.mark.parametrize("config", SERVED_CONFIGS, ids=lambda path: path.parent.name)
+def test_the_served_frontend_carries_every_security_header_in_every_location(
+    config: Path,
+) -> None:
     """The headers of §11.2, and no location that drops them."""
     headers = (NGINX / "security-headers.conf").read_text()
-    server = (NGINX / "default.conf").read_text()
+    server = config.read_text()
     # Each location block, up to the next one or the end, whatever its indentation.
     locations = re.split(r"^\s*location\s", server, flags=re.MULTILINE)[1:]
 

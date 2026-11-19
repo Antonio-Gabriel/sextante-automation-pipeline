@@ -27,6 +27,7 @@ export const pt = {
     down: "Indisponível",
     loading: "A verificar…",
     catalog: "Catálogo",
+    version: "Versão",
     notAvailable: "Não disponível",
   },
   language: {

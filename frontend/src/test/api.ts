@@ -18,7 +18,7 @@ export function apiWithoutSession(rightToken: string) {
   const calls = { login: 0, logout: 0 };
   const handlers = [
     http.get("/api/health", () =>
-      HttpResponse.json({ status: "ok", catalog_digest: CATALOG_DIGEST }),
+      HttpResponse.json({ status: "ok", catalog_digest: CATALOG_DIGEST, version: "1.2.0" }),
     ),
     http.get("/api/session", () =>
       open ? HttpResponse.json({ authenticated: true }) : credentialRefused(),
@@ -48,7 +48,7 @@ export function sessionHandlers() {
     http.get("/api/jobs", () => HttpResponse.json(jobList([]))),
     http.get("/api/session", () => HttpResponse.json({ authenticated: true })),
     http.get("/api/health", () =>
-      HttpResponse.json({ status: "ok", catalog_digest: CATALOG_DIGEST }),
+      HttpResponse.json({ status: "ok", catalog_digest: CATALOG_DIGEST, version: "1.2.0" }),
     ),
   ];
 }

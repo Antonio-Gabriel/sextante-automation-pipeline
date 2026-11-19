@@ -81,12 +81,12 @@ export interface paths {
         };
         /**
          * Read Health
-         * @description Report that the process is up and which catalog version it serves.
+         * @description Report that the process is up, which release it runs and which catalog it serves.
          *
          *     The digest identifies the catalog content and is not a secret (D-3.9).
          *
          *     Example:
-         *         GET /api/health -> {"status": "ok", "catalog_digest": "3f2a..."}
+         *         GET /api/health -> {"status": "ok", "catalog_digest": "3f2a...", "version": "1.2.0"}
          */
         get: operations["read_health_api_health_get"];
         put?: never;
@@ -507,7 +507,7 @@ export interface components {
         };
         /**
          * ErrorResponse
-         * @description Body of every refused or failed request: stable code, Portuguese message, reference.
+         * @description Body of every refused or failed request: stable code, message, reference.
          */
         ErrorResponse: {
             /** Code */
@@ -525,7 +525,7 @@ export interface components {
         ExportFormat: "csv" | "xlsx";
         /**
          * FlagResponse
-         * @description A flag, a note or a reason: the stable code and its Portuguese text (REQ-CNF-004).
+         * @description A flag, a note or a reason: the stable code and its text (REQ-CNF-004).
          */
         FlagResponse: {
             /** Code */
@@ -545,6 +545,8 @@ export interface components {
              * @constant
              */
             status: "ok";
+            /** Version */
+            version: string;
         };
         /**
          * InvoiceResponse
@@ -821,7 +823,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReviewResponse"];
                 };
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -868,7 +870,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReviewResponse"];
                 };
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -910,7 +912,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -948,7 +950,7 @@ export interface operations {
                     "application/json": components["schemas"]["HealthResponse"];
                 };
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -990,7 +992,7 @@ export interface operations {
                     "application/json": components["schemas"]["UploadResponse"];
                 };
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -1030,7 +1032,7 @@ export interface operations {
                     "application/json": components["schemas"]["InvoiceResponse"];
                 };
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -1077,7 +1079,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReprocessResponse"];
                 };
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -1118,7 +1120,7 @@ export interface operations {
                     "application/json": components["schemas"]["CandidatesResponse"];
                 };
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -1159,7 +1161,7 @@ export interface operations {
                     "application/json": components["schemas"]["CodingHistoryResponse"][];
                 };
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -1202,7 +1204,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReprocessResponse"];
                 };
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -1243,7 +1245,7 @@ export interface operations {
                     "application/json": components["schemas"]["JobListResponse"];
                 };
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -1283,7 +1285,7 @@ export interface operations {
                     "application/json": components["schemas"]["JobProgressResponse"];
                 };
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -1326,7 +1328,7 @@ export interface operations {
                     "application/json": components["schemas"]["JobDeletedResponse"];
                 };
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -1373,7 +1375,7 @@ export interface operations {
                     "application/json": components["schemas"]["ResultsPageResponse"];
                 };
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -1411,7 +1413,7 @@ export interface operations {
                     "application/json": components["schemas"]["SessionResponse"];
                 };
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -1451,7 +1453,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;
@@ -1487,7 +1489,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Refused, with the Portuguese message. */
+            /** @description Refused, with the message in the request's language. */
             "4XX": {
                 headers: {
                     [name: string]: unknown;

@@ -206,17 +206,28 @@ def create_app(
     require_generic_items_in_catalog(settings.generic_items, catalog)
     apply_migrations(settings.database_url.get_secret_value())
     adapters = dependencies or AppDependencies()
-    app = FastAPI(
-        title="Sextante",
-        responses=ERROR_RESPONSES,
-        lifespan=_lifespan(settings, ReferenceData(catalog, denylist, target_entity), adapters),
-    )
+    app = _new_app(settings, ReferenceData(catalog, denylist, target_entity), adapters)
     app.state.catalog = catalog
+    app.state.release_version = settings.release_version
     app.add_middleware(CorrelationIdMiddleware)
     install_vary_on_language(app)
     install_error_handlers(app, HTTP_STATUS_BY_ERROR)
     _include_routers(app, settings, adapters.monotonic)
     return app
+
+
+def _new_app(settings: Settings, reference: ReferenceData, adapters: AppDependencies) -> FastAPI:
+    # Where the server is public the API is not described to everyone (SEC-15, D-3.27).
+    docs = settings.api_docs_enabled
+    return FastAPI(
+        title="Sextante",
+        version=settings.release_version,
+        responses=ERROR_RESPONSES,
+        lifespan=_lifespan(settings, reference, adapters),
+        docs_url="/docs" if docs else None,
+        redoc_url="/redoc" if docs else None,
+        openapi_url="/openapi.json" if docs else None,
+    )
 
 
 def _pdf_extractor(settings: Settings) -> IsolatedPdfExtractor:

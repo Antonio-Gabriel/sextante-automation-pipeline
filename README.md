@@ -138,6 +138,71 @@ The application refuses to start, with a message naming the problem, in either o
 - a variable in `config/.env` is missing;
 - the catalog is invalid. A missing sheet, a duplicate or empty item number, a missing `O00999`, or a sheet with more than 100 items all count.
 
+## Continuous integration, releases and ShardCloud
+
+Two GitHub Actions workflows live in `.github/workflows/` (decision 3.27 of `docs/00`).
+
+- **CI** (`ci.yml`) runs on every push and pull request. It runs the backend gates (lint, types, module boundaries, tests, traceability matrix, licences) and the frontend check. It then builds the three images and scans them with Trivy: the public ShardCloud image fails the run on any fixable HIGH or CRITICAL vulnerability, while the findings in the two compose images are only reported. CI uses no secret and never calls the model. The golden set needs the private samples, so it is run locally with `make golden`.
+- **Release** (`release.yml`) runs when a tag `vX.Y.Z` is pushed.
+  1. It runs CI in full.
+  2. It builds the ShardCloud image from the git context and pushes it to the private Docker Hub repository as `X.Y.Z`, then scans it.
+  3. It waits for a person to approve the `production` environment.
+  4. Once approved, it backs up the ShardCloud app, has ShardCloud rebuild the app's image from the same context, restarts the app, and waits until `https://<app>/api/health` answers `"version": "X.Y.Z"`.
+
+  If the backup fails, nothing else happens. If the build fails, the running version stays.
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0   # publishes version 1.0.0
+```
+
+### The ShardCloud image
+
+`deploy/shardcloud/Dockerfile` puts the whole application in one container, because ShardCloud runs one container per app and serves its port 80 over HTTPS.
+
+- **Inside:** nginx on port 80 serves the pages, sends the SEC-11 headers and forwards `/api` to the API on the container's `127.0.0.1:8000`. The API runs as an unprivileged user without capabilities. The catalog and the denylist are inside the image.
+- **Turned off:** the interactive API documentation.
+- **Version:** shown by the health check and in the sidebar.
+- **Data:** the database and the invoices live in `/data` in the container.
+
+`deploy/shardcloud/build_context.sh <dir>` assembles the build context from git, so local files never get in. To try the image on your machine:
+
+```bash
+deploy/shardcloud/build_context.sh build/shardcloud
+docker build --build-arg SEXTANTE_RELEASE_VERSION=local -t sextante:local build/shardcloud
+docker run --rm --env-file config/.env -e SEXTANTE_SESSION_COOKIE_SECURE=false -p 127.0.0.1:8081:80 sextante:local
+```
+
+### One-time setup
+
+Do these steps once, by hand.
+
+1. **Docker Hub.** Create a private repository (for example `<user>/sextante`) and an access token with *Read & Write* on it.
+2. **ShardCloud image.**
+   1. Assemble the context and zip it: `deploy/shardcloud/build_context.sh build/shardcloud && (cd build/shardcloud && zip -qr ../sextante.zip .)`.
+   2. In the dashboard, create a Custom Docker Image from `build/sextante.zip`, and note its ID.
+3. **ShardCloud app.**
+   1. Deploy an app from that image with at least 2048 MB of RAM. PDF reading alone may use up to 512 MiB.
+   2. Turn on its web access (subdomain or your domain), and note the app ID and its `https://` address.
+   3. Set its environment variables: `SEXTANTE_ANTHROPIC_API_KEY`, `SEXTANTE_API_KEY`, `SEXTANTE_ACCESS_TOKEN`, `SEXTANTE_TARGET_ENTITY_NAME`, `SEXTANTE_TARGET_ENTITY_NIF` and `SEXTANTE_REVIEWER_ID`, plus any optional ones from `config/.env.example`. Do not set the paths: the image sets them.
+   4. Create a ShardCloud API token (Dashboard → Settings → API Token).
+4. **GitHub**, under Settings → Secrets and variables → Actions:
+   - **Secrets:** `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, `SHARD_CLOUD_API_KEY`.
+   - **Variables:**
+     - `DOCKERHUB_REPOSITORY` (for example `<user>/sextante`);
+     - `SHARDCLOUD_APP_ID`;
+     - `SHARDCLOUD_IMAGE_ID`;
+     - `SHARDCLOUD_URL` (the app's `https://` address, with no trailing slash).
+5. **GitHub environment.** Under Settings → Environments, create `production` with *Required reviewers*, so each release waits for a person.
+
+### Before using it with real invoices
+
+The published app is on the internet, protected by one shared access token, with no per-person accounts. Keep the token long, and change it in ShardCloud whenever someone who knew it leaves. Two points need confirming first:
+
+- AMT confirms that supplier invoices may be kept at ShardCloud.
+- ShardCloud confirms that files in the container (the SQLite database and the uploaded invoices) survive a redeploy.
+
+The pipeline backs the app up before every deploy, but a backup is not a substitute for knowing.
+
 ## Rate limits
 
 The API counts requests per time window (SEC-12). Over a quota the answer is `429` with a `Retry-After` header, in seconds. The health check is never limited, a request refused for its credential never uses a quota, and a request refused by one limit is not counted by the others. The API key and the frontend session stand for one principal, so everyone shares one quota. Login attempts, made before any credential, are counted apart.

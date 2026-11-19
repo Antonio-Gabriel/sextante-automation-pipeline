@@ -80,6 +80,12 @@ class Settings(ModelCallSettings):
     # Life of a session, absolute from login, and whether its cookie is Secure.
     session_hours: int = Field(default=8, ge=1, le=SESSION_HOURS_MAXIMUM)
     session_cookie_secure: bool = True
+    # The interactive API documentation (/docs, /redoc, /openapi.json). Open by default
+    # for local use; off where the server is public (docs/02 §6, SEC-15, decision 3.27).
+    api_docs_enabled: bool = True
+    # The release this process runs, set in the image by the release pipeline; shown by
+    # the health check so a deploy can be confirmed (decision 3.27).
+    release_version: str = Field(default="dev", max_length=64, pattern=r"^[0-9A-Za-z.+-]+$")
     entity_denylist_path: Path
     # Author of every review action in the audit trail: there is no login in this
     # version (L-07), so the identity comes from configuration (REQ-REV-004).

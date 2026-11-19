@@ -14,6 +14,8 @@ export function ServerStatus() {
         <span aria-hidden className={cn("size-2 rounded-full", health.dot)} />
         {t(health.label)}
       </dd>
+      <dt className="text-slate-500">{t("health.version")}</dt>
+      <dd className="truncate font-mono text-slate-700">{health.version ?? t("health.notAvailable")}</dd>
       <dt className="text-slate-500">{t("health.catalog")}</dt>
       <dd className="truncate font-mono text-slate-700" title={health.catalogDigest}>
         {health.catalogDigest === undefined ? t("health.notAvailable") : shortDigest(health.catalogDigest)}

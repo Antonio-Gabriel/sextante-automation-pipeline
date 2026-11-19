@@ -405,11 +405,16 @@
             "const": "ok",
             "title": "Status",
             "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
           }
         },
         "required": [
           "status",
-          "catalog_digest"
+          "catalog_digest",
+          "version"
         ],
         "title": "HealthResponse",
         "type": "object"
@@ -1160,7 +1165,7 @@
   },
   "info": {
     "title": "Sextante",
-    "version": "0.1.0"
+    "version": "dev"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -1408,7 +1413,7 @@
     },
     "/api/health": {
       "get": {
-        "description": "Report that the process is up and which catalog version it serves.\n\nThe digest identifies the catalog content and is not a secret (D-3.9).\n\nExample:\n    GET /api/health -> {\"status\": \"ok\", \"catalog_digest\": \"3f2a...\"}",
+        "description": "Report that the process is up, which release it runs and which catalog it serves.\n\nThe digest identifies the catalog content and is not a secret (D-3.9).\n\nExample:\n    GET /api/health -> {\"status\": \"ok\", \"catalog_digest\": \"3f2a...\", \"version\": \"1.2.0\"}",
         "operationId": "read_health_api_health_get",
         "responses": {
           "200": {

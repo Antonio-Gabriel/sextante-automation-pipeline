@@ -80,6 +80,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                             └── CHG-0071  infra     Contentor do frontend e correcções da revisão do contentor da API
                                                                                                                                                                                 └── CHG-0072  fix       Correcções da revisão do contentor do frontend
                                                                                                                                                                                     └── CHG-0073  fix       API sem rede depois de um conflito de porta, e ecrã de erro da página
+                                                                                                                                                                                        └── CHG-0074  infra     CI/CD no GitHub Actions, imagem no Docker Hub e publicação na ShardCloud
 ```
 
 ## Regras
@@ -144,6 +145,68 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0074 · CI/CD no GitHub Actions, imagem no Docker Hub e publicação na ShardCloud
+
+- **Data:** 2026-11-19
+- **Tipo:** infra
+- **Pai:** CHG-0073
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008, SEC-02, SEC-04, SEC-06, SEC-11, SEC-15, SEC-20
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `.github/workflows/{ci,release}.yml` (novos), `deploy/shardcloud/{Dockerfile,nginx.conf,entrypoint.sh,build_context.sh,deploy.sh}` (novos), `backend/src/sextante/{main.py,platform/health.py,platform/settings.py}`, `backend/tests/api/test_release_settings.py` (novo), `backend/tests/deploy/{test_shardcloud_deploy,test_workflows}.py` (novos), `backend/tests/deploy/test_container_config.py`, `frontend/src/entities/health/*`, `frontend/src/shared/i18n/{pt,en}.ts`, `frontend/src/test/api.ts`, `frontend/openapi.json`, `schema.d.ts`; `docs/00` §3.26 e §3.27, `docs/03` SEC-06, `CLAUDE.md`, `config/.env.example`, `README.md`, ticket 03 do deploy
+- **Reversibilidade:** total no repositório. Uma versão já publicada no Docker Hub ou na ShardCloud apaga-se lá.
+- **Reversão:** reverter o commit. Na ShardCloud, voltar a uma publicação anterior (`POST /apps/{id}/deploys/{deploy_id}/restore`) ou restaurar o backup que o pipeline cria antes de cada publicação.
+- **Verificação:**
+  - Backend: 456 testes e 1 xfail; `tests/deploy` com 28 testes. `make golden`, 12 amostras sem divergências. Matriz de rastreabilidade, 68 de 79. Licenças.
+  - Frontend: 80 testes, `tsc`, ESLint, licenças, build.
+  - Imagem da ShardCloud construída a partir do contexto do git (443 KB em zip, 286 MB a imagem). Corrida localmente, com a porta 80 publicada em `127.0.0.1:18081` e segredos gerados só para a verificação. Os resultados estão no bloco de segurança abaixo.
+  - `deploy.sh` testado contra um substituto local da API da ShardCloud.
+  - **Nada foi publicado pelo agente.** O primeiro release depende da configuração única do README e de uma tag enviada pelo responsável.
+
+**Pedido do responsável.** CI/CD no GitHub Actions: publicar no Docker Hub privado uma imagem com versão e publicar a aplicação na ShardCloud usando essa imagem. Antes de implementar fez-se a leitura da documentação da ShardCloud (docs.shardcloud.app) e quatro perguntas; as respostas estão em §3.27. A ShardCloud constrói a partir de um zip e não vai buscar imagens a um registo privado. Por isso «usar a imagem» passou a «mesma versão, construída a partir do mesmo contexto», com a concordância do responsável.
+
+**App.**
+- `SEXTANTE_RELEASE_VERSION` aparece no *health check* (`version`) e na barra lateral.
+- `SEXTANTE_API_DOCS_ENABLED` desliga `/docs`, `/redoc` e `/openapi.json`, como pede 02 §6 para produção. Por omissão estão ligados, para uso local.
+- A ShardCloud não define a porta: os seus tutoriais servem a porta 80. Se a plataforma esperar outra, muda-se o `listen` de `deploy/shardcloud/nginx.conf`.
+
+```
+SEGURANÇA
+- Itens aplicáveis: 2, 4, 5, 6, 11, 12, 15, 16, 20
+- Verificados:
+  2  test_ci_reads_no_secret_and_only_reads_the_repository; segredos só nos trabalhos de
+     publicação; contexto montado do git (nada do disco local); token da ShardCloud para o
+     curl pela entrada padrão, test_the_token_never_reaches_the_output; grep do token de
+     verificação no log do contentor: zero
+  4  ps no contentor: API como sextante (uid 10001, sem capacidades, setpriv), workers do
+     nginx como www-data, só o mestre do nginx como root para a porta 80; /data e a base de
+     dados -rw------- 10001; test_the_shardcloud_image_keeps_root_to_binding_port_80_only
+  5  HTTPS terminado pela ShardCloud (subdomínio e domínio próprio com certificado automático)
+  6  entrada pelo token, 204 pelo nginx da imagem; API alcançável só em 127.0.0.1 do
+     contentor (porta 8000 fechada no IP do contentor)
+  11 os oito cabeçalhos de §11.2 nas respostas da imagem;
+     test_the_served_frontend_carries_every_security_header_in_every_location[shardcloud]
+  12 limites de taxa de SEC-12 inalterados; entrada limitada a 10 por minuto
+  15 /docs e /openapi.json 404 na API da imagem pública;
+     test_the_api_description_can_be_switched_off; versão sem caracteres livres
+     (test_a_malformed_release_version_refuses_startup)
+  16 corpo limitado a 50 × 25 MiB no nginx; carregamentos no disco de /data/tmp
+  20 Trivy na imagem da ShardCloud: 0 HIGH ou CRITICAL com correcção; o CI falha se aparecer
+     algum; acções fixadas por commit (test_every_action_is_pinned_by_commit); bases por
+     digest; dependências Python por hash; npm ci --ignore-scripts
+- Pendentes:
+  a AMT confirmar que as facturas podem ficar na ShardCloud;
+  a ShardCloud confirmar que /data sobrevive a um novo deploy;
+  a porta 80 confirmada no primeiro deploy real;
+  nginx-light do Debian instalado por apt sem versão fixa (a base está fixada por digest);
+  contas por pessoa (SEC-07) antes de alargar o uso
+- Não suportado pelo stack: a ShardCloud não aceita credenciais de registo; alternativa, o
+  mesmo contexto de construção nos dois destinos (§3.27)
+- Risco residual: médio-alto, por um token partilhado numa aplicação pública e por dados de
+  terceiros num serviço externo (§3.27).
+```
 
 ### CHG-0073 · API sem rede depois de um conflito de porta, e ecrã de erro da página
 

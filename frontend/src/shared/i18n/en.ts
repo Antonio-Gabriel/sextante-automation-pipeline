@@ -30,6 +30,7 @@ export const en: Messages = {
     down: "Unavailable",
     loading: "Checking…",
     catalog: "Catalog",
+    version: "Version",
     notAvailable: "Not available",
   },
   language: {

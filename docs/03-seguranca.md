@@ -169,6 +169,7 @@ Isto não é tratado como "mais tarde se vê". É tratado como decisão com cons
 - O campo `reviewed_by` existe no esquema desde a primeira migração, preenchido a partir de `SEXTANTE_REVIEWER_ID`. Quando a autenticação entrar, o trilho de auditoria não precisa de migração nem de reinterpretação.
 - Os routers declaram a sua política de autorização desde já, com uma dependência que hoje resolve para um principal único. A estrutura fica montada, por SEC-07.
 - **Risco residual declarado: médio.** Uma chave partilhada, em HTTP local, sem identidade por pessoa. Consta do bloco de fecho de qualquer tarefa que toque na API, e consta do `README.md`.
+- *Revisto em 19-11-2026 (00-decisoes-e-lacunas.md §3.27):* a versão publicada na ShardCloud é pública, por HTTPS da plataforma, com o mesmo token e sem contas por pessoa. Nessa instalação o risco residual sobe para **médio-alto**. A AMT tem de confirmar que os dados podem ficar na ShardCloud antes do uso com facturas reais. Contas por pessoa (SEC-07) passam a ser a próxima alteração de segurança.
 
 Quando a autenticação entrar, as regras são as do documento de referência: validação completa em cada pedido, assinatura, emissor, destinatário e validade, material de verificação cacheado com rotação, e esconder um botão na interface nunca é autenticação.
 

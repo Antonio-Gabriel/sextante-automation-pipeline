@@ -1,0 +1,102 @@
+# Continuous integration (decision 3.27 of docs/00): every push and pull request, and the
+# release pipeline before it publishes anything. No secret is used here, and no test
+# calls the model (CLAUDE.md). The golden set needs the private samples and runs locally.
+# Actions are pinned by commit, the version in the comment (SEC-20).
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # Inside the release (a reused workflow, github.workflow is "Release") nothing is cancelled.
+  cancel-in-progress: ${{ github.workflow == 'CI' }}
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: make install
+      - run: make lint typecheck boundaries
+      - run: make test
+      - run: make traceability-matrix licenses
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund --ignore-scripts
+      - run: npm run check
+
+  images:
+    name: Images
+    needs: [backend, frontend]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the compose images
+        run: |
+          docker build --tag sextante-api:ci backend
+          docker build --tag sextante-web:ci frontend
+      - name: Build the ShardCloud image from its git context
+        run: |
+          deploy/shardcloud/build_context.sh build/shardcloud
+          docker build --tag sextante:ci --build-arg SEXTANTE_RELEASE_VERSION=ci build/shardcloud
+      # The image that goes public must carry no fixable HIGH or CRITICAL vulnerability.
+      - name: Scan the ShardCloud image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: sextante:ci
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      # The compose images run on 127.0.0.1 only: their findings are reported, not blocking.
+      - name: Scan the API compose image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: sextante-api:ci
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+      - name: Scan the frontend compose image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: sextante-web:ci
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"

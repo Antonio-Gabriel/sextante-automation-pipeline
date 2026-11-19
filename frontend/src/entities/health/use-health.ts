@@ -11,13 +11,13 @@ const HEALTH_STATES = {
 type HealthState = keyof typeof HEALTH_STATES;
 
 /**
- * Whether the server is up, and which catalog it serves.
+ * Whether the server is up, which release it runs and which catalog it serves.
  *
  * Example:
- *   const { label, dot, catalogDigest } = useHealth();
+ *   const { label, dot, catalogDigest, version } = useHealth();
  */
 export function useHealth() {
   const health = $api.useQuery("get", "/api/health");
   const state: HealthState = health.isPending ? "loading" : health.data ? "up" : "down";
-  return { ...HEALTH_STATES[state], catalogDigest: health.data?.catalog_digest };
+  return { ...HEALTH_STATES[state], catalogDigest: health.data?.catalog_digest, version: health.data?.version };
 }
