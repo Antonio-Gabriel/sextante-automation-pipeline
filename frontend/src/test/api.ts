@@ -42,9 +42,10 @@ export function apiWithoutSession(rightToken: string) {
   return { handlers, calls };
 }
 
-/** A browser already holding a session, with the server up. */
+/** A browser already holding a session, with the server up and no job yet. */
 export function sessionHandlers() {
   return [
+    http.get("/api/jobs", () => HttpResponse.json(jobList([]))),
     http.get("/api/session", () => HttpResponse.json({ authenticated: true })),
     http.get("/api/health", () =>
       HttpResponse.json({ status: "ok", catalog_digest: CATALOG_DIGEST }),
@@ -53,6 +54,25 @@ export function sessionHandlers() {
 }
 
 const NO_INVOICES = {} as const;
+
+type JobListEntry = components["schemas"]["JobListEntryResponse"];
+
+/** A job of the list, of the generated type. */
+export function jobEntry(jobId: string, status: string, counts: Record<string, number> = NO_INVOICES): JobListEntry {
+  return {
+    job_id: jobId,
+    status,
+    created_at: "2026-11-18T09:00:00+00:00",
+    finished_at: status === "completed" || status === "failed" ? "2026-11-18T09:01:00+00:00" : null,
+    invoice_counts: counts,
+    invoice_total: Object.values(counts).reduce((sum, n) => sum + n, 0),
+  };
+}
+
+/** A page of the list of jobs. */
+export function jobList(jobs: JobListEntry[], offset = 0): components["schemas"]["JobListResponse"] {
+  return { jobs, limit: 20, offset, limit_truncated: false };
+}
 
 /** A job progress answer of the generated type. */
 export function jobProgress(

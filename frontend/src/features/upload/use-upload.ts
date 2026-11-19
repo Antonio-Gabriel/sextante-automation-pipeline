@@ -1,22 +1,32 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { useRecentJobs } from "@/entities/job/recent-jobs";
 import { $api } from "@/shared/api/client";
 import { errorMessage } from "@/shared/api/errors";
+import { queryKeys } from "@/shared/api/query-keys";
 
-/** Sends the files; on success opens the job, saying where already uploaded files are. */
+/**
+ * Sends the files; on success opens the job, saying where already uploaded files are and
+ * which deleted jobs the upload brought back (REQ-PLT-009).
+ */
 export function useUpload() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const remember = useRecentJobs((state) => state.remember);
   const mutation = $api.useMutation("post", "/api/invoices", {
     onSuccess: async (receipt) => {
       remember(receipt.job_id);
-      const already = receipt.existing_job_ids;
+      const { existing_job_ids: already, restored_job_ids: restored } = receipt;
+      await queryClient.invalidateQueries({ queryKey: queryKeys.jobList });
       await navigate({
         to: "/jobs/$jobId",
         params: { jobId: receipt.job_id },
-        search: already.length > 0 ? { already } : {},
+        search: {
+          ...(already.length > 0 ? { already } : {}),
+          ...(restored.length > 0 ? { restored } : {}),
+        },
       });
     },
     onError: (error) => {

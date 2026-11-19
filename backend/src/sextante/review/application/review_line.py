@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from sextante.catalog.contracts import Catalog, CatalogItem, ItemNumber, TargetSheet
+from sextante.ingestion.contracts import JobLinesReader
 from sextante.matching.contracts import CodingsReader, LineCoding
 from sextante.platform.audit import AuditEventRepository
 from sextante.platform.clock import Clock, IdentifierGenerator
@@ -36,6 +37,7 @@ class ReviewCollaborators:
     """Everything ReviewLine needs, injected (04-padroes-de-codigo.md §4)."""
 
     codings: CodingsReader
+    lines: JobLinesReader
     reviews: ReviewRepositoryPort
     catalog: Catalog
     audit: AuditEventRepository
@@ -111,7 +113,10 @@ class ReviewLine:
         self, connection: AsyncConnection, encoded_line_id: str
     ) -> tuple[LineCoding, CodingInForce, TargetSheet]:
         coding = await self._deps.codings.read_encoded_line(connection, encoded_line_id)
-        if coding is None:
+        # A line of a deleted job is hidden like the job: it is not reviewed either.
+        if coding is None or not await self._deps.lines.line_in_active_job(
+            connection, coding.invoice_line_id
+        ):
             raise EncodedLineNotFoundError(f"Coded line {encoded_line_id!r} does not exist.")
         # A line of an ambiguous invoice has no sheet: it is unblocked by resolving the
         # entity of its invoice (REQ-REV-006), never line by line (REQ-REV-002).

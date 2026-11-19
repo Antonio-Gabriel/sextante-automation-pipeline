@@ -8,15 +8,17 @@ import { cn } from "@/shared/ui-kit/cn";
 interface FileDropzoneProps {
   onFiles: (files: FileList) => void;
   disabled: boolean;
+  /** Smaller, in one row, once files are chosen: the list below takes the space. */
+  compact: boolean;
 }
 
 /**
  * Drop files here, or pick them; the server is the one that checks them.
  *
  * Example:
- *   <FileDropzone onFiles={selection.add} disabled={isPending} />
+ *   <FileDropzone onFiles={selection.add} disabled={isPending} compact={hasFiles} />
  */
-export function FileDropzone({ onFiles, disabled }: FileDropzoneProps) {
+export function FileDropzone({ onFiles, disabled, compact }: FileDropzoneProps) {
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const onDrop = (event: DragEvent) => {
@@ -38,16 +40,28 @@ export function FileDropzone({ onFiles, disabled }: FileDropzoneProps) {
       }}
       onDrop={onDrop}
       className={cn(
-        "flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center transition-colors",
+        "flex rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/70 transition-colors",
+        compact
+          ? "flex-row items-center gap-4 px-4 py-3 text-left"
+          : "flex-col items-center gap-3 px-6 py-14 text-center",
         dragging && "border-brand-400 bg-brand-50",
       )}
     >
-      <span className="flex size-12 items-center justify-center rounded-full bg-white text-brand-700 shadow-xs ring-1 ring-slate-200">
-        <CloudUpload className="size-6" />
+      <span
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-full bg-white text-brand-700 shadow-xs ring-1 ring-slate-200",
+          compact ? "size-9 [&_svg]:size-4" : "size-14 [&_svg]:size-7",
+        )}
+      >
+        <CloudUpload aria-hidden />
       </span>
-      <p className="font-medium text-slate-900">{t("upload.dropTitle")}</p>
-      <p className="text-sm text-slate-500">{t("upload.dropHint")}</p>
-      <Button variant="outline" disabled={disabled} onClick={() => input.current?.click()}>
+      <div className={cn("flex flex-col gap-1", compact && "min-w-0 flex-1")}>
+        <p className={cn("font-medium text-slate-900", !compact && "text-base")}>
+          {compact ? t("upload.addMore") : t("upload.dropTitle")}
+        </p>
+        <p className="text-sm text-slate-500">{t("upload.dropHint")}</p>
+      </div>
+      <Button variant="outline" disabled={disabled} onClick={() => input.current?.click()} className={cn(!compact && "mt-2")}>
         {t("upload.choose")}
       </Button>
       <input

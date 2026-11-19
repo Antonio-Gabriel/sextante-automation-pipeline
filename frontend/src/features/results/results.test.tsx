@@ -119,6 +119,27 @@ describe("results with filters (frontend ticket 03)", () => {
     expect(screen.getByRole("link", { name: "FT 2026/17" })).toHaveAttribute("href", "/invoices/inv-1");
   });
 
+  it("says how to open each line: a review button when pending, and the whole row", async () => {
+    withResults([resultLine(3, { review_status: "pending" }), resultLine(4, { review_status: "accepted" })]);
+    const { user, router } = renderApp(PATH);
+
+    expect(await screen.findByRole("link", { name: "Rever a linha 3" })).toHaveTextContent("Rever");
+    expect(screen.getByRole("link", { name: "Abrir a linha 4" })).toHaveTextContent("Abrir");
+
+    await user.click(screen.getByText("Synthetic service 4").closest("tr")?.querySelector("td") ?? document.body);
+    expect(router.state.location.pathname).toBe("/invoices/inv-1/lines/line-4");
+  });
+
+  it("a click on the filter of a row filters, it does not open the line", async () => {
+    withResults([resultLine(1)]);
+    const { user, router } = renderApp(PATH);
+    await screen.findByText("Synthetic service 1");
+
+    await user.click(screen.getByRole("button", { name: "Filtrar pela factura FT 2026/17" }));
+
+    expect(router.state.location.pathname).toBe(PATH);
+  });
+
   it("drops an invalid page position of the address", async () => {
     const api = withResults([resultLine(1)]);
     renderApp(`${PATH}?offset=-5&limit=0`);

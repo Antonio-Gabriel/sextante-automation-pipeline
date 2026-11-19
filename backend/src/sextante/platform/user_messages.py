@@ -15,6 +15,9 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
         "errors.upload.invalid_file_name": "O nome do ficheiro é inválido.",
         "errors.upload.no_files": "Nenhum ficheiro foi enviado.",
         "errors.job.not_found": "Trabalho não encontrado.",
+        "errors.job.not_deletable": (
+            "Só um trabalho terminado, concluído ou com falha, pode ser apagado."
+        ),
         "errors.auth.credential_invalid": (
             "Credencial em falta ou inválida: entre com o token de acesso, ou envie a chave da API."
         ),

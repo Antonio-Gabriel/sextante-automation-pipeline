@@ -12,6 +12,22 @@ export function formatNumber(value: number, fractionDigits = 0): string {
 }
 
 /**
+ * A moment of the server (ISO 8601) as a short Portuguese date and time, in local time.
+ *
+ * Example:
+ *   formatDateTime("2026-11-18T09:00:00+00:00") // "18/11/2026, 09:00"
+ */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString(LOCALE, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/**
  * The first characters of a SHA-256 digest, enough to tell versions apart on screen.
  *
  * Example:

@@ -1,5 +1,5 @@
 import { Link, Outlet } from "@tanstack/react-router";
-import { History, Upload } from "lucide-react";
+import { ClipboardList, History, Upload } from "lucide-react";
 
 import logo from "@/assets/amt-logo.png";
 import { shortJobId } from "@/entities/job/job-status";
@@ -20,10 +20,14 @@ export function AppShell() {
         <div className="flex h-16 items-center border-b border-slate-200 px-5">
           <img src={logo} alt={t("app.logoAlt")} className="h-9 w-auto" />
         </div>
-        <nav aria-label={t("nav.main")} className="flex flex-1 flex-col gap-6 overflow-y-auto p-3">
+        <nav aria-label={t("nav.main")} className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
           <Link to="/" className={NAV_LINK} activeProps={{ className: NAV_ACTIVE }} activeOptions={{ exact: true }}>
             <Upload />
             {t("nav.upload")}
+          </Link>
+          <Link to="/jobs" className={NAV_LINK} activeProps={{ className: NAV_ACTIVE }} activeOptions={{ exact: true, includeSearch: false }}>
+            <ClipboardList />
+            {t("nav.jobs")}
           </Link>
           <RecentJobs />
         </nav>
@@ -42,7 +46,7 @@ export function AppShell() {
 function RecentJobs() {
   const jobIds = useRecentJobs((state) => state.jobIds);
   return (
-    <div className="flex flex-col gap-1">
+    <div className="mt-5 flex flex-col gap-1">
       <p className="flex items-center gap-2 px-3 text-xs font-medium uppercase tracking-wide text-slate-400 [&_svg]:size-3.5">
         <History />
         {t("nav.recentJobs")}

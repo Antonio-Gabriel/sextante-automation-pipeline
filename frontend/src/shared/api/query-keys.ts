@@ -3,6 +3,8 @@
 // is what a mutation invalidates.
 export const queryKeys = {
   allJobs: ["get", "/api/jobs/{job_id}"] as const,
+  // Every page of the list of jobs.
+  jobList: ["get", "/api/jobs"] as const,
   allResults: ["get", "/api/jobs/{job_id}/results"] as const,
   allCandidates: ["get", "/api/invoices/{invoice_id}/lines/{invoice_line_id}/candidates"] as const,
   allHistories: ["get", "/api/invoices/{invoice_id}/lines/{invoice_line_id}/history"] as const,

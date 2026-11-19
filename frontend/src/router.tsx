@@ -13,6 +13,7 @@ import { sessionQuery } from "@/entities/session/session-query";
 import { resultFiltersSchema } from "@/entities/result/result-filters";
 import { InvoicePage } from "@/pages/invoice-page";
 import { JobPage } from "@/pages/job-page";
+import { JobsPage } from "@/pages/jobs-page";
 import { LineReviewPage } from "@/pages/line-review-page";
 import { LoginPage } from "@/pages/login-page";
 import { ResultsPage } from "@/pages/results-page";
@@ -56,8 +57,22 @@ const uploadRoute = createRoute({
   component: UploadPage,
 });
 
-// Jobs whose files were already uploaded; an invalid value falls back to none.
-const jobSearch = z.object({ already: z.array(z.string()).optional().catch(undefined) });
+// The page of the list of jobs; an invalid value falls back to the first.
+const jobsSearch = z.object({ offset: z.number().int().min(0).optional().catch(undefined) });
+
+const jobsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/jobs",
+  validateSearch: jobsSearch,
+  component: JobsPage,
+});
+
+// Jobs whose files were already uploaded, and those of them restored from deletion;
+// an invalid value falls back to none.
+const jobSearch = z.object({
+  already: z.array(z.string()).optional().catch(undefined),
+  restored: z.array(z.string()).optional().catch(undefined),
+});
 
 const jobRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -87,7 +102,7 @@ const lineReviewRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  appRoute.addChildren([uploadRoute, jobRoute, resultsRoute, invoiceRoute, lineReviewRoute]),
+  appRoute.addChildren([uploadRoute, jobsRoute, jobRoute, resultsRoute, invoiceRoute, lineReviewRoute]),
 ]);
 
 export function createAppRouter(queryClient: QueryClient, history?: RouterHistory) {

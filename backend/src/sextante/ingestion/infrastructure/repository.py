@@ -23,6 +23,8 @@ from sextante.ingestion.application.records import (
     InvoiceState,
     InvoiceView,
     JobLine,
+    JobListEntry,
+    JobRemovalState,
     JobSummary,
     NewInvoice,
     QueuedInvoice,
@@ -229,7 +231,7 @@ class IngestionRepository:
 
     async def job_summary(self, connection: AsyncConnection, job_id: str) -> JobSummary | None:
         """Return the job status and its invoice counts by status, or None if unknown."""
-        status_query = select(JOB_TABLE.c.status).where(JOB_TABLE.c.id == job_id)
+        status_query = select(JOB_TABLE.c.status).where(JOB_TABLE.c.id == job_id, _JOB_ACTIVE)
         status = (await connection.execute(status_query)).scalar_one_or_none()
         if status is None:
             return None
@@ -268,10 +270,58 @@ class IngestionRepository:
     async def line_belongs_to_invoice(
         self, connection: AsyncConnection, invoice_id: str, line_id: str
     ) -> bool:
-        """True when the invoice line exists and is a line of this invoice."""
-        table = INVOICE_LINE_TABLE
-        query = select(table.c.id).where(table.c.id == line_id, table.c.invoice_id == invoice_id)
+        """True when the invoice line exists, is a line of this invoice, and its job is not
+        deleted."""
+        query = _active_line_query(line_id).where(INVOICE_LINE_TABLE.c.invoice_id == invoice_id)
         return (await connection.execute(query)).first() is not None
+
+    async def line_in_active_job(self, connection: AsyncConnection, line_id: str) -> bool:
+        """True when the invoice line exists and its job is not deleted."""
+        return (await connection.execute(_active_line_query(line_id))).first() is not None
+
+    async def list_jobs(
+        self, connection: AsyncConnection, limit: int, offset: int
+    ) -> list[JobListEntry]:
+        """Return the jobs not deleted, newest first, with their invoices by status."""
+        jobs = (await connection.execute(_jobs_page_query(limit, offset))).all()
+        counts = await _invoice_counts(connection, [str(job.id) for job in jobs])
+        return [
+            JobListEntry(
+                str(job.id),
+                str(job.status),
+                str(job.created_at),
+                job.finished_at,
+                counts.get(str(job.id), {}),
+            )
+            for job in jobs
+        ]
+
+    async def job_removal_state(
+        self, connection: AsyncConnection, job_id: str
+    ) -> JobRemovalState | None:
+        """Return the job's status and whether it is deleted, or None when unknown."""
+        query = select(JOB_TABLE.c.status, JOB_TABLE.c.deleted_at).where(JOB_TABLE.c.id == job_id)
+        row = (await connection.execute(query)).first()
+        return None if row is None else JobRemovalState(str(row.status), row.deleted_at is not None)
+
+    async def mark_job_deleted(
+        self, connection: AsyncConnection, job_id: str, now: datetime
+    ) -> None:
+        """Hide the job from every read; its rows stay."""
+        await connection.execute(
+            update(JOB_TABLE)
+            .where(JOB_TABLE.c.id == job_id, _JOB_ACTIVE)
+            .values(deleted_at=now.isoformat())
+        )
+
+    async def restore_job(self, connection: AsyncConnection, job_id: str) -> bool:
+        """Show a deleted job again. True when it was deleted."""
+        restore = (
+            update(JOB_TABLE)
+            .where(JOB_TABLE.c.id == job_id, JOB_TABLE.c.deleted_at.is_not(None))
+            .values(deleted_at=None)
+        )
+        return (await connection.execute(restore)).rowcount == 1
 
     async def invoice_state(
         self, connection: AsyncConnection, invoice_id: str
@@ -285,8 +335,9 @@ class IngestionRepository:
                 header.c.entity_verdict,
                 header.c.entity_reason,
             )
+            .join(JOB_TABLE, JOB_TABLE.c.id == INVOICE_TABLE.c.job_id)
             .outerjoin(header, header.c.invoice_id == INVOICE_TABLE.c.id)
-            .where(INVOICE_TABLE.c.id == invoice_id)
+            .where(INVOICE_TABLE.c.id == invoice_id, _JOB_ACTIVE)
         )
         row = (await connection.execute(query)).first()
         if row is None:
@@ -385,6 +436,44 @@ class IngestionRepository:
         return [_export_invoice(row, lines.get(str(row.id), ())) for row in invoices]
 
 
+# A deleted job is hidden from every read of jobs, invoices and lines; its rows stay.
+_JOB_ACTIVE: Final = JOB_TABLE.c.deleted_at.is_(None)
+
+
+def _jobs_page_query(limit: int, offset: int) -> Select[tuple[object, ...]]:
+    job = JOB_TABLE.c
+    return (
+        select(job.id, job.status, job.created_at, job.finished_at)
+        .where(_JOB_ACTIVE)
+        .order_by(job.created_at.desc(), job.id)
+        .limit(limit)
+        .offset(offset)
+    )
+
+
+def _active_line_query(line_id: str) -> Select[tuple[object, ...]]:
+    return (
+        select(INVOICE_LINE_TABLE.c.id)
+        .join(INVOICE_TABLE, INVOICE_TABLE.c.id == INVOICE_LINE_TABLE.c.invoice_id)
+        .join(JOB_TABLE, JOB_TABLE.c.id == INVOICE_TABLE.c.job_id)
+        .where(INVOICE_LINE_TABLE.c.id == line_id, _JOB_ACTIVE)
+    )
+
+
+async def _invoice_counts(
+    connection: AsyncConnection, job_ids: list[str]
+) -> dict[str, dict[str, int]]:
+    query = (
+        select(INVOICE_TABLE.c.job_id, INVOICE_TABLE.c.status, func.count())
+        .where(INVOICE_TABLE.c.job_id.in_(job_ids))
+        .group_by(INVOICE_TABLE.c.job_id, INVOICE_TABLE.c.status)
+    )
+    counts: dict[str, dict[str, int]] = {}
+    for row in (await connection.execute(query)).all():
+        counts.setdefault(str(row[0]), {})[str(row[1])] = int(row[2])
+    return counts
+
+
 def _supplier_and_number_of(invoice_id: str) -> Subquery:
     header, uploaded = INVOICE_HEADER_TABLE, INVOICE_TABLE.alias("uploaded")
     return (
@@ -432,10 +521,11 @@ def _invoice_view_query(invoice_id: str) -> Select[tuple[object, ...]]:
             resolution.c.resolved_at,
         )
         .select_from(INVOICE_TABLE)
+        .join(JOB_TABLE, JOB_TABLE.c.id == INVOICE_TABLE.c.job_id)
         .outerjoin(header, header.c.invoice_id == INVOICE_TABLE.c.id)
         .outerjoin(earlier, earlier.c.invoice_id == header.c.possible_duplicate_of)
         .outerjoin(resolution, resolution.c.invoice_id == INVOICE_TABLE.c.id)
-        .where(INVOICE_TABLE.c.id == invoice_id)
+        .where(INVOICE_TABLE.c.id == invoice_id, _JOB_ACTIVE)
     )
 
 

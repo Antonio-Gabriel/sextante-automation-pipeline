@@ -72,6 +72,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                             └── CHG-0063  feat      Revisão de linha
                                                                                                                                                 └── CHG-0064  feat      Exportação e reprocessamento na interface
                                                                                                                                                     └── CHG-0065  fix       Correcções da revisão dos tickets 04 e 06 do frontend
+                                                                                                                                                        └── CHG-0066  feat      Lista e apagamento lógico de trabalhos, e UX da tabela e do carregamento
 ```
 
 ## Regras
@@ -136,6 +137,32 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0066 · Lista e apagamento lógico de trabalhos, e UX da tabela e do carregamento
+
+- **Data:** 2026-11-19
+- **Tipo:** feat
+- **Pai:** CHG-0065
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-009 (novo), REQ-PLT-004, REQ-ING-007, SEC-18, SEC-19, REQ-AUD-002, REQ-PLT-006
+- **Commit:** pendente
+- **Migração:** `0010_job_soft_delete` (coluna `job.deleted_at`; a descida remove-a e os trabalhos apagados voltam a aparecer)
+- **Ficheiros:** `backend/migrations/versions/0010_job_soft_delete.py` (novo), `ingestion/application/manage_jobs.py` (novo), `ingestion/application/{ports,records,upload_invoices}.py`, `ingestion/infrastructure/{repository,tables}.py`, `ingestion/api/routes.py`, `review/application/review_line.py`, `platform/user_messages.py`, `main.py`, `tests/api/test_job_deletion.py` (novo), dois testes ajustados; `frontend/src/pages/jobs-page.tsx` (novo), `features/jobs/*` (novo), `entities/job/use-jobs.ts` (novo), `shared/ui-kit/confirm-dialog.tsx` (novo), `shared/ui-kit/use-confirmation-focus.ts` (movido de `features/reprocess`), `features/results/results-table.tsx`, `features/upload/*`, `pages/{upload,job}-page.tsx`, `app-shell.tsx`, `router.tsx`, `shared/i18n/pt.ts`, `shared/format.ts`, testes; `docs/00` §3.24, `docs/01` REQ-PLT-009, `docs/02` §6, `docs/03` SEC-19, `README.md`, ticket 07 do frontend
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit e descer a migração para 0009 (`alembic downgrade 0009`).
+- **Verificação:** backend 387 testes e 1 xfail, mypy, ruff, import-linter, funções até 20 linhas, matriz 68 de 79; frontend 73 testes, `tsc`, ESLint, licenças, build.
+
+**Pedido do responsável.** Três pontos: a tabela de resultados não mostrava que a descrição se clica; o carregamento deixava muito espaço vazio; e devia poder apagar-se um trabalho, de forma lógica, com modal de confirmação. As três decisões de desenho do apagamento foram perguntadas e respondidas: restaurar no recarregamento, só trabalhos terminados, página «Trabalhos» com lista do servidor.
+
+**Apagamento.** `DELETE /api/jobs/{job_id}` marca `deleted_at` e grava `job_deleted`. Um trabalho apagado desaparece da lista, do estado, dos resultados, da exportação, da factura, dos candidatos e do histórico, e a revisão, a resolução e o reprocessamento respondem 404. Recarregar um ficheiro dele restaura-o (`job_restored`, `restored_job_ids`). Só se apagam trabalhos concluídos ou com falha.
+
+**Lista.** `GET /api/jobs`, do mais recente para o mais antigo, paginado, sem nome de ficheiro (SEC-18). Página «Trabalhos» com data, estado, facturas por estado, resultados e apagar.
+
+**Modal.** `ConfirmDialog`, sem dependência nova: `alertdialog` modal sobre a página escurecida, foco a começar em «Cancelar» e preso no modal, Escape e clique fora cancelam, foco devolvido ao botão.
+
+**Tabela de resultados.** A descrição passa a ligação visível (cor da marca, sublinhado). Uma coluna final, fixa à direita, tem «Rever» numa linha pendente e «Abrir» nas outras. A linha inteira abre a revisão, excepto quando o clique é numa ligação, num botão ou numa selecção de texto.
+
+**Carregamento.** Conteúdo centrado com largura máxima. A zona de largar encolhe para uma linha quando há ficheiros, a lista mostra quantos e o tamanho total, e o botão diz quantos envia. Abaixo, três notas sobre o que o servidor faz e os últimos cinco trabalhos.
 
 ### CHG-0065 · Correcções da revisão dos tickets 04 e 06 do frontend
 

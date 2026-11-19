@@ -327,7 +327,9 @@ Prefixo `/api`. Documentação OpenAPI desactivada em produção, por SEC-15.
 | Método | Caminho | Função |
 |---|---|---|
 | `POST` | `/api/invoices` | Carregar ficheiros, devolve `job_id` |
+| `GET` | `/api/jobs` | Trabalhos não apagados, do mais recente para o mais antigo, paginados |
 | `GET` | `/api/jobs/{job_id}` | Estado do trabalho, com contagens por estado |
+| `DELETE` | `/api/jobs/{job_id}` | Apagar, de forma lógica, um trabalho terminado (00-decisoes-e-lacunas.md §3.24) |
 | `GET` | `/api/jobs/{job_id}/results` | Linhas codificadas, paginadas, com filtros |
 | `GET` | `/api/invoices/{invoice_id}` | Uma factura, com cabeçalho, linhas e decisões |
 | `GET` | `/api/invoices/{invoice_id}/lines/{line_id}/candidates` | A aba de destino inteira, ordenada por score lexical, com a escolha do modelo marcada |
@@ -341,7 +343,7 @@ Prefixo `/api`. Documentação OpenAPI desactivada em produção, por SEC-15.
 
 Convenções que valem para todos:
 
-- `Idempotency-Key` obrigatório em `POST` e `PATCH`, enquadrado pela identidade e acompanhado da impressão digital do corpo, nos termos de SEC-19. O carregamento está isento, porque o digest do conteúdo já o torna idempotente (00-decisoes-e-lacunas.md §3.19).
+- `Idempotency-Key` obrigatório em `POST`, `PATCH` e `DELETE`, enquadrado pela identidade e acompanhado da impressão digital do corpo, nos termos de SEC-19. O carregamento está isento, porque o digest do conteúdo já o torna idempotente (00-decisoes-e-lacunas.md §3.19).
 - Paginação obrigatória, com limite máximo imposto pelo servidor.
 - Contratos de entrada com `extra="forbid"`, contratos de saída separados e explícitos.
 - Erro ao cliente em Português, opaco, com `correlation_id`.

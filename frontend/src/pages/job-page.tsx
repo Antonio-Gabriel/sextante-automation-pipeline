@@ -1,9 +1,10 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { ArrowRight, Coins, Files, Info } from "lucide-react";
+import { ArrowRight, Coins, Files, History, Info } from "lucide-react";
 
 import { JobProgressBar } from "@/entities/job/job-progress-bar";
 import { INVOICE_STATUSES, invoiceCount, shortJobId } from "@/entities/job/job-status";
 import { alreadyUploadedNotice, useJobView, type AlreadyUploadedNotice } from "@/entities/job/use-job-view";
+import { DeleteJobButton } from "@/features/jobs/delete-job-button";
 import { formatNumber } from "@/shared/format";
 import { Page } from "@/shared/layout/page";
 import { t } from "@/shared/i18n/t";
@@ -16,25 +17,34 @@ const route = getRouteApi("/_app/jobs/$jobId");
 /** Progress of one job: status, invoices by state, tokens, and the way to its results. */
 export function JobPage() {
   const { jobId } = route.useParams();
-  const { already } = route.useSearch();
+  const { already, restored } = route.useSearch();
+  const navigate = route.useNavigate();
   const view = useJobView(jobId);
   const notice = alreadyUploadedNotice(jobId, already ?? []);
 
   return (
     <Page
       title={t("job.title", { id: shortJobId(jobId) })}
-      breadcrumb={<p className="text-xs text-slate-500">{t("job.breadcrumb")}</p>}
+      breadcrumb={
+        <Link to="/jobs" className="text-xs text-slate-500 hover:text-brand-700 hover:underline">
+          {t("job.breadcrumb")}
+        </Link>
+      }
       actions={
         view.job !== undefined && view.finished && (
-          <Button asChild>
-            <Link to="/jobs/$jobId/results" params={{ jobId }}>
-              {t("job.viewResults")}
-              <ArrowRight />
-            </Link>
-          </Button>
+          <>
+            <DeleteJobButton jobId={jobId} look="full" onDeleted={() => navigate({ to: "/jobs" })} />
+            <Button asChild>
+              <Link to="/jobs/$jobId/results" params={{ jobId }}>
+                {t("job.viewResults")}
+                <ArrowRight />
+              </Link>
+            </Button>
+          </>
         )
       }
     >
+      {restored !== undefined && restored.length > 0 && <Restored jobIds={restored} />}
       {notice !== null && <AlreadyUploaded notice={notice} />}
       {view.notFound && <p className="text-sm text-slate-600">{t("job.notFound")}</p>}
       {view.job !== undefined && (
@@ -61,6 +71,26 @@ export function JobPage() {
         </>
       )}
     </Page>
+  );
+}
+
+function Restored({ jobIds }: { jobIds: readonly string[] }) {
+  return (
+    <div role="status" className="flex gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+      <History className="size-5 shrink-0 text-emerald-700" aria-hidden />
+      <div className="flex flex-col gap-1">
+        <p>{t("job.restored")}</p>
+        <ul className="flex flex-wrap gap-2">
+          {jobIds.map((id) => (
+            <li key={id}>
+              <Link to="/jobs/$jobId" params={{ jobId: id }} className="font-mono text-emerald-800 underline">
+                {shortJobId(id)}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }
 

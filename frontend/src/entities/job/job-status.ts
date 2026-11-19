@@ -59,7 +59,7 @@ export function isJobFinished(status: string): boolean {
  * Example:
  *   invoiceCount(job, "encoded") // 3
  */
-export function invoiceCount(job: JobProgress, status: InvoiceStatus): number {
+export function invoiceCount(job: Pick<JobProgress, "invoice_counts">, status: InvoiceStatus): number {
   return job.invoice_counts[status] ?? 0;
 }
 

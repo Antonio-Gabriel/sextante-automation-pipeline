@@ -1,10 +1,12 @@
-import { Link } from "@tanstack/react-router";
-import { Filter } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ChevronRight, Filter } from "lucide-react";
+import type { MouseEvent } from "react";
 
 import { confidenceView, reviewView, yesNo } from "@/entities/result/result-labels";
 import type { components } from "@/shared/api/schema";
 import { t, type MessageKey } from "@/shared/i18n/t";
 import { Badge } from "@/shared/ui-kit/badge";
+import { cn } from "@/shared/ui-kit/cn";
 
 
 type ResultLine = components["schemas"]["ResultLineResponse"];
@@ -24,6 +26,8 @@ const COLUMNS: readonly MessageKey[] = [
 ];
 
 const CELL = "px-3 py-2.5 align-top";
+// The last column stays in view when the table scrolls sideways: the way into the line.
+const ACTION_CELL = "sticky right-0 bg-white px-3 py-2 align-top shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)] group-hover:bg-slate-50";
 
 interface ResultsTableProps {
   lines: readonly ResultLine[];
@@ -31,7 +35,8 @@ interface ResultsTableProps {
 }
 
 /**
- * The coded lines, one per row. Invoice content is always text, never markup.
+ * The coded lines, one per row; a click anywhere on a row opens its review, and the
+ * description and the last column are its links. Invoice content is always text, never markup.
  *
  * Example:
  *   <ResultsTable lines={lines} onFilterInvoice={navigation.chooseInvoice} />
@@ -47,6 +52,9 @@ export function ResultsTable({ lines, onFilterInvoice }: ResultsTableProps) {
                 {t(column)}
               </th>
             ))}
+            <th scope="col" className="sticky right-0 bg-slate-50 px-3 py-2.5 font-medium">
+              <span className="sr-only">{t("results.columns.action")}</span>
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -70,8 +78,18 @@ function ResultRow({ line, onFilterInvoice }: ResultRowProps) {
   const confidence = confidenceView(line.confidence);
   const review = reviewView(line.review_status);
   const lineParams = { invoiceId: line.invoice_id, lineId: line.invoice_line_id };
+  const navigate = useNavigate();
+  const pending = line.review_status === "pending";
+  const actionLabel = t(pending ? "results.reviewLine" : "results.openLineN", { position: line.line_position });
+  // The row is a larger target for the pointer; keyboards use the links it holds.
+  const openFromRow = (event: MouseEvent<HTMLTableRowElement>) => {
+    const target = event.target;
+    if (target instanceof Element && target.closest("a, button") !== null) return;
+    if (window.getSelection()?.toString()) return;
+    void navigate({ to: "/invoices/$invoiceId/lines/$lineId", params: lineParams });
+  };
   return (
-    <tr className="hover:bg-slate-50">
+    <tr className="group cursor-pointer hover:bg-slate-50" onClick={openFromRow}>
       <td className={CELL}>
         <div className="flex items-center gap-1">
           <Link to="/invoices/$invoiceId" params={{ invoiceId: line.invoice_id }} className="font-medium text-brand-700 hover:underline">
@@ -92,7 +110,12 @@ function ResultRow({ line, onFilterInvoice }: ResultRowProps) {
       <td className={CELL}>{t(yesNo(line.exact_entity_match))}</td>
       <td className={CELL}>{line.target_sheet ?? t("common.none")}</td>
       <td className={`${CELL} max-w-xs`}>
-        <Link to="/invoices/$invoiceId/lines/$lineId" params={lineParams} className="text-slate-900 hover:text-brand-700 hover:underline" title={t("results.openLine")}>
+        <Link
+          to="/invoices/$invoiceId/lines/$lineId"
+          params={lineParams}
+          className="font-medium text-brand-700 underline decoration-brand-200 decoration-1 underline-offset-[3px] hover:decoration-brand-700"
+          title={t("results.openLine")}
+        >
           {line.line_description.trim() === "" ? t("results.openLine") : line.line_description}
         </Link>
       </td>
@@ -114,6 +137,22 @@ function ResultRow({ line, onFilterInvoice }: ResultRowProps) {
         </ul>
       </td>
       <td className={`${CELL} max-w-xs text-slate-600`}>{line.review_note ?? t("common.none")}</td>
+      <td className={ACTION_CELL}>
+        <Link
+          to="/invoices/$invoiceId/lines/$lineId"
+          params={lineParams}
+          aria-label={actionLabel}
+          className={cn(
+            "inline-flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs font-medium whitespace-nowrap transition-colors [&_svg]:size-3.5",
+            pending
+              ? "bg-brand-700 text-white shadow-sm hover:bg-brand-800"
+              : "border border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:text-brand-700",
+          )}
+        >
+          {t(pending ? "results.review" : "results.open")}
+          <ChevronRight aria-hidden />
+        </Link>
+      </td>
     </tr>
   );
 }

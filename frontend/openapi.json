@@ -583,6 +583,101 @@
         "title": "InvoiceResponse",
         "type": "object"
       },
+      "JobDeletedResponse": {
+        "description": "The job just deleted, or deleted before.",
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "title": "JobDeletedResponse",
+        "type": "object"
+      },
+      "JobListEntryResponse": {
+        "description": "One job as listed (SEC-18): no file name, no path, no digest.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "invoice_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Invoice Counts",
+            "type": "object"
+          },
+          "invoice_total": {
+            "title": "Invoice Total",
+            "type": "integer"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "created_at",
+          "finished_at",
+          "invoice_counts",
+          "invoice_total"
+        ],
+        "title": "JobListEntryResponse",
+        "type": "object"
+      },
+      "JobListResponse": {
+        "description": "One page of jobs, newest first. ``limit_truncated`` says the limit was capped.",
+        "properties": {
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/JobListEntryResponse"
+            },
+            "title": "Jobs",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "limit_truncated": {
+            "title": "Limit Truncated",
+            "type": "boolean"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "jobs",
+          "limit",
+          "offset",
+          "limit_truncated"
+        ],
+        "title": "JobListResponse",
+        "type": "object"
+      },
       "JobProgressResponse": {
         "description": "Output contract of a job's progress (REQ-PLT-001, REQ-AUD-004).",
         "properties": {
@@ -1025,6 +1120,13 @@
             "title": "Job Id",
             "type": "string"
           },
+          "restored_job_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Restored Job Ids",
+            "type": "array"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -1034,7 +1136,8 @@
           "job_id",
           "status",
           "invoice_count",
-          "existing_job_ids"
+          "existing_job_ids",
+          "restored_job_ids"
         ],
         "title": "UploadResponse",
         "type": "object"
@@ -1771,7 +1874,154 @@
         "summary": "Reprocess Invoice"
       }
     },
+    "/api/jobs": {
+      "get": {
+        "description": "Return the jobs not deleted, newest first, paginated with a server maximum.\n\nExample:\n    GET /api/jobs?limit=20 -> {\"jobs\": [{\"job_id\": \"...\", \"status\": \"completed\"}], ...}",
+        "operationId": "list_jobs_api_jobs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "List Jobs"
+      }
+    },
     "/api/jobs/{job_id}": {
+      "delete": {
+        "description": "Delete a finished job, softly: it leaves every read, its records stay.\n\nUploading again one of its files brings it back, with its reviews.\n\nExample:\n    DELETE /api/jobs/3f2a... (Idempotency-Key: ...) -> 200 {\"job_id\": \"3f2a...\"}",
+        "operationId": "delete_job_api_jobs__job_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Mandatory. A key you choose for this request, 1 to 128 characters of letters, digits, '.', '_', ':' or '-'. Sending the same request again with the same key returns the same answer and acts once (SEC-19).",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Mandatory. A key you choose for this request, 1 to 128 characters of letters, digits, '.', '_', ':' or '-'. Sending the same request again with the same key returns the same answer and acts once (SEC-19).",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDeletedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused, with the Portuguese message."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Failed, with a reference for support."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Delete Job"
+      },
       "get": {
         "description": "Return the job status, its invoices counted by status and in total, and its tokens.\n\nExample:\n    GET /api/jobs/3f2a... -> {\"status\": \"completed\", \"invoice_total\": 1, ...}",
         "operationId": "read_job_progress_api_jobs__job_id__get",

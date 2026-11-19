@@ -510,6 +510,18 @@ O sistema **deve** arrancar com um único comando documentado no `README.md`, a 
 
 *Origem: R8, enunciado, secção 3, instruções de instalação e execução.*
 
+### REQ-PLT-009 · Listar e apagar trabalhos
+
+Os trabalhos **devem** ser listáveis, do mais recente para o mais antigo, com a data, o estado e as facturas por estado, sem nome de ficheiro.
+
+Um trabalho terminado, concluído ou com falha, **pode** ser apagado, com confirmação explícita na interface. Um trabalho na fila ou a correr **não pode**.
+
+O apagamento é **lógico**: o trabalho, as suas facturas e linhas saem de todas as leituras e acções, e os registos ficam na base de dados, com evento de auditoria `job_deleted`.
+
+Carregar de novo um ficheiro de um trabalho apagado **deve** restaurar esse trabalho, com as revisões que tinha, e a resposta indica-o. A regra de uma factura por conteúdo (REQ-ING-007) mantém-se.
+
+*Origem: pedido do dono do produto, 19-11-2026. Restaurar em vez de codificar de novo evita o custo de modelo e a perda das revisões.*
+
 ---
 
 ## 8. Auditoria e rastreabilidade

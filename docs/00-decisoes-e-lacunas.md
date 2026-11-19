@@ -348,6 +348,16 @@ Decisão tomada pelo responsável em 18-11-2026 (ticket 14). Revê 3.20, que lim
 - **Quando se lê a revisão.** A verificação de que uma linha foi revista corre na transacção que substitui a codificação. Uma revisão gravada enquanto o modelo respondia também é vista. O mesmo vale quando a recodificação dá uma entidade ambígua.
 - **Pedidos repetidos** (confirmado pelo responsável em 18-11-2026). SEC-19 pede que o trabalhador não repita um efeito que já existe. Interpretação aplicada: um segundo pedido com a mesma `Idempotency-Key` repete a resposta; um segundo pedido com outra chave, enquanto a factura está na fila, não faz nada, porque uma factura em fila não volta a ser posta na fila. Um pedido feito depois de a recodificação terminar é uma recodificação nova, pedida por uma pessoa, e paga uma chamada nova ao modelo. Recusá-lo impediria recodificar depois de mudar um limiar, que vive em código e não tem versão.
 
+### 3.24 Apagamento lógico de trabalhos
+
+Decisão tomada pelo responsável em 19-11-2026, ao pedir que se possam apagar trabalhos que já não interessam (REQ-PLT-009).
+
+- **Lógico, nunca físico.** O trabalho ganha `deleted_at`. Sai da lista, do estado, dos resultados, da exportação, da factura, dos candidatos e do histórico, e a revisão, a resolução e o reprocessamento das suas facturas respondem 404. Facturas, linhas, codificações, revisões e auditoria ficam na base de dados. O apagamento gera `job_deleted` na auditoria.
+- **Só trabalhos terminados.** Um trabalho concluído ou com falha pode ser apagado. Um na fila ou a correr é recusado com 409: escondê-lo deixava o trabalhador a codificar o que ninguém vê.
+- **Restauro pelo carregamento.** Um ficheiro de um trabalho apagado, carregado de novo, restaura esse trabalho com as revisões que tinha e gera `job_restored`. A alternativa, codificar de novo num trabalho novo, pagava outra chamada ao modelo e obrigava a afrouxar a regra de uma factura por conteúdo (REQ-ING-007). A resposta do carregamento indica os trabalhos restaurados em `restored_job_ids`.
+- **Idempotência.** `DELETE /api/jobs/{job_id}` exige `Idempotency-Key`, como `POST` e `PATCH` (SEC-19). Apagar de novo um trabalho já apagado responde 200 e não escreve nada.
+- **Retenção.** Este apagamento não é a retenção de dados de L-11, que continua por decidir. Um trabalho apagado guarda tudo o que guardava.
+
 ### 3.22 Configuração da chamada ao modelo e prompt v1
 
 Decisão tomada pelo responsável em 18-11-2026, ao aprovar a proposta do ticket 11. Substitui a configuração de 3.7.

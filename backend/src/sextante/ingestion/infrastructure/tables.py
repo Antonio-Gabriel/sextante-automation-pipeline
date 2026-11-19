@@ -14,6 +14,8 @@ JOB_TABLE = Table(
     Column("created_at", String(40), nullable=False),
     Column("claimed_at", String(40), nullable=True),
     Column("finished_at", String(40), nullable=True),
+    # Soft delete: the job is hidden, its rows stay; uploading a file of it restores it.
+    Column("deleted_at", String(40), nullable=True),
 )
 
 INVOICE_TABLE = Table(

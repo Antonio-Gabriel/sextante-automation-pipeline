@@ -51,6 +51,25 @@ class JobSummary:
 
 
 @dataclass(frozen=True, slots=True)
+class JobListEntry:
+    """One job as listed: when it was uploaded, its state and its invoices by status."""
+
+    job_id: str
+    status: str
+    created_at: str
+    finished_at: str | None
+    invoice_counts: dict[str, int]
+
+
+@dataclass(frozen=True, slots=True)
+class JobRemovalState:
+    """What decides whether a job may be deleted: its status, and whether it already is."""
+
+    status: str
+    deleted: bool
+
+
+@dataclass(frozen=True, slots=True)
 class JobLine:
     """One invoice line of a job, as read for listings (REQ-REV-001)."""
 

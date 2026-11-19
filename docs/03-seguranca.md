@@ -740,7 +740,7 @@ Este invariante não existe no documento de referência como item do gate. Exist
 | Nível | Mecanismo |
 |---|---|
 | Carregamento | Digest SHA-256 do conteúdo, com restrição única em `invoice.content_digest` |
-| HTTP | `Idempotency-Key` em `POST` e `PATCH`, enquadrada pela identidade e com impressão digital do corpo. O carregamento está isento, por ser idempotente pelo digest (00-decisoes-e-lacunas.md §3.19). Também o estão a entrada e a saída da sessão (`POST /api/session` e `/api/session/end`): não escrevem dados nem pagam chamadas, repetir a saída não tem segundo efeito, e repetir a entrada abre uma sessão nova e fecha a anterior |
+| HTTP | `Idempotency-Key` em `POST`, `PATCH` e `DELETE`, enquadrada pela identidade e com impressão digital do corpo. O carregamento está isento, por ser idempotente pelo digest (00-decisoes-e-lacunas.md §3.19). Também o estão a entrada e a saída da sessão (`POST /api/session` e `/api/session/end`): não escrevem dados nem pagam chamadas, repetir a saída não tem segundo efeito, e repetir a entrada abre uma sessão nova e fecha a anterior |
 | Trabalhador | Antes de agir, verificar se o efeito já existe, por chave derivada da factura e da versão do prompt |
 | Reprocessamento | Nova linha de resultado, não alteração da anterior. O histórico é preservado |
 

@@ -3,7 +3,7 @@ import { RotateCcw } from "lucide-react";
 import { t } from "@/shared/i18n/t";
 import { Button } from "@/shared/ui-kit/button";
 
-import { useConfirmationFocus } from "./use-confirmation-focus";
+import { useConfirmationFocus } from "@/shared/ui-kit/use-confirmation-focus";
 import { useReprocess } from "./use-reprocess";
 
 /**

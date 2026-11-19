@@ -38,7 +38,7 @@ function withUpload(receipt: object, polls: object[]) {
 async function uploadFiles(...names: string[]) {
   const rendered = renderApp("/");
   await rendered.user.upload(await screen.findByLabelText("Ficheiros a carregar"), names.map(pdf));
-  await rendered.user.click(screen.getByRole("button", { name: /^Carregar \(/ }));
+  await rendered.user.click(screen.getByRole("button", { name: /^Carregar \d+ ficheiros?$/ }));
   return rendered;
 }
 
@@ -47,6 +47,7 @@ const receipt = (jobId: string, existing: string[] = []) => ({
   status: "queued",
   invoice_count: 2,
   existing_job_ids: existing,
+  restored_job_ids: [],
 });
 
 afterEach(() => {

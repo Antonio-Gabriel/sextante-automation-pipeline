@@ -240,6 +240,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Jobs
+         * @description Return the jobs not deleted, newest first, paginated with a server maximum.
+         *
+         *     Example:
+         *         GET /api/jobs?limit=20 -> {"jobs": [{"job_id": "...", "status": "completed"}], ...}
+         */
+        get: operations["list_jobs_api_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/jobs/{job_id}": {
         parameters: {
             query?: never;
@@ -257,7 +280,16 @@ export interface paths {
         get: operations["read_job_progress_api_jobs__job_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Job
+         * @description Delete a finished job, softly: it leaves every read, its records stay.
+         *
+         *     Uploading again one of its files brings it back, with its reviews.
+         *
+         *     Example:
+         *         DELETE /api/jobs/3f2a... (Idempotency-Key: ...) -> 200 {"job_id": "3f2a..."}
+         */
+        delete: operations["delete_job_api_jobs__job_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -549,6 +581,48 @@ export interface components {
             target_sheet: string | null;
         };
         /**
+         * JobDeletedResponse
+         * @description The job just deleted, or deleted before.
+         */
+        JobDeletedResponse: {
+            /** Job Id */
+            job_id: string;
+        };
+        /**
+         * JobListEntryResponse
+         * @description One job as listed (SEC-18): no file name, no path, no digest.
+         */
+        JobListEntryResponse: {
+            /** Created At */
+            created_at: string;
+            /** Finished At */
+            finished_at: string | null;
+            /** Invoice Counts */
+            invoice_counts: {
+                [key: string]: number;
+            };
+            /** Invoice Total */
+            invoice_total: number;
+            /** Job Id */
+            job_id: string;
+            /** Status */
+            status: string;
+        };
+        /**
+         * JobListResponse
+         * @description One page of jobs, newest first. ``limit_truncated`` says the limit was capped.
+         */
+        JobListResponse: {
+            /** Jobs */
+            jobs: components["schemas"]["JobListEntryResponse"][];
+            /** Limit */
+            limit: number;
+            /** Limit Truncated */
+            limit_truncated: boolean;
+            /** Offset */
+            offset: number;
+        };
+        /**
          * JobProgressResponse
          * @description Output contract of a job's progress (REQ-PLT-001, REQ-AUD-004).
          */
@@ -706,6 +780,8 @@ export interface components {
             invoice_count: number;
             /** Job Id */
             job_id: string;
+            /** Restored Job Ids */
+            restored_job_ids: string[];
             /** Status */
             status: string;
         };
@@ -1146,6 +1222,47 @@ export interface operations {
             };
         };
     };
+    list_jobs_api_jobs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobListResponse"];
+                };
+            };
+            /** @description Refused, with the Portuguese message. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Failed, with a reference for support. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     read_job_progress_api_jobs__job_id__get: {
         parameters: {
             query?: never;
@@ -1164,6 +1281,49 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobProgressResponse"];
+                };
+            };
+            /** @description Refused, with the Portuguese message. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Failed, with a reference for support. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_job_api_jobs__job_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Mandatory. A key you choose for this request, 1 to 128 characters of letters, digits, '.', '_', ':' or '-'. Sending the same request again with the same key returns the same answer and acts once (SEC-19). */
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobDeletedResponse"];
                 };
             };
             /** @description Refused, with the Portuguese message. */

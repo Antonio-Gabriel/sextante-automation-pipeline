@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
+from sextante.ingestion.application.manage_jobs import RestoreJobs
 from sextante.ingestion.application.ports import IngestionRepositoryPort
 from sextante.ingestion.application.records import DuplicateContentError, NewInvoice
 from sextante.ingestion.domain.file_type import detect_file_format
@@ -61,12 +62,14 @@ class IncomingFile:
 
 @dataclass(frozen=True, slots=True)
 class UploadReceipt:
-    """The job holding the upload, and the earlier jobs of files uploaded before."""
+    """The job holding the upload, the earlier jobs of files uploaded before, and those of
+    them that were deleted and are now restored."""
 
     job_id: str
     status: JobStatus
     invoice_count: int
     existing_job_ids: tuple[str, ...]
+    restored_job_ids: tuple[str, ...] = ()
 
 
 def check_file_count(file_count: int) -> None:
@@ -89,7 +92,8 @@ class UploadInvoices:
     """Validate files, store them under server names, and queue a job for the new ones.
 
     Example:
-        receipt = await UploadInvoices(engine, repository, store, clock, ids).execute(files, cid)
+        upload = UploadInvoices(engine, repository, store, (clock, ids), restore)
+        receipt = await upload.execute(files, cid)
     """
 
     def __init__(
@@ -97,14 +101,14 @@ class UploadInvoices:
         engine: AsyncEngine,
         repository: IngestionRepositoryPort,
         store: InvoiceFileStore,
-        clock: Clock,
-        identifiers: IdentifierGenerator,
+        time_and_ids: tuple[Clock, IdentifierGenerator],
+        restore: RestoreJobs,
     ) -> None:
         self._engine = engine
         self._repository = repository
         self._store = store
-        self._clock = clock
-        self._identifiers = identifiers
+        self._clock, self._identifiers = time_and_ids
+        self._restore = restore
 
     async def execute(self, files: Sequence[IncomingFile], correlation_id: str) -> UploadReceipt:
         """Queue the new files. A file uploaded before is answered with its job (REQ-ING-007).
@@ -120,13 +124,21 @@ class UploadInvoices:
         for new_file in accepted:
             self._store.save(new_file.storage_name, new_file.content)
         try:
-            return await self._record(accepted, correlation_id)
+            new_job_id, existing = await self._record(accepted, correlation_id)
         except DuplicateContentError:
             # A concurrent upload of the same content won the unique digest constraint.
             # Recording again now finds that invoice and answers with its job.
-            return await self._record(accepted, correlation_id)
+            new_job_id, existing = await self._record(accepted, correlation_id)
+        # A file of a deleted job brings that job back: its invoice is the one of record.
+        restored = await self._restore.execute(existing)
+        if new_job_id is None:
+            return await self._existing_receipt(existing, len(accepted), restored)
+        return UploadReceipt(new_job_id, JobStatus.QUEUED, len(accepted), existing, restored)
 
-    async def _record(self, accepted: list["_AcceptedFile"], correlation_id: str) -> UploadReceipt:
+    async def _record(
+        self, accepted: list["_AcceptedFile"], correlation_id: str
+    ) -> tuple[str | None, tuple[str, ...]]:
+        # The new job, None when every file was uploaded before, and the earlier jobs.
         job_id = self._identifiers.new_id()
         async with self._engine.connect() as connection, connection.begin() as transaction:
             # The job row is written first: in SQLite this takes the write lock, so the
@@ -136,11 +148,11 @@ class UploadInvoices:
             existing_job_ids = tuple(dict.fromkeys(e for e in existing if e is not None))
             if None not in existing:
                 await transaction.rollback()
-                return await self._existing_receipt(existing_job_ids, len(accepted))
-        return UploadReceipt(job_id, JobStatus.QUEUED, len(accepted), existing_job_ids)
+                return None, existing_job_ids
+        return job_id, existing_job_ids
 
     async def _existing_receipt(
-        self, existing_job_ids: tuple[str, ...], file_count: int
+        self, existing_job_ids: tuple[str, ...], file_count: int, restored: tuple[str, ...]
     ) -> UploadReceipt:
         # Every file was uploaded before: answer with the existing job and its current
         # state, not an error (D-3.10, REQ-ING-007).
@@ -149,7 +161,7 @@ class UploadInvoices:
         if summary is None:
             raise LookupError(f"Job {existing_job_ids[0]} of a recorded invoice does not exist.")
         return UploadReceipt(
-            existing_job_ids[0], JobStatus(summary.status), file_count, existing_job_ids
+            existing_job_ids[0], JobStatus(summary.status), file_count, existing_job_ids, restored
         )
 
     async def _insert_or_find(

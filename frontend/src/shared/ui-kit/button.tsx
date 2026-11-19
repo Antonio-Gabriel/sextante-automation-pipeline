@@ -13,6 +13,7 @@ const buttonVariants = cva(
         default: "bg-brand-700 text-white shadow-sm hover:bg-brand-800",
         outline: "border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50",
         ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+        danger: "bg-red-600 text-white shadow-sm hover:bg-red-700 focus-visible:ring-red-400",
       },
       size: {
         default: "h-9 px-4",

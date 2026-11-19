@@ -13,6 +13,8 @@ from sextante.ingestion.application.records import (
     InvoiceState,
     InvoiceView,
     JobLine,
+    JobListEntry,
+    JobRemovalState,
     JobSummary,
     NewInvoice,
     QueuedInvoice,
@@ -162,7 +164,38 @@ class JobLinesReader(Protocol):
     async def line_belongs_to_invoice(
         self, connection: AsyncConnection, invoice_id: str, line_id: str
     ) -> bool:
-        """True when the invoice line exists and is a line of this invoice."""
+        """True when the invoice line exists, is a line of this invoice, and its job is not
+        deleted."""
+        ...
+
+    async def line_in_active_job(self, connection: AsyncConnection, line_id: str) -> bool:
+        """True when the invoice line exists and its job is not deleted."""
+        ...
+
+
+class JobRecordsPort(Protocol):
+    """Port: the list of jobs, and their soft delete and restoration."""
+
+    async def list_jobs(
+        self, connection: AsyncConnection, limit: int, offset: int
+    ) -> list[JobListEntry]:
+        """Return the jobs not deleted, newest first, with their invoices by status."""
+        ...
+
+    async def job_removal_state(
+        self, connection: AsyncConnection, job_id: str
+    ) -> JobRemovalState | None:
+        """Return the job's status and whether it is deleted, or None when unknown."""
+        ...
+
+    async def mark_job_deleted(
+        self, connection: AsyncConnection, job_id: str, now: datetime
+    ) -> None:
+        """Hide the job from every read; its rows stay."""
+        ...
+
+    async def restore_job(self, connection: AsyncConnection, job_id: str) -> bool:
+        """Show a deleted job again. True when it was deleted."""
         ...
 
 

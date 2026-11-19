@@ -29,6 +29,13 @@ from sextante.ingestion.api.routes import reprocess_invoice as reprocess_invoice
 from sextante.ingestion.api.routes import resolve_entity as resolve_entity_route
 from sextante.ingestion.api.routes import upload_invoices as upload_invoices_route
 from sextante.ingestion.application.errors import InvoiceNotFoundError
+from sextante.ingestion.application.manage_jobs import (
+    DeleteJob,
+    JobCollaborators,
+    JobNotDeletableError,
+    ListJobs,
+    RestoreJobs,
+)
 from sextante.ingestion.application.read_invoice import ReadInvoice
 from sextante.ingestion.application.read_job_status import JobNotFoundError, ReadJobStatus
 from sextante.ingestion.application.reprocess_invoice import (
@@ -145,6 +152,7 @@ HTTP_STATUS_BY_ERROR = {
     RateLimitExceededError: 429,
     InvoiceNotAmbiguousError: 409,
     JobNotFoundError: 404,
+    JobNotDeletableError: 409,
     EncodedLineNotFoundError: 404,
     InvoiceLineNotFoundError: 404,
     LineWithoutSheetError: 409,
@@ -324,8 +332,9 @@ def _wire_use_cases(
 ) -> None:
     store = LocalInvoiceFileStore(Path(settings.upload_dir))
     ingestion = IngestionRepository()
+    restore = _wire_jobs(app, engine, ingestion, settings, adapters)
     app.state.upload_invoices = UploadInvoices(
-        engine, ingestion, store, adapters.clock, adapters.identifiers
+        engine, ingestion, store, (adapters.clock, adapters.identifiers), restore
     )
     _wire_readers(app, engine, ingestion)
     app.state.reprocess_invoice = ReprocessInvoice(
@@ -339,6 +348,27 @@ def _wire_use_cases(
     app.state.export_job = ExportJob(build_export, SpreadsheetExportWriter(settings.csv_separator))
     _wire_review(app, engine, settings, reference.catalog, adapters)
     app.state.worker = _build_worker(engine, settings, reference, adapters, store, classifier)
+
+
+def _wire_jobs(
+    app: FastAPI,
+    engine: AsyncEngine,
+    ingestion: IngestionRepository,
+    settings: Settings,
+    adapters: AppDependencies,
+) -> RestoreJobs:
+    # Listing and soft deletion of jobs; the upload restores a deleted one (REQ-PLT-009).
+    jobs = JobCollaborators(
+        engine,
+        ingestion,
+        AuditEventRepository(),
+        adapters.clock,
+        adapters.identifiers,
+        settings.reviewer_id,
+    )
+    app.state.list_jobs = ListJobs(jobs)
+    app.state.delete_job = DeleteJob(jobs)
+    return RestoreJobs(jobs)
 
 
 def _wire_readers(app: FastAPI, engine: AsyncEngine, ingestion: IngestionRepository) -> None:
@@ -365,9 +395,16 @@ def _wire_review(
     app.state.read_line_candidates = ReadLineCandidates(
         engine, IngestionRepository(), MatchingRepository(), catalog
     )
-    app.state.review_line = ReviewLine(
+    app.state.review_line = _build_review_line(settings, catalog, adapters)
+
+
+def _build_review_line(
+    settings: Settings, catalog: Catalog, adapters: AppDependencies
+) -> ReviewLine:
+    return ReviewLine(
         ReviewCollaborators(
             codings=MatchingRepository(),
+            lines=IngestionRepository(),
             reviews=ReviewRepository(),
             catalog=catalog,
             audit=AuditEventRepository(),
