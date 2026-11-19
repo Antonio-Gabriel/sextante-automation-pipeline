@@ -85,6 +85,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                 └── CHG-0076  fix       Versão escrita no contexto da ShardCloud
                                                                                                                                                                                                     └── CHG-0077  infra     Assistente da configuração única da ShardCloud, do Docker Hub e do GitHub
                                                                                                                                                                                                         └── CHG-0078  fix       Assistente parado com uma resposta vazia
+                                                                                                                                                                                                            └── CHG-0079  fix       Assistente explica a recusa do token da ShardCloud
 ```
 
 ## Regras
@@ -149,6 +150,26 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0079 · Assistente explica a recusa do token da ShardCloud
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0078
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008, SEC-02
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `scripts/setup_shardcloud.sh`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** `bash -n` sem erros. A leitura da audiência foi testada com um JWT sintético (`aud` terminado em `/mcp`) e com um valor que não é JWT. O token real do responsável não foi usado.
+
+**Relato do responsável.** A fase 4 parou com um 403. No `openapi.json` da ShardCloud, o 403 de `/custom-images` significa «No valid subscription». O token mostrado tinha a audiência `https://shardcloud.app/api/mcp`, que é o da integração MCP e não o da API REST de Settings → API Token.
+
+**Correcção.** O assistente lê localmente a audiência do token, sem o enviar a lado nenhum, e recusa um token de MCP dizendo onde se cria o certo. O 401, o 403 (falta de plano activo), a falta de rede e os outros códigos passam a ter mensagens próprias.
+
+**Segurança.** O token foi colado na conversa. Recomendou-se revogá-lo na ShardCloud e criar outro, a escrever só na entrada escondida do assistente.
 
 ### CHG-0078 · Assistente parado com uma resposta vazia
 
