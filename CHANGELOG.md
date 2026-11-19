@@ -79,6 +79,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                         └── CHG-0070  infra     Contentor da API e docker compose
                                                                                                                                                                             └── CHG-0071  infra     Contentor do frontend e correcções da revisão do contentor da API
                                                                                                                                                                                 └── CHG-0072  fix       Correcções da revisão do contentor do frontend
+                                                                                                                                                                                    └── CHG-0073  fix       API sem rede depois de um conflito de porta, e ecrã de erro da página
 ```
 
 ## Regras
@@ -143,6 +144,32 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0073 · API sem rede depois de um conflito de porta, e ecrã de erro da página
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0072
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008, REQ-PLT-005, REQ-PLT-006
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `compose.yaml`, `README.md`, `frontend/src/shared/layout/route-error.tsx` (novo), `frontend/src/shared/layout/route-error.test.tsx` (novo), `frontend/src/router.tsx`, `frontend/src/shared/i18n/{pt,en}.ts`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:**
+  - Frontend: 80 testes, `tsc`, ESLint, licenças, build. Backend: `tests/deploy`, 13 testes.
+  - Reproduzido num projecto compose de verificação, com a porta 18000 ocupada por outro processo. `docker compose up` falha com `address already in use` e o contentor fica parado, sem reinício.
+
+**Problema relatado pelo responsável.** Em `http://127.0.0.1:8080` aparecia «Something went wrong!», e o nginx registava `api could not be resolved` e 502 em `/api/session`.
+
+**Causa, pelo log do Docker.** O primeiro arranque da API falhou com `failed to bind host port 127.0.0.1:8000: address already in use`, porque `make run` ainda ocupava a porta. A política `restart: unless-stopped` voltou a arrancar o contentor 20 segundos depois, e o Docker deixou-o sem rede nenhuma. A verificação de saúde corre no `127.0.0.1` do próprio contentor, por isso ele aparecia saudável, mas o nginx não o encontrava.
+
+**Correcções.**
+- **Política de reinício removida.** Um conflito de porta passa a parar `docker compose up` com o erro à vista, em vez de deixar uma API saudável e inalcançável. O README diz o que fazer.
+- **Ecrã de erro da página.** O frontend passa a ter um ecrã próprio para uma página que não carrega, em vez do texto inglês por omissão do router. Mostra o motivo no idioma escolhido («Não foi possível contactar o servidor») e um botão para tentar de novo, e tem um teste com o 502 do nginx.
+
+**O que o responsável faz.** Parar `make run` e correr `docker compose down && docker compose up --build`.
 
 ### CHG-0072 · Correcções da revisão do contentor do frontend
 

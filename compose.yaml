@@ -17,7 +17,9 @@ x-locked-down: &locked-down
   security_opt:
     - no-new-privileges:true
   pids_limit: 256
-  restart: unless-stopped
+  # No restart policy: when a port is taken (for example by `make run` on 8000), Docker
+  # restarted the API without its network, healthy but unreachable. Failing loudly is
+  # better; start again with `docker compose up` once the port is free.
 
 services:
   api:

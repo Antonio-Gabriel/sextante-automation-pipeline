@@ -311,6 +311,8 @@ export const pt = {
   },
   errors: {
     unexpected: "Não foi possível contactar o servidor. Tente de novo.",
+    pageTitle: "Esta página não pôde ser carregada",
+    retry: "Tentar de novo",
   },
 } as const;
 

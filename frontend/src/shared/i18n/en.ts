@@ -314,5 +314,7 @@ export const en: Messages = {
   },
   errors: {
     unexpected: "Could not reach the server. Try again.",
+    pageTitle: "This page could not be loaded",
+    retry: "Try again",
   },
 };

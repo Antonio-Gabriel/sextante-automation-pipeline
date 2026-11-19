@@ -19,6 +19,7 @@ import { LoginPage } from "@/pages/login-page";
 import { ResultsPage } from "@/pages/results-page";
 import { UploadPage } from "@/pages/upload-page";
 import { isUnauthenticated } from "@/shared/api/errors";
+import { RouteError } from "@/shared/layout/route-error";
 
 import { RootLayout } from "./root-layout";
 
@@ -109,6 +110,9 @@ export function createAppRouter(queryClient: QueryClient, history?: RouterHistor
   return createRouter({
     routeTree,
     context: { queryClient },
+    // A page that cannot load says why and offers to try again (for example a 502 when
+    // the API is down behind nginx), never the router's English default.
+    defaultErrorComponent: RouteError,
     ...(history === undefined ? {} : { history }),
   });
 }
