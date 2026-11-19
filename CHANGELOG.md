@@ -171,7 +171,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0091
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** pendente
+- **Commit:** `93da455`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `docs/sextante-documentacao.pt.pdf` e `docs/sextante-documentation.en.pdf`, os documentos entregues;
