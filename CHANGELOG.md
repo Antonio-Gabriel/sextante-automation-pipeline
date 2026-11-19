@@ -148,7 +148,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0068
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-006, REQ-PLT-005, REQ-CNF-004, SEC-15
-- **Commit:** pendente
+- **Commit:** `773b9c0`
 - **Migração:** nenhuma
 - **Ficheiros:** `backend/src/sextante/platform/{http_errors,coded_text,language,request_language,user_messages}.py`, `review/api/routes.py`, `export/application/build_job_export.py`, `main.py`, `tests/domain/test_language.py`, `tests/api/test_language.py`; `frontend/src/shared/i18n/language.ts`, `root-layout.tsx`, `index.html`, `features/language/language.test.tsx`; `frontend/openapi.json`, `schema.d.ts`; `docs/04` §8.6, `README.md`
 - **Reversibilidade:** total
