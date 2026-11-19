@@ -348,6 +348,16 @@ Decisão tomada pelo responsável em 18-11-2026 (ticket 14). Revê 3.20, que lim
 - **Quando se lê a revisão.** A verificação de que uma linha foi revista corre na transacção que substitui a codificação. Uma revisão gravada enquanto o modelo respondia também é vista. O mesmo vale quando a recodificação dá uma entidade ambígua.
 - **Pedidos repetidos** (confirmado pelo responsável em 18-11-2026). SEC-19 pede que o trabalhador não repita um efeito que já existe. Interpretação aplicada: um segundo pedido com a mesma `Idempotency-Key` repete a resposta; um segundo pedido com outra chave, enquanto a factura está na fila, não faz nada, porque uma factura em fila não volta a ser posta na fila. Um pedido feito depois de a recodificação terminar é uma recodificação nova, pedida por uma pessoa, e paga uma chamada nova ao modelo. Recusá-lo impediria recodificar depois de mudar um limiar, que vive em código e não tem versão.
 
+### 3.26 Contentores e a excepção ao `0.0.0.0`
+
+Decisão tomada pelo responsável em 19-11-2026, ao pedir os tickets de deploy.
+
+- **O problema.** A regra de SEC-06 e do `CLAUDE.md` é nunca escutar em `0.0.0.0`. Dentro de um contentor, um processo ligado a `127.0.0.1` não recebe nada da porta publicada, porque o Docker entrega o tráfego na interface do contentor.
+- **A excepção.** A API escuta em `0.0.0.0` só no `CMD` de `backend/Dockerfile`, dentro da rede privada do contentor. É o único ficheiro onde isso acontece, e um teste (`tests/deploy/test_container_config.py`) falha se aparecer noutro ficheiro que configura um servidor.
+- **O que se mantém.** O `compose.yaml` publica as portas só em `127.0.0.1` do anfitrião: nada fica acessível a partir de outra máquina. Sem Docker, `make run` continua em `127.0.0.1`.
+- **Endurecimento do contentor.** Imagem base oficial fixada por digest, multi-etapa, utilizador sem privilégios (uid 10001), sistema de ficheiros só de leitura excepto o volume `/data` e um `/tmp` privado, sem capacidades e sem ganho de privilégios. Segredos e configuração entram por `config/.env` no arranque, nunca na imagem. O catálogo e a lista de exclusão são montados só para leitura.
+- **Risco residual.** Igual ao de SEC-06: quem tiver acesso à máquina alcança a API. Expor a outra máquina exige TLS, autenticação por pessoa e rever esta decisão.
+
 ### 3.25 Interface em Inglês e Português
 
 Decisão tomada pelo responsável em 19-11-2026. Revê R12, que punha todo o texto de interface em Português.

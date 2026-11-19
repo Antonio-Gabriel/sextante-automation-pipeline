@@ -165,7 +165,7 @@ Contra pedidos forjados de outro sítio, o cookie é `SameSite=Strict`, não há
 
 Isto não é tratado como "mais tarde se vê". É tratado como decisão com consequências declaradas:
 
-- O serviço liga apenas a `127.0.0.1`. **Nunca** a `0.0.0.0`, nem em desenvolvimento, porque essa é a alteração de uma palavra que transforma um protótipo local num sistema aberto na rede da empresa.
+- O serviço liga apenas a `127.0.0.1`. **Nunca** a `0.0.0.0`, nem em desenvolvimento, porque essa é a alteração de uma palavra que transforma um protótipo local num sistema aberto na rede da empresa. *Excepção de 19-11-2026 (00-decisoes-e-lacunas.md §3.26):* dentro do contentor da API, onde `127.0.0.1` não recebe a porta publicada, o servidor escuta em `0.0.0.0`; a porta publica-se só em `127.0.0.1` do anfitrião, e um teste guarda que nenhum outro ficheiro o faz.
 - O campo `reviewed_by` existe no esquema desde a primeira migração, preenchido a partir de `SEXTANTE_REVIEWER_ID`. Quando a autenticação entrar, o trilho de auditoria não precisa de migração nem de reinterpretação.
 - Os routers declaram a sua política de autorização desde já, com uma dependência que hoje resolve para um principal único. A estrutura fica montada, por SEC-07.
 - **Risco residual declarado: médio.** Uma chave partilhada, em HTTP local, sem identidade por pessoa. Consta do bloco de fecho de qualquer tarefa que toque na API, e consta do `README.md`.

@@ -1,0 +1,7 @@
+# Only pyproject.toml, src and migrations enter the image: never data, secrets or tooling.
+*
+!pyproject.toml
+!src/
+!migrations/
+**/__pycache__
+**/*.pyc

@@ -24,8 +24,22 @@ For each line of a supplier invoice, Sextante assigns the exact item number from
 
 ## Install and run
 
+There are two ways, side by side. Both read `config/.env`, so create it first:
+
 ```bash
 cp config/.env.example config/.env   # then fill in the real values
+```
+
+| | Without Docker | With Docker |
+|---|---|---|
+| Needs | Python 3.12 (and Node.js 22 for the frontend) | Docker with Compose v2 |
+| API | `cd backend && make install && make run` | `docker compose up --build api` |
+| API address | `http://127.0.0.1:8000` | `http://127.0.0.1:8000` |
+| Data | `backend/sextante.db` and `backend/uploads/` | the `sextante-data` volume |
+
+### Without Docker
+
+```bash
 cd backend
 make install
 make run
@@ -38,6 +52,16 @@ curl http://127.0.0.1:8000/api/health
 ```
 
 The response gives the SHA-256 of the loaded catalog.
+
+### With Docker
+
+```bash
+docker compose up --build api
+```
+
+The image is built from `backend/Dockerfile` on an official Python base pinned by digest. It runs as an unprivileged user, with a read-only file system except the data volume and a private `/tmp`, and with no Linux capabilities. Settings and secrets come from `config/.env` when the container starts; none is built into the image. Inside the container the paths are fixed by `compose.yaml`: the database and the uploaded invoices live in the named volume `sextante-data`, so they survive restarts, `docker compose down` and rebuilds; the catalog (`sources/catalog.xlsx`) and the denylist (`config/entity_denylist.yaml`) are mounted read-only. The port is published on `127.0.0.1` only. Inside its container the server listens on every interface of the container, because there a process bound to `127.0.0.1` would receive nothing from the published port; this is the one exception to the 127.0.0.1 rule (decision 3.26 of `docs/00`). Check it as above, with `curl http://127.0.0.1:8000/api/health`; the container also reports its own health (`docker compose ps`).
+
+Stop with `docker compose down`. `docker compose down -v` also **deletes the volume**, with the database and the uploaded invoices. A container and `make run` both use port 8000: run one at a time.
 
 Every `/api` call except the health check and login needs a credential: the `X-API-Key` header, with the value of `SEXTANTE_API_KEY`, for programs and Swagger; or the session cookie of the frontend, for people (see [Frontend](#frontend)). Without either the answer is 401. The interactive API documentation (Swagger UI) is at `http://127.0.0.1:8000/docs`: press **Authorize** and paste the key once. Every `POST`, `PATCH` and `DELETE` except the upload needs an `Idempotency-Key` header: in Swagger, fill the field with any new value, for example `test-1`, and change it for each new request. Without `SEXTANTE_ANTHROPIC_API_KEY` set to a valid key with credit, an invoice with service lines ends `failed`, and can be reprocessed later.
 

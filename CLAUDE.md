@@ -87,7 +87,7 @@ Lista viva. O estado autoritativo está em `docs/00-decisoes-e-lacunas.md` §4 e
 | ⚠ | **L-04** · lista das empresas irmãs e companhias de navegação | O conteúdo de `config/entity_denylist.yaml`. A estrutura pode avançar, o conteúdo não se inventa |
 | ⚠ | **L-08** · ausência de correspondência em OUTLAYS | Já tem decisão por omissão, na regra 2 acima. Confirmar com o avaliador, porque a escolha é visível na saída |
 | ⚠ | **L-06** · linhas de imposto e de subtotal | A política de classificação de tipo de linha. Decisão por omissão já aplicada |
-| ⚠ | **L-07** · autenticação | Decidido em 19-11-2026: uma chave da API única (`SEXTANTE_API_KEY`, cabeçalho `X-API-Key`) para programas, e um token de acesso (`SEXTANTE_ACCESS_TOKEN`) que abre uma sessão em cookie `HttpOnly` para pessoas no frontend. As duas valem em todo o `/api` excepto `/api/health` e a entrada, representam o mesmo principal, sem perfis, com ligação a `127.0.0.1` e risco residual declarado. **Nunca alterar o anfitrião para `0.0.0.0`** |
+| ⚠ | **L-07** · autenticação | Decidido em 19-11-2026: uma chave da API única (`SEXTANTE_API_KEY`, cabeçalho `X-API-Key`) para programas, e um token de acesso (`SEXTANTE_ACCESS_TOKEN`) que abre uma sessão em cookie `HttpOnly` para pessoas no frontend. As duas valem em todo o `/api` excepto `/api/health` e a entrada, representam o mesmo principal, sem perfis, com ligação a `127.0.0.1` e risco residual declarado. **Nunca alterar o anfitrião para `0.0.0.0`**, com uma única excepção: o comando do contentor da API, em `backend/Dockerfile` (`docs/00` §3.26) |
 
 Uma lacuna com decisão por omissão aplicada não é uma lacuna fechada: a decisão está registada e pode ser revertida pela resposta. Não a tratar como definitiva.
 
@@ -122,7 +122,7 @@ Uma lacuna com decisão por omissão aplicada não é uma lacuna fechada: a deci
 - **Não duplicar uma regra entre código e prompt.** A lista de exclusão, a regra de recurso e a regra de confiança vivem em código. Duas cópias de uma regra acabam por divergir.
 - **Não desactivar um controlo para fazer um teste passar.** Se a validação do índice, um limite de comprimento ou a neutralização de fórmula estorva, o problema está no desenho.
 - **Não capturar uma falha de validação do modelo e seguir com um valor por omissão.** Resposta inválida é falha de linha, com `LOW` e sinalização. Nunca um código improvisado.
-- **Não escrever `0.0.0.0` como anfitrião de escuta** enquanto L-07 estiver aberta.
+- **Não escrever `0.0.0.0` como anfitrião de escuta** enquanto L-07 estiver aberta. Excepção única, decidida pelo responsável em 19-11-2026: o `CMD` de `backend/Dockerfile`, porque dentro de um contentor um processo ligado a `127.0.0.1` não recebe a porta publicada. O `compose.yaml` publica as portas só em `127.0.0.1` do anfitrião, e um teste (`tests/deploy`) falha se `0.0.0.0` aparecer noutro ficheiro que configura um servidor (`docs/00` §3.26).
 - **Não ler um ficheiro carregado com `pandas.read_excel`.** A leitura passa por `openpyxl` em `read_only` e `data_only`, depois da validação de tipo de SEC-16. O `pandas` entra depois.
 - **Não acrescentar `dangerouslySetInnerHTML`.** Não há nenhum caso neste projecto que o justifique.
 

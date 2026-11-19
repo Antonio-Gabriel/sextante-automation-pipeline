@@ -1,0 +1,38 @@
+# Sextante with Docker (deploy tickets 01 and 02). From the repository root:
+#   cp config/.env.example config/.env   # then fill it in
+#   docker compose up --build
+# Ports are published on 127.0.0.1 only: nothing is reachable from another machine (SEC-06).
+
+name: sextante
+
+services:
+  api:
+    build: ./backend
+    image: sextante-api:local
+    # Secrets and settings come from config/.env at start; none is built into the image.
+    env_file: config/.env
+    # Paths inside the container; they replace the host paths of config/.env.
+    environment:
+      SEXTANTE_DATABASE_URL: sqlite+aiosqlite:////data/sextante.db
+      SEXTANTE_UPLOAD_DIR: /data/uploads
+      SEXTANTE_CATALOG_PATH: /config/catalog.xlsx
+      SEXTANTE_ENTITY_DENYLIST_PATH: /config/entity_denylist.yaml
+    volumes:
+      - sextante-data:/data
+      - ./sources/catalog.xlsx:/config/catalog.xlsx:ro
+      - ./config/entity_denylist.yaml:/config/entity_denylist.yaml:ro
+    ports:
+      - "127.0.0.1:8000:8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  # The database and the uploaded invoices: they survive restarts and rebuilds.
+  # `docker compose down -v` deletes them.
+  sextante-data:

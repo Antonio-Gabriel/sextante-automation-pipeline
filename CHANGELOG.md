@@ -76,6 +76,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                             └── CHG-0067  fix       Correcções da revisão do ticket 07 do frontend
                                                                                                                                                                 └── CHG-0068  feat      Interface em Inglês e Português, com os textos do servidor no idioma escolhido
                                                                                                                                                                     └── CHG-0069  fix       Correcções da revisão da interface em dois idiomas
+                                                                                                                                                                        └── CHG-0070  infra     Contentor da API e docker compose
 ```
 
 ## Regras
@@ -140,6 +141,40 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0070 · Contentor da API e docker compose
+
+- **Data:** 2026-11-19
+- **Tipo:** infra
+- **Pai:** CHG-0069
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008, SEC-02, SEC-03, SEC-04, SEC-06, SEC-20
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `backend/Dockerfile` (novo), `backend/.dockerignore` (novo), `compose.yaml` (novo), `backend/tests/deploy/` (novo); `docs/00` §3.26, `docs/03` SEC-06, `CLAUDE.md`, `README.md`, ticket 01 do deploy
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit; `docker compose down` pára o contentor, e `docker compose down -v` apaga o volume com os dados.
+- **Verificação:**
+  - Testes estáticos: `tests/deploy`, 6 testes.
+  - Imagem construída: 277 MB.
+  - Contentor arrancado num projecto de verificação na porta 18000, com uma chave do modelo inválida para não gastar créditos. O contentor fica saudável, corre com uid 10001, `/app` é só de leitura e `/data` é gravável, e a porta está publicada só em `127.0.0.1`.
+  - `/api/health` responde 200.
+  - Um PDF sintético carregado fica `rejected` e o trabalho continua igual depois de `docker compose restart`. A chave da API não aparece no log.
+
+**Pedido.** Tickets do deploy, começando pela API.
+
+**Excepção ao `0.0.0.0`.** Perguntada antes, porque contradizia o `CLAUDE.md`. O responsável aceitou a excepção só no `CMD` do contentor, com as portas publicadas em `127.0.0.1`, e ela fica registada em §3.26, SEC-06 e `CLAUDE.md`. Um teste falha se `0.0.0.0` aparecer noutro ficheiro que configura um servidor.
+
+**Imagem.**
+- Multi-etapa: a primeira etapa instala as dependências de `pyproject.toml` num ambiente virtual e a final copia-o.
+- A aplicação corre de `/app/src`, ao lado das migrações, que `platform/database.py` procura aí.
+- Base `python:3.12-slim-bookworm` fixada por digest, sem servidor anunciado no cabeçalho.
+- Verificação de saúde a partir do próprio contentor.
+
+**Compose.**
+- `config/.env` entra no arranque, e os caminhos de dentro do contentor substituem os do `.env`.
+- Volume `sextante-data` para a base de dados e os carregamentos; catálogo e lista de exclusão montados só para leitura.
+- `read_only`, `/tmp` em tmpfs, `cap_drop: ALL`, `no-new-privileges`.
 
 ### CHG-0069 · Correcções da revisão da interface em dois idiomas
 
