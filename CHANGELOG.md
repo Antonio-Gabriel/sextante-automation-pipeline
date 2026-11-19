@@ -94,6 +94,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                                                     └── CHG-0085  fix       Deploy com caminho relativo, e deploy automático opcional
                                                                                                                                                                                                                                         └── CHG-0086  fix       Artefacto do release com o Dockerfile na raiz
                                                                                                                                                                                                                                             └── CHG-0087  infra     O release acaba no zip; sem deploy automático na ShardCloud
+                                                                                                                                                                                                                                                └── CHG-0088  fix       Imagem da ShardCloud a correr com qualquer utilizador
 ```
 
 ## Regras
@@ -158,6 +159,35 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0088 · Imagem da ShardCloud a correr com qualquer utilizador
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0087
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008, SEC-04
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `deploy/shardcloud/Dockerfile`, `deploy/shardcloud/entrypoint.sh`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:**
+  - `tests/deploy` com 31 testes.
+  - Imagem construída sem argumentos, como a ShardCloud a constrói. Foi corrida localmente de três formas:
+    - como root: *health check* com a versão, ficheiros `-rw-------` do uid 10001;
+    - como o utilizador arbitrário 4242: *health check* com a versão, ficheiros `-rw-------` do uid 4242;
+    - como 4242 sem a regra que deixa portas baixas sem root: a porta 80 abriu na mesma.
+
+**Relato do responsável.** A imagem foi construída na ShardCloud, mas a app parou ao arrancar com `mkdir: cannot create directory '/data': Permission denied`. A ShardCloud não corre o contentor como root, e `/data` não existia em execução. O `VOLUME` provavelmente fez o construtor deles deixar a pasta de fora. A imagem supunha root.
+
+**Correcções.**
+- **`/data`:** sem `VOLUME`, gravável por qualquer utilizador (`1777`). O `umask 077` mantém cada ficheiro privado do seu dono.
+- **Pasta de dados configurável** por `SEXTANTE_DATA_DIR`. O *entrypoint* deriva dela a base de dados, os carregamentos e os temporários, e pára com uma mensagem clara se a pasta não for gravável.
+- **Sem privilégios a largar:** como root, entrega a pasta ao uid 10001 e larga os privilégios como antes; com outro utilizador, corre directamente com ele.
+- **nginx com `-e stderr`:** nunca precisa de um `/var/log` gravável.
+
+**Em aberto.** A ShardCloud não documenta que pasta do contentor persiste. A aba Files da app mostra-a. Se não for `/data`, aponta-se `SEXTANTE_DATA_DIR` para ela nas variáveis da app.
 
 ### CHG-0087 · O release acaba no zip; sem deploy automático na ShardCloud
 

@@ -40,8 +40,7 @@ RUN apt-get update \
     && groupadd --system --gid 10001 sextante \
     && useradd --system --uid 10001 --gid sextante --no-create-home --shell /usr/sbin/nologin sextante \
     && mkdir -p /data /config \
-    && chown sextante:sextante /data \
-    && chmod 700 /data
+    && chmod 1777 /data
 
 COPY --from=api /opt/venv /opt/venv
 COPY --from=frontend /build/dist /usr/share/sextante/www
@@ -55,14 +54,15 @@ COPY frontend/nginx/security-headers.conf /etc/nginx/snippets/security-headers.c
 COPY deploy/shardcloud/entrypoint.sh /usr/local/bin/sextante-entrypoint
 
 # Settings that are not secrets. The secrets (model key, API key, access token, target
-# entity, reviewer) are set as environment variables of the app in ShardCloud.
+# entity, reviewer) are set as environment variables of the app in ShardCloud. The data
+# folder is SEXTANTE_DATA_DIR (default /data): the entrypoint derives the database, the
+# uploads and the temporary files from it. /data has no VOLUME: ShardCloud's builder
+# dropped the folder, and it is writable by any user, since ShardCloud does not run the
+# container as root; umask 077 keeps each file private to its owner.
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONPATH=/app/src \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    TMPDIR=/data/tmp \
-    SEXTANTE_DATABASE_URL=sqlite+aiosqlite:////data/sextante.db \
-    SEXTANTE_UPLOAD_DIR=/data/uploads \
     SEXTANTE_CATALOG_PATH=/config/catalog.xlsx \
     SEXTANTE_ENTITY_DENYLIST_PATH=/config/entity_denylist.yaml \
     SEXTANTE_API_DOCS_ENABLED=false \
@@ -75,6 +75,6 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1/api/health', timeout=2)"]
 
-# Starts as root only to bind port 80 and hand /data to the API's user; the API runs as
-# uid 10001 and the nginx workers as www-data (entrypoint.sh).
+# Runs as whatever user the platform chooses. As root it drops privileges: the API as
+# uid 10001, the nginx workers as www-data (entrypoint.sh).
 ENTRYPOINT ["/usr/local/bin/sextante-entrypoint"]
