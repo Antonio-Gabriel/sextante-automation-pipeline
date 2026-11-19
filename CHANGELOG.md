@@ -175,7 +175,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0095
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** pendente
+- **Commit:** `0b55a36`
 - **Migração:** nenhuma
 - **Ficheiros:** `.gitignore`; deixam de ser seguidos `docs/sextante-documentacao.pt.{md,pdf}` e `docs/sextante-documentation.en.{md,pdf}`
 - **Reversibilidade:** total
