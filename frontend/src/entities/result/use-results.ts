@@ -2,7 +2,12 @@ import { $api } from "@/shared/api/client";
 
 import type { ResultFilters } from "./result-filters";
 
-/** One page of the job's coded lines, with the filters of the address. */
+/**
+ * One page of the job's coded lines, with the filters of the address.
+ *
+ * Example:
+ *   const page = useResults(jobId, { confidence: "LOW" }).data;
+ */
 export function useResults(jobId: string, filters: ResultFilters) {
   return $api.useQuery("get", "/api/jobs/{job_id}/results", {
     params: {

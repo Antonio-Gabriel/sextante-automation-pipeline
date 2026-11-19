@@ -78,6 +78,7 @@ export const pt = {
     title: "Resultados do trabalho {id}",
     description: "Linhas codificadas do trabalho, pela ordem dos documentos.",
     empty: "Nenhuma linha com estes filtros.",
+    noMore: "Não há mais linhas depois desta página.",
     loading: "A carregar as linhas…",
     truncated: "O servidor devolve no máximo {max} linhas por página; a página foi reduzida.",
     filters: {
@@ -90,7 +91,8 @@ export const pt = {
       unflaggedOnly: "Sem sinalização",
       invoice: "Factura",
       clearInvoice: "Mostrar todas as facturas",
-      filterByInvoice: "Filtrar por esta factura",
+      invoiceActive: "Só a factura {invoice}",
+      filterByInvoice: "Filtrar pela factura {invoice}",
       clear: "Limpar filtros",
     },
     columns: {

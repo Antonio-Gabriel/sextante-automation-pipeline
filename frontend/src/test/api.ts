@@ -1,6 +1,8 @@
 // Answers of the simulated API, shaped like the server's (ErrorResponse, SessionResponse).
 import { http, HttpResponse } from "msw";
 
+import type { components } from "@/shared/api/schema";
+
 export const CATALOG_DIGEST = "3f2a9c0d1e4b5a6f7081928374655647382910abcdefabcdefabcdefabcdef12";
 
 export function refused(code: string, message: string, status = 401) {
@@ -52,12 +54,12 @@ export function sessionHandlers() {
 
 const NO_INVOICES = {} as const;
 
-/** A job progress answer, shaped like JobProgressResponse. */
+/** A job progress answer of the generated type. */
 export function jobProgress(
   jobId: string,
   status: string,
   counts: Record<string, number> = NO_INVOICES,
-) {
+): components["schemas"]["JobProgressResponse"] {
   const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
   return {
     job_id: jobId,
@@ -70,8 +72,10 @@ export function jobProgress(
   };
 }
 
-/** A result line, shaped like ResultLineResponse; fields override the defaults. */
-export function resultLine(position: number, fields: Record<string, unknown> = {}) {
+type ResultLine = components["schemas"]["ResultLineResponse"];
+
+/** A result line of the generated type; fields override the defaults. */
+export function resultLine(position: number, fields: Partial<ResultLine> = {}): ResultLine {
   return {
     invoice_id: "inv-1",
     invoice_line_id: `line-${position}`,

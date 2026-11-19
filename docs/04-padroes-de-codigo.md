@@ -495,7 +495,7 @@ Sem literais de texto visível no JSX. Tudo por catálogo de tradução.
 
 Isto não é preparação para outro idioma: é o que garante que o texto em Português de REQ-PLT-006 é revisível num só lugar, incluindo estados, motivos de sinalização e mensagens de erro.
 
-Os motivos de sinalização merecem nota: o código é um `FlagReason` em Inglês, estável, que vai para a base de dados e para o log; o texto apresentado vem do catálogo em Português. Os dois nunca se confundem, e o código nunca aparece no ecrã.
+Os motivos de sinalização merecem nota: o código é um `FlagReason` em Inglês, estável, que vai para a base de dados e para o log; o texto apresentado vem do catálogo em Português. Os dois nunca se confundem, e o código nunca aparece no ecrã. *Nota de 19-11-2026:* a API já devolve, ao lado de cada código de sinalização e de nota, o texto em Português do catálogo do servidor (`user_messages.py`), e o ticket 03 do frontend pede que o ecrã mostre esse texto. O frontend não mantém uma segunda cópia destes textos: uma regra em dois sítios acaba por divergir. Os restantes textos da interface continuam no catálogo do frontend.
 
 ---
 

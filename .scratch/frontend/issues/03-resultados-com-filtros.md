@@ -17,3 +17,5 @@
 ## Comments
 
 Resolved on 2026-11-19 (CHG-0059). The invoice and line routes exist and are filled by tickets 05 and 04.
+
+Review fixes on 2026-11-19 (CHG-0060): visible invoice filter, a way back past the last page, server errors shown, accessible names per row, centralized cache keys, and §8.6 aligned with this ticket on the flag texts the API sends.

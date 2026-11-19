@@ -66,6 +66,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                     └── CHG-0057  feat      Painel AMT e carregamento com progresso
                                                                                                                         └── CHG-0058  fix       Correcções da revisão do ticket 02 do frontend
                                                                                                                             └── CHG-0059  feat      Resultados com filtros na rota
+                                                                                                                                └── CHG-0060  fix       Correcções da revisão do ticket 03 do frontend
 ```
 
 ## Regras
@@ -130,6 +131,26 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0060 · Correcções da revisão do ticket 03 do frontend
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0059
+- **Estado:** activa
+- **Requisitos:** REQ-REV-001, REQ-PLT-006
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `frontend/src/entities/result/*`, `features/results/*`, `pages/results-page.tsx`, `pages/invoice-page.tsx`, `pages/line-review-page.tsx`, `query-client.ts`, `shared/api/query-keys.ts`, `shared/i18n/pt.ts`, `test/api.ts`, testes; `docs/04-padroes-de-codigo.md` (§8.6), ticket 03 do frontend
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 29 testes do frontend; `tsc`, ESLint.
+
+**Comportamento.** O filtro por factura passa a ver-se, com o número da factura. Depois da última linha, o ecrã diz que não há mais e deixa voltar atrás. Um erro do servidor mostra a sua mensagem, em vez de parecer uma lista vazia, e um 404 não é repetido. O botão de filtrar por factura diz qual factura; uma linha sem descrição continua a ter nome acessível; sinalizações e notas com o mesmo código já não colidem.
+
+**Normas.** Chaves de cache numa só fonte (`queryKeys`). A conversão dos valores dos filtros sai do componente para o gancho. Rótulos com tipo nomeado e guardas de tipo, sem asserções. Os três filtros partilham um componente. Ajudantes de teste com os tipos gerados. Comentários com exemplo nas funções públicas.
+
+**Documentos.** §8.6 regista que as sinalizações e as notas mostram o texto em Português que a API devolve, como pede o ticket 03, sem segunda cópia no frontend.
 
 ### CHG-0059 · Resultados com filtros na rota
 

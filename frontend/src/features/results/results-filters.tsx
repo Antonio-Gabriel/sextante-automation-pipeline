@@ -1,7 +1,10 @@
 import { FilterX, X } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { CONFIDENCES, TARGET_SHEETS, type ResultFilters } from "@/entities/result/result-filters";
-import { t } from "@/shared/i18n/t";
+import { confidenceView } from "@/entities/result/result-labels";
+import { t, type MessageKey } from "@/shared/i18n/t";
+import { Badge } from "@/shared/ui-kit/badge";
 import { Button } from "@/shared/ui-kit/button";
 import { Label } from "@/shared/ui-kit/label";
 import { Select } from "@/shared/ui-kit/select";
@@ -9,81 +12,77 @@ import { Select } from "@/shared/ui-kit/select";
 import { useFilterNavigation } from "./use-filter-navigation";
 
 const ANY = "";
-const FLAGGED = { flagged: "true", unflagged: "false" } as const;
 
 interface ResultsFiltersProps {
   jobId: string;
   filters: ResultFilters;
+  /** The filtered invoice's number, when known; its id otherwise. */
+  invoiceLabel: string | null;
 }
 
 /**
  * Confidence, sheet and flag filters, and the invoice filter when one is set.
  *
  * Example:
- *   <ResultsFilters jobId={jobId} filters={filters} />
+ *   <ResultsFilters jobId={jobId} filters={filters} invoiceLabel="FT 2026/17" />
  */
-export function ResultsFilters({ jobId, filters }: ResultsFiltersProps) {
-  const { setFilter, clear } = useFilterNavigation(jobId);
+export function ResultsFilters({ jobId, filters, invoiceLabel }: ResultsFiltersProps) {
+  const navigation = useFilterNavigation(jobId);
   const flagged = filters.flagged === undefined ? ANY : String(filters.flagged);
 
   return (
     <section aria-label={t("results.filters.label")} className="flex flex-wrap items-end gap-3">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="filter-confidence">{t("results.filters.confidence")}</Label>
-        <Select
-          id="filter-confidence"
-          value={filters.confidence ?? ANY}
-          onChange={(event) =>
-            setFilter({ confidence: CONFIDENCES.find((c) => c === event.target.value) })
-          }
-        >
-          <option value={ANY}>{t("results.filters.any")}</option>
-          {CONFIDENCES.map((confidence) => (
-            <option key={confidence} value={confidence}>
-              {t(`values.confidence.${confidence}`)}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="filter-sheet">{t("results.filters.sheet")}</Label>
-        <Select
-          id="filter-sheet"
-          value={filters.sheet ?? ANY}
-          onChange={(event) => setFilter({ sheet: TARGET_SHEETS.find((s) => s === event.target.value) })}
-        >
-          <option value={ANY}>{t("results.filters.any")}</option>
-          {TARGET_SHEETS.map((sheet) => (
-            <option key={sheet} value={sheet}>
-              {sheet}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="filter-flagged">{t("results.filters.flagged")}</Label>
-        <Select
-          id="filter-flagged"
-          value={flagged}
-          onChange={(event) =>
-            setFilter({ flagged: event.target.value === ANY ? undefined : event.target.value === FLAGGED.flagged })
-          }
-        >
-          <option value={ANY}>{t("results.filters.any")}</option>
-          <option value={FLAGGED.flagged}>{t("results.filters.flaggedOnly")}</option>
-          <option value={FLAGGED.unflagged}>{t("results.filters.unflaggedOnly")}</option>
-        </Select>
-      </div>
+      <FilterSelect id="filter-confidence" label="results.filters.confidence" value={filters.confidence ?? ANY} onChange={navigation.chooseConfidence}>
+        {CONFIDENCES.map((confidence) => (
+          <option key={confidence} value={confidence}>
+            {t(confidenceView(confidence)?.label ?? "results.filters.any")}
+          </option>
+        ))}
+      </FilterSelect>
+      <FilterSelect id="filter-sheet" label="results.filters.sheet" value={filters.sheet ?? ANY} onChange={navigation.chooseSheet}>
+        {TARGET_SHEETS.map((sheet) => (
+          <option key={sheet} value={sheet}>
+            {sheet}
+          </option>
+        ))}
+      </FilterSelect>
+      <FilterSelect id="filter-flagged" label="results.filters.flagged" value={flagged} onChange={navigation.chooseFlagged}>
+        <option value="true">{t("results.filters.flaggedOnly")}</option>
+        <option value="false">{t("results.filters.unflaggedOnly")}</option>
+      </FilterSelect>
       {filters.invoice !== undefined && (
-        <Button variant="outline" onClick={() => setFilter({ invoice: undefined })}>
-          <X />
-          {t("results.filters.clearInvoice")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Badge tone="brand">{t("results.filters.invoiceActive", { invoice: invoiceLabel ?? filters.invoice })}</Badge>
+          <Button variant="outline" size="sm" onClick={() => navigation.chooseInvoice(undefined)}>
+            <X />
+            {t("results.filters.clearInvoice")}
+          </Button>
+        </div>
       )}
-      <Button variant="ghost" onClick={clear}>
+      <Button variant="ghost" onClick={navigation.clear}>
         <FilterX />
         {t("results.filters.clear")}
       </Button>
     </section>
+  );
+}
+
+interface FilterSelectProps {
+  id: string;
+  label: MessageKey;
+  value: string;
+  onChange: (value: string) => void;
+  children: ReactNode;
+}
+
+function FilterSelect({ id, label, value, onChange, children }: FilterSelectProps) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>{t(label)}</Label>
+      <Select id={id} value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value={ANY}>{t("results.filters.any")}</option>
+        {children}
+      </Select>
+    </div>
   );
 }

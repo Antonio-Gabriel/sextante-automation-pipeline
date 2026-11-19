@@ -6,7 +6,6 @@ import type { components } from "@/shared/api/schema";
 import { t, type MessageKey } from "@/shared/i18n/t";
 import { Badge } from "@/shared/ui-kit/badge";
 
-import { useFilterNavigation } from "./use-filter-navigation";
 
 type ResultLine = components["schemas"]["ResultLineResponse"];
 
@@ -26,13 +25,18 @@ const COLUMNS: readonly MessageKey[] = [
 
 const CELL = "px-3 py-2.5 align-top";
 
+interface ResultsTableProps {
+  lines: readonly ResultLine[];
+  onFilterInvoice: (invoiceId: string) => void;
+}
+
 /**
  * The coded lines, one per row. Invoice content is always text, never markup.
  *
  * Example:
- *   <ResultsTable jobId={jobId} lines={lines} />
+ *   <ResultsTable lines={lines} onFilterInvoice={navigation.chooseInvoice} />
  */
-export function ResultsTable({ jobId, lines }: { jobId: string; lines: readonly ResultLine[] }) {
+export function ResultsTable({ lines, onFilterInvoice }: ResultsTableProps) {
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
       <table className="w-full min-w-[1200px] text-left text-sm">
@@ -47,7 +51,7 @@ export function ResultsTable({ jobId, lines }: { jobId: string; lines: readonly 
         </thead>
         <tbody className="divide-y divide-slate-100">
           {lines.map((line) => (
-            <ResultRow key={line.invoice_line_id} jobId={jobId} line={line} />
+            <ResultRow key={line.invoice_line_id} line={line} onFilterInvoice={onFilterInvoice} />
           ))}
         </tbody>
       </table>
@@ -55,8 +59,14 @@ export function ResultsTable({ jobId, lines }: { jobId: string; lines: readonly 
   );
 }
 
-function ResultRow({ jobId, line }: { jobId: string; line: ResultLine }) {
-  const { setFilter } = useFilterNavigation(jobId);
+interface ResultRowProps {
+  line: ResultLine;
+  onFilterInvoice: (invoiceId: string) => void;
+}
+
+function ResultRow({ line, onFilterInvoice }: ResultRowProps) {
+  const invoice = line.invoice_number ?? t("results.noValue");
+  const filterLabel = t("results.filters.filterByInvoice", { invoice });
   const confidence = confidenceView(line.confidence);
   const review = reviewView(line.review_status);
   const lineParams = { invoiceId: line.invoice_id, lineId: line.invoice_line_id };
@@ -65,13 +75,13 @@ function ResultRow({ jobId, line }: { jobId: string; line: ResultLine }) {
       <td className={CELL}>
         <div className="flex items-center gap-1">
           <Link to="/invoices/$invoiceId" params={{ invoiceId: line.invoice_id }} className="font-medium text-brand-700 hover:underline">
-            {line.invoice_number ?? t("results.noValue")}
+            {invoice}
           </Link>
           <button
             type="button"
-            aria-label={t("results.filters.filterByInvoice")}
-            title={t("results.filters.filterByInvoice")}
-            onClick={() => setFilter({ invoice: line.invoice_id })}
+            aria-label={filterLabel}
+            title={filterLabel}
+            onClick={() => onFilterInvoice(line.invoice_id)}
             className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
           >
             <Filter className="size-3.5" />
@@ -83,7 +93,7 @@ function ResultRow({ jobId, line }: { jobId: string; line: ResultLine }) {
       <td className={CELL}>{line.target_sheet ?? t("results.noValue")}</td>
       <td className={`${CELL} max-w-xs`}>
         <Link to="/invoices/$invoiceId/lines/$lineId" params={lineParams} className="text-slate-900 hover:text-brand-700 hover:underline" title={t("results.openLine")}>
-          {line.line_description}
+          {line.line_description.trim() === "" ? t("results.openLine") : line.line_description}
         </Link>
       </td>
       <td className={`${CELL} font-mono`}>{line.item_number ?? t("results.noValue")}</td>
@@ -96,8 +106,8 @@ function ResultRow({ jobId, line }: { jobId: string; line: ResultLine }) {
       </td>
       <td className={`${CELL} max-w-xs`}>
         <ul className="flex flex-col gap-1">
-          {[...line.flags, ...line.notes].map((item) => (
-            <li key={item.code} className="text-xs text-slate-700">
+          {[...line.flags, ...line.notes].map((item, index) => (
+            <li key={`${index}-${item.code}`} className="text-xs text-slate-700">
               {item.message}
             </li>
           ))}

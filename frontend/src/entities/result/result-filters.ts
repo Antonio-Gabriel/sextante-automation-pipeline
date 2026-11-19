@@ -21,3 +21,33 @@ export const resultFiltersSchema = z.object({
 });
 
 export type ResultFilters = z.infer<typeof resultFiltersSchema>;
+
+/**
+ * The confidence a select chose, or none for "all" and anything unknown.
+ *
+ * Example:
+ *   parseConfidence("LOW") // "LOW"; parseConfidence("") // undefined
+ */
+export function parseConfidence(value: string): Confidence | undefined {
+  return CONFIDENCES.find((confidence) => confidence === value);
+}
+
+/**
+ * The sheet a select chose, or none.
+ *
+ * Example:
+ *   parseSheet("OUTLAYS") // "OUTLAYS"
+ */
+export function parseSheet(value: string): TargetSheet | undefined {
+  return TARGET_SHEETS.find((sheet) => sheet === value);
+}
+
+/**
+ * The flag filter a select chose: "true", "false", or none for anything else.
+ *
+ * Example:
+ *   parseFlagged("false") // false
+ */
+export function parseFlagged(value: string): boolean | undefined {
+  return value === "true" ? true : value === "false" ? false : undefined;
+}

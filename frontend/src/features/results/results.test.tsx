@@ -2,7 +2,8 @@ import { screen, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 
-import { resultLine, sessionHandlers } from "@/test/api";
+import { refused, resultLine, sessionHandlers } from "@/test/api";
+import type { components } from "@/shared/api/schema";
 import { renderApp } from "@/test/render-app";
 import { server } from "@/test/server";
 
@@ -10,7 +11,9 @@ const JOB = "job-0001-aaaa";
 const PATH = `/jobs/${JOB}/results`;
 
 /** Answers every results request with these lines, and records the query it got. */
-function withResults(lines: object[], page: { limit?: number; truncated?: boolean } = {}) {
+function withResults(
+  lines: components["schemas"]["ResultLineResponse"][],
+  page: { limit?: number; truncated?: boolean } = {}) {
   const queries: URLSearchParams[] = [];
   server.use(
     ...sessionHandlers(),
@@ -54,6 +57,7 @@ describe("results with filters (frontend ticket 03)", () => {
     ["Confiança", "LOW", "confidence", "LOW", "confidence=LOW"],
     ["Aba", "OUTLAYS", "target_sheet", "OUTLAYS", "sheet=OUTLAYS"],
     ["Sinalização", "true", "flagged", "true", "flagged=true"],
+    ["Sinalização", "false", "flagged", "false", "flagged=false"],
   ])("filters by %s, in the request and in the address", async (label, option, param, sent, inAddress) => {
     const api = withResults([resultLine(1)]);
     const { user, router } = renderApp(PATH);
@@ -71,8 +75,9 @@ describe("results with filters (frontend ticket 03)", () => {
     const { user } = renderApp(PATH);
     await screen.findByText("Synthetic service 1");
 
-    await user.click(screen.getByRole("button", { name: "Filtrar por esta factura" }));
+    await user.click(screen.getByRole("button", { name: "Filtrar pela factura FT 2026/17" }));
     await screen.findByRole("button", { name: "Mostrar todas as facturas" });
+    expect(screen.getByText("Só a factura FT 2026/17")).toBeInTheDocument();
     expect(api.last()?.get("invoice_id")).toBe("inv-1");
 
     await user.click(screen.getByRole("button", { name: "Mostrar todas as facturas" }));
@@ -112,5 +117,38 @@ describe("results with filters (frontend ticket 03)", () => {
       "/invoices/inv-1/lines/line-3",
     );
     expect(screen.getByRole("link", { name: "FT 2026/17" })).toHaveAttribute("href", "/invoices/inv-1");
+  });
+
+  it("drops an invalid page position of the address", async () => {
+    const api = withResults([resultLine(1)]);
+    renderApp(`${PATH}?offset=-5&limit=0`);
+    await screen.findByText("Synthetic service 1");
+
+    expect(api.last()?.get("offset")).toBe("0");
+    expect(api.last()?.get("limit")).toBeNull();
+  });
+
+  it("past the last line, says so and keeps the way back", async () => {
+    const api = withResults([]);
+    const { user } = renderApp(`${PATH}?offset=100`);
+
+    expect(await screen.findByText("Não há mais linhas depois desta página.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Anterior" }));
+
+    await screen.findByText("Nenhuma linha com estes filtros.");
+    expect(api.last()?.get("offset")).toBe("0");
+  });
+
+  it("shows the server's message when the results cannot be read", async () => {
+    server.use(
+      ...sessionHandlers(),
+      http.get("/api/jobs/:jobId/results", () =>
+        refused("errors.job.not_found", "Trabalho não encontrado.", 404),
+      ),
+    );
+    renderApp(PATH);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Trabalho não encontrado.");
+    expect(screen.queryByText("Nenhuma linha com estes filtros.")).not.toBeInTheDocument();
   });
 });
