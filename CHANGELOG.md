@@ -144,7 +144,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0064
 - **Estado:** activa
 - **Requisitos:** REQ-REV-002, REQ-REV-003, SEC-19, NFR-REL-002, REQ-PLT-006
-- **Commit:** pendente
+- **Commit:** `8d4cfce`
 - **Migração:** nenhuma
 - **Ficheiros:** `frontend/src/shared/api/use-idempotency-key.ts`, `shared/api/use-invoice-changed.ts` (novo), `shared/api/query-keys.ts`, `shared/format.ts`, `features/line-review/*`, `features/reprocess/*`, `features/export/*`, `features/entity-resolution/use-resolution-form.ts`, `entities/invoice/use-invoice.ts`, `entities/health/server-status.tsx`, `pages/line-review-page.tsx`, `shared/i18n/pt.ts`, testes
 - **Reversibilidade:** total
@@ -170,7 +170,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0063
 - **Estado:** activa
 - **Requisitos:** REQ-EXP-001, NFR-REL-002, SEC-19, REQ-PLT-006
-- **Commit:** pendente
+- **Commit:** `244eb46`
 - **Migração:** nenhuma
 - **Ficheiros:** `frontend/src/features/export/*`, `features/reprocess/*`, `pages/results-page.tsx`, `pages/invoice-page.tsx`, `shared/i18n/pt.ts`, `vitest.setup.ts`, testes; `README.md`, ticket 06 do frontend
 - **Reversibilidade:** total
@@ -188,7 +188,7 @@ Botões de exportação em CSV e XLSX no ecrã de resultados: o ficheiro vem do 
 - **Pai:** CHG-0062
 - **Estado:** activa
 - **Requisitos:** REQ-REV-002, REQ-REV-003, REQ-REV-004, SEC-19, REQ-PLT-006
-- **Commit:** pendente
+- **Commit:** `9a0a98d`
 - **Migração:** nenhuma
 - **Ficheiros:** `frontend/src/features/line-review/*`, `pages/line-review-page.tsx`, `shared/i18n/pt.ts`, testes; `README.md`, ticket 04 do frontend
 - **Reversibilidade:** total
@@ -206,7 +206,7 @@ Ecrã da revisão de uma linha: codificação em vigor, todos os itens da aba de
 - **Pai:** CHG-0061
 - **Estado:** activa
 - **Requisitos:** REQ-REV-006, SEC-18, SEC-19, REQ-PLT-006
-- **Commit:** pendente
+- **Commit:** `d774621`
 - **Migração:** nenhuma
 - **Ficheiros:** `backend/src/sextante/ingestion/application/errors.py` (novo), `read_invoice.py`, `reprocess_invoice.py`, `resolve_entity.py`, `records.py`, `ingestion/api/routes.py`, `ingestion/infrastructure/repository.py`, `platform/coded_text.py`, `platform/user_messages.py`, `main.py`, `tests/api/test_invoice_view.py`; `frontend/src/entities/invoice/*`, `features/entity-resolution/*`, `pages/invoice-page.tsx`, `shared/api/*`, `shared/i18n/pt.ts`, testes; ticket 05 do frontend
 - **Reversibilidade:** total
@@ -226,7 +226,7 @@ Ecrã da revisão de uma linha: codificação em vigor, todos os itens da aba de
 - **Pai:** CHG-0060
 - **Estado:** activa
 - **Requisitos:** REQ-REV-006, REQ-ENT-006, REQ-ING-011, SEC-18, SEC-19, REQ-PLT-006
-- **Commit:** pendente
+- **Commit:** `8022f65`
 - **Migração:** nenhuma
 - **Ficheiros:** `backend/src/sextante/ingestion/api/routes.py`, `ingestion/application/read_invoice.py` (novo), `ingestion/application/records.py`, `ingestion/application/ports.py`, `ingestion/application/resolve_entity.py`, `ingestion/infrastructure/repository.py`, `platform/coded_text.py` (novo), `review/api/routes.py`, `main.py`, `tests/api/test_invoice_view.py`; `frontend/openapi.json`, tipos gerados, `frontend/src/entities/invoice/*`, `features/entity-resolution/*`, `pages/invoice-page.tsx`, `shared/api/use-idempotency-key.ts`, `shared/ui-kit/textarea.tsx`; `README.md`, ticket 05 do frontend
 - **Reversibilidade:** total
@@ -244,7 +244,7 @@ Ecrã da revisão de uma linha: codificação em vigor, todos os itens da aba de
 - **Pai:** CHG-0059
 - **Estado:** activa
 - **Requisitos:** REQ-REV-001, REQ-PLT-006
-- **Commit:** pendente
+- **Commit:** `07208b6`
 - **Migração:** nenhuma
 - **Ficheiros:** `frontend/src/entities/result/*`, `features/results/*`, `pages/results-page.tsx`, `pages/invoice-page.tsx`, `pages/line-review-page.tsx`, `query-client.ts`, `shared/api/query-keys.ts`, `shared/i18n/pt.ts`, `test/api.ts`, testes; `docs/04-padroes-de-codigo.md` (§8.6), ticket 03 do frontend
 - **Reversibilidade:** total
@@ -264,7 +264,7 @@ Ecrã da revisão de uma linha: codificação em vigor, todos os itens da aba de
 - **Pai:** CHG-0058
 - **Estado:** activa
 - **Requisitos:** REQ-REV-001, REQ-PLT-006, SEC-08
-- **Commit:** pendente
+- **Commit:** `f237ea9`
 - **Migração:** nenhuma
 - **Ficheiros:** `frontend/src/entities/result/*`, `features/results/*`, `pages/results-page.tsx`, `pages/invoice-page.tsx` e `pages/line-review-page.tsx` (rotas, preenchidas nos tickets 04 e 05), `router.tsx`, `shared/ui-kit/select.tsx`, `shared/i18n/*`, testes; `README.md`, ticket 03 do frontend
 - **Reversibilidade:** total
@@ -280,7 +280,7 @@ Tabela das linhas de um trabalho com as onze colunas do ticket, texto das factur
 - **Pai:** CHG-0057
 - **Estado:** activa
 - **Requisitos:** REQ-ING-007, REQ-PLT-006
-- **Commit:** pendente
+- **Commit:** `505472a`
 - **Migração:** nenhuma
 - **Ficheiros:** `frontend/src/entities/job/*`, `entities/health/*`, `features/upload/*`, `pages/job-page.tsx`, `pages/upload-page.tsx`, `pages/results-page.tsx`, `app-shell.tsx`, `shared/i18n/*`, `shared/format.ts`, `shared/api/errors.ts`, `shared/ui-kit/*`, testes; `README.md`, `docs/04-padroes-de-codigo.md` (§8.5)
 - **Reversibilidade:** total
@@ -298,7 +298,7 @@ Tabela das linhas de um trabalho com as onze colunas do ticket, texto das factur
 - **Pai:** CHG-0056
 - **Estado:** activa
 - **Requisitos:** REQ-ING-001, REQ-ING-007, REQ-PLT-006, SEC-15
-- **Commit:** pendente
+- **Commit:** `4b1fcc8`
 - **Migração:** nenhuma
 - **Ficheiros:** `frontend/src/` (painel, carregamento, trabalho, tema, `ui-kit`), `frontend/scripts/generate-api-types.mjs`, `frontend/package.json`, `CLAUDE.md` (L-07), `README.md`, ticket 02 do frontend
 - **Reversibilidade:** total
