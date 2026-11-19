@@ -185,7 +185,24 @@ docker run --rm --env-file config/.env -e SEXTANTE_SESSION_COOKIE_SECURE=false -
 
 ### One-time setup
 
-Do these steps once, by hand.
+Run the setup wizard from the repository root. It walks you through each step, and you type each secret yourself, with the input hidden:
+
+```bash
+scripts/setup_shardcloud.sh
+```
+
+It needs `docker`, `zip`, `python3` and the GitHub CLI (`gh`), logged in. It doesn't install the ShardCloud CLI; it uses ShardCloud's REST API.
+
+It opens the Docker Hub, ShardCloud and Anthropic pages, and does the rest itself:
+
+- builds and uploads the image;
+- creates the app with its variables and web access;
+- sets the GitHub secrets and variables;
+- creates the `production` environment with you as reviewer.
+
+Secrets go straight to ShardCloud or GitHub, never to a file. Only identifiers are kept, in `config/.env.shardcloud` (ignored by git), so running it again resumes. It pushes nothing.
+
+What the wizard does, step by step:
 
 1. **Docker Hub.** Create a private repository (for example `<user>/sextante`) and an access token with *Read & Write* on it.
 2. **ShardCloud image.**

@@ -84,3 +84,17 @@ def test_no_run_step_expands_values_from_outside_the_file(name: str) -> None:
 
     # The matrix is written in the file itself.
     assert all(expansion.startswith("matrix.") for expansion in expansions), expansions
+
+
+@pytest.mark.requirement("D-3.27")
+def test_the_setup_wizard_sets_exactly_what_the_release_reads() -> None:
+    """Every secret and variable the release reads is set by scripts/setup_shardcloud.sh."""
+    release = (WORKFLOWS / "release.yml").read_text()
+    wizard = (WORKFLOWS.parents[1] / "scripts" / "setup_shardcloud.sh").read_text()
+    read = {kind: set(re.findall(rf"\b{kind}\.([A-Z_]+)", release)) for kind in ("secrets", "vars")}
+    set_by_wizard = {
+        "secrets": set(re.findall(r"^\s*set_secret ([A-Z_]+)", wizard, flags=re.MULTILINE)),
+        "vars": set(re.findall(r"^\s*set_var ([A-Z_]+)", wizard, flags=re.MULTILINE)),
+    }
+
+    assert read == set_by_wizard

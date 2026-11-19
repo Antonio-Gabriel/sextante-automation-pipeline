@@ -83,6 +83,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                         └── CHG-0074  infra     CI/CD no GitHub Actions, imagem no Docker Hub e publicação na ShardCloud
                                                                                                                                                                                             └── CHG-0075  fix       Correcções da revisão do CI/CD e da publicação na ShardCloud
                                                                                                                                                                                                 └── CHG-0076  fix       Versão escrita no contexto da ShardCloud
+                                                                                                                                                                                                    └── CHG-0077  infra     Assistente da configuração única da ShardCloud, do Docker Hub e do GitHub
 ```
 
 ## Regras
@@ -147,6 +148,44 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0077 · Assistente da configuração única da ShardCloud, do Docker Hub e do GitHub
+
+- **Data:** 2026-11-19
+- **Tipo:** infra
+- **Pai:** CHG-0076
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008, SEC-02
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `scripts/setup_shardcloud.sh` (novo), `backend/tests/deploy/test_workflows.py`, `README.md`
+- **Reversibilidade:** total no repositório. O que o assistente cria na ShardCloud, no Docker Hub e no GitHub apaga-se lá.
+- **Reversão:** reverter o commit.
+- **Verificação:**
+  - `bash -n` sem erros. Teste novo: o assistente define exactamente os segredos e as variáveis que o release lê. `tests/deploy` com 37 testes.
+  - Os corpos dos pedidos à ShardCloud foram conferidos com o seu `openapi.json`: criar a imagem, o estado da construção, criar a app a partir da imagem, substituir as variáveis, a web e o subdomínio.
+  - **Não foi corrido pelo agente.** Pede segredos, cria recursos em contas do responsável e abre o navegador.
+
+**Pedido do responsável.** Fazer a configuração única pelas linhas de comandos. O que só a pessoa pode fazer fica com a pessoa:
+- abrir as contas e gerar os tokens no Docker Hub e na ShardCloud;
+- escrever os segredos;
+- instalar e autenticar o `gh`;
+- enviar o código e as tags.
+
+O assistente gerado com o skill `wizard` faz o resto:
+- valida o token da ShardCloud;
+- monta o contexto do git e cria a imagem, esperando pela construção;
+- cria a app com a memória escolhida (2048 MB recomendados), o subdomínio e as variáveis;
+- liga o acesso web e espera pelo *health check*;
+- define os segredos e as variáveis do GitHub;
+- cria o ambiente `production` com o utilizador como revisor obrigatório.
+
+**Segredos.** Cada segredo é escrito com a entrada escondida e vai directamente para a ShardCloud, pelo `curl` na entrada padrão, ou para o GitHub, pelo `gh secret set`. Nunca vai para um ficheiro nem para a linha de comandos. A chave da API para programas é gerada. O token de acesso pode ser escrito pela pessoa ou gerado e mostrado uma vez, e o ecrã limpa-se depois. Em `config/.env.shardcloud`, ignorado pelo git, ficam só identificadores, para retomar.
+
+**Suposições declaradas.**
+- A memória em MB: a API não diz a unidade, e o ficheiro `.shardcloud` usa MB.
+- O endereço `https://<subdomínio>.shardweb.app`, como diz a documentação.
+- Ambientes com revisores obrigatórios num repositório privado exigem um plano pago do GitHub. Se o GitHub recusar, o assistente diz que o ambiente tem de ser criado à mão.
 
 ### CHG-0076 · Versão escrita no contexto da ShardCloud
 
