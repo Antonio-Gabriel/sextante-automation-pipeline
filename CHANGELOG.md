@@ -68,6 +68,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                             └── CHG-0059  feat      Resultados com filtros na rota
                                                                                                                                 └── CHG-0060  fix       Correcções da revisão do ticket 03 do frontend
                                                                                                                                     └── CHG-0061  feat      Ecrã da factura e resolução de entidade
+                                                                                                                                        └── CHG-0062  fix       Correcções da revisão do ticket 05 do frontend
 ```
 
 ## Regras
@@ -132,6 +133,26 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0062 · Correcções da revisão do ticket 05 do frontend
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0061
+- **Estado:** activa
+- **Requisitos:** REQ-REV-006, SEC-18, SEC-19, REQ-PLT-006
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `backend/src/sextante/ingestion/application/errors.py` (novo), `read_invoice.py`, `reprocess_invoice.py`, `resolve_entity.py`, `records.py`, `ingestion/api/routes.py`, `ingestion/infrastructure/repository.py`, `platform/coded_text.py`, `platform/user_messages.py`, `main.py`, `tests/api/test_invoice_view.py`; `frontend/src/entities/invoice/*`, `features/entity-resolution/*`, `pages/invoice-page.tsx`, `shared/api/*`, `shared/i18n/pt.ts`, testes; ticket 05 do frontend
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 384 testes do backend e o `xfail` estrito; 47 testes do frontend. `mypy`, `ruff`, 8 contratos do `import-linter`, funções com 20 linhas ou menos; `tsc`, ESLint, licenças.
+
+**Servidor.** Um motivo sem texto no catálogo passa a aparecer, com um texto que o diz, em vez de desaparecer. Depois da resolução, o motivo da ambiguidade dá lugar à resolução registada. `InvoiceNotFoundError` passa a um módulo de erros da ingestão; colunas do cabeçalho nomeadas uma a uma; exemplo no comentário do repositório.
+
+**Frontend.** Depois da resolução, a factura é lida de novo com intervalo crescente enquanto está em fila, e o estado do trabalho é invalidado também. Aviso, com ligação aos resultados filtrados, quando a factura tem mais linhas do que a página. As duas resoluções vivem numa lista só, verificada contra o OpenAPI, e um valor desconhecido não passa por "Não é a AMT"; os limites da nota vêm do OpenAPI. Uma chave já usada noutro pedido é renovada. O erro de cada campo fica ligado ao campo (`aria-describedby`), e o foco vai para a entidade depois de resolver. O título e a navegação saem do componente para o gancho.
+
+**Fica como está, com o motivo.** O NIF do fornecedor e o motivo de recusa, que o ticket não lista, ficam: são cabeçalho extraído e explicam o estado. A cópia campo a campo entre registos e modelos de resposta é a separação que SEC-18 pede.
 
 ### CHG-0061 · Ecrã da factura e resolução de entidade
 

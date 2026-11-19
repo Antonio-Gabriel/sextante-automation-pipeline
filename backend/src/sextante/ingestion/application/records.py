@@ -6,7 +6,8 @@ from typing import Final
 
 from sextante.ingestion.domain.statuses import InvoiceStatus
 
-# The entity verdict that waits for a reviewer (REQ-ENT-004, D-3.15).
+# The entity verdict that waits for a reviewer (REQ-ENT-004, D-3.15). It mirrors
+# EntityVerdict.AMBIGUOUS of the matching module, which ingestion may not import.
 AMBIGUOUS_VERDICT: Final = "AMBIGUOUS"
 
 

@@ -62,5 +62,6 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
         "notes.line_type_tax": "Linha de IVA: sem código de item.",
         "notes.line_type_discount": "Linha de desconto: sem código de item.",
         "notes.entity_confirmed_by_reviewer": "Entidade confirmada pelo revisor.",
+        "reasons.undescribed": "Motivo registado sem descrição. Contacte o suporte.",
     }
 )

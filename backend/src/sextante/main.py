@@ -28,10 +28,10 @@ from sextante.ingestion.api.routes import ingestion_router
 from sextante.ingestion.api.routes import reprocess_invoice as reprocess_invoice_route
 from sextante.ingestion.api.routes import resolve_entity as resolve_entity_route
 from sextante.ingestion.api.routes import upload_invoices as upload_invoices_route
+from sextante.ingestion.application.errors import InvoiceNotFoundError
 from sextante.ingestion.application.read_invoice import ReadInvoice
 from sextante.ingestion.application.read_job_status import JobNotFoundError, ReadJobStatus
 from sextante.ingestion.application.reprocess_invoice import (
-    InvoiceNotFoundError,
     InvoiceNotReprocessableError,
     ReprocessInvoice,
 )

@@ -1,3 +1,4 @@
+import { RESOLUTIONS } from "@/entities/invoice/entity-resolutions";
 import { t } from "@/shared/i18n/t";
 import { Button } from "@/shared/ui-kit/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui-kit/card";
@@ -6,16 +7,14 @@ import { Textarea } from "@/shared/ui-kit/textarea";
 
 import { NOTE_MAX_LENGTH, useResolutionForm } from "./use-resolution-form";
 
-const CHOICES = ["MATCH", "NO_MATCH"] as const;
-
 /**
  * Resolve an ambiguous entity as the AMT or not, with a mandatory note.
  *
  * Example:
- *   <ResolutionForm invoiceId={invoiceId} />
+ *   <ResolutionForm invoiceId={invoiceId} onResolved={focusEntity} />
  */
-export function ResolutionForm({ invoiceId }: { invoiceId: string }) {
-  const { form, submit, isPending, remaining } = useResolutionForm(invoiceId);
+export function ResolutionForm({ invoiceId, onResolved }: { invoiceId: string; onResolved: () => void }) {
+  const { form, submit, isPending, remaining } = useResolutionForm(invoiceId, onResolved);
   const { errors } = form.formState;
 
   return (
@@ -26,16 +25,22 @@ export function ResolutionForm({ invoiceId }: { invoiceId: string }) {
       </CardHeader>
       <CardContent>
         <form noValidate onSubmit={submit} className="flex flex-col gap-4">
-          <fieldset className="flex flex-col gap-2">
+          <fieldset
+            className="flex flex-col gap-2"
+            aria-invalid={errors.resolution !== undefined}
+            aria-describedby={errors.resolution === undefined ? undefined : "resolution-choice-error"}
+          >
             <legend className="mb-1 text-sm font-medium">{t("invoice.resolution.choice")}</legend>
-            {CHOICES.map((choice) => (
+            {RESOLUTIONS.map((choice) => (
               <label key={choice} className="flex items-center gap-2 text-sm">
                 <input type="radio" value={choice} className="accent-brand-700" {...form.register("resolution")} />
                 {t(`invoice.resolution.${choice}`)}
               </label>
             ))}
             {errors.resolution?.message !== undefined && (
-              <p role="alert" className="text-sm text-red-700">{errors.resolution.message}</p>
+              <p id="resolution-choice-error" role="alert" className="text-sm text-red-700">
+                {errors.resolution.message}
+              </p>
             )}
           </fieldset>
           <div className="flex flex-col gap-2">
@@ -45,14 +50,16 @@ export function ResolutionForm({ invoiceId }: { invoiceId: string }) {
               rows={3}
               maxLength={NOTE_MAX_LENGTH}
               aria-invalid={errors.note !== undefined}
-              aria-describedby="resolution-note-help"
+              aria-describedby={errors.note === undefined ? "resolution-note-help" : "resolution-note-help resolution-note-error"}
               {...form.register("note")}
             />
             <p id="resolution-note-help" className="text-xs text-slate-500">
               {t("invoice.resolution.remaining", { count: remaining })}
             </p>
             {errors.note?.message !== undefined && (
-              <p role="alert" className="text-sm text-red-700">{errors.note.message}</p>
+              <p id="resolution-note-error" role="alert" className="text-sm text-red-700">
+                {errors.note.message}
+              </p>
             )}
           </div>
           <Button type="submit" className="self-start" disabled={isPending}>

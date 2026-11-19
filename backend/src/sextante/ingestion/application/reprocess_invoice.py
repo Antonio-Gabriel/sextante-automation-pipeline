@@ -5,6 +5,7 @@ from typing import Final
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from sextante.ingestion.application.errors import InvoiceNotFoundError
 from sextante.ingestion.application.ports import ReprocessingRepositoryPort
 from sextante.ingestion.domain.statuses import InvoiceStatus
 from sextante.platform.audit import AuditEventRepository
@@ -14,12 +15,6 @@ from sextante.platform.errors import DomainError
 # A failed invoice is coded for the first time; a coded one again, its earlier coding
 # kept as superseded (NFR-REL-002, D-3.23).
 REPROCESSABLE_STATUSES: Final = frozenset({InvoiceStatus.FAILED, InvoiceStatus.ENCODED})
-
-
-class InvoiceNotFoundError(DomainError):
-    """No invoice has this identifier."""
-
-    user_message_key = "errors.invoice.not_found"
 
 
 class InvoiceNotReprocessableError(DomainError):

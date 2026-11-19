@@ -2,9 +2,9 @@
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from sextante.ingestion.application.errors import InvoiceNotFoundError
 from sextante.ingestion.application.ports import InvoiceViewReader
 from sextante.ingestion.application.records import InvoiceView
-from sextante.ingestion.application.reprocess_invoice import InvoiceNotFoundError
 
 
 class ReadInvoice:

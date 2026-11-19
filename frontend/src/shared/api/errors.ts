@@ -5,6 +5,7 @@ import type { components } from "./schema";
 type ErrorResponse = components["schemas"]["ErrorResponse"];
 
 const CREDENTIAL_INVALID = "errors.auth.credential_invalid";
+const KEY_REUSED = "errors.idempotency.key_reused";
 const NOT_FOUND = /^errors\.[a-z_]+\.not_found$/;
 
 function isErrorResponse(error: unknown): error is ErrorResponse {
@@ -31,4 +32,9 @@ export function isUnauthenticated(error: unknown): boolean {
 /** Whether the server said the resource does not exist (errors.<thing>.not_found). */
 export function isNotFound(error: unknown): boolean {
   return isErrorResponse(error) && NOT_FOUND.test(error.code);
+}
+
+/** Whether the Idempotency-Key was already used for another request (SEC-19). */
+export function isKeyReused(error: unknown): boolean {
+  return isErrorResponse(error) && error.code === KEY_REUSED;
 }

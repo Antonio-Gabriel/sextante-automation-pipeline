@@ -2,7 +2,8 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import { Copy } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { invoiceStatusView, resolutionLabel, verdictView } from "@/entities/invoice/invoice-labels";
+import { resolutionLabel } from "@/entities/invoice/entity-resolutions";
+import { invoiceStatusView, verdictView } from "@/entities/invoice/invoice-labels";
 import { useInvoiceView } from "@/entities/invoice/use-invoice-view";
 import { ResolutionForm } from "@/features/entity-resolution/resolution-form";
 import { ResultsTable } from "@/features/results/results-table";
@@ -15,7 +16,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui-kit/card";
 type Invoice = components["schemas"]["InvoiceResponse"];
 
 const route = getRouteApi("/_app/invoices/$invoiceId");
-const NONE = "results.noValue" as const;
+const ENTITY_TITLE_ID = "invoice-entity-title";
+
+function focusEntity() {
+  document.getElementById(ENTITY_TITLE_ID)?.focus();
+}
+const NONE = "common.none" as const;
 
 /** One invoice: extracted header, entity decision, resolution when ambiguous, lines. */
 export function InvoicePage() {
@@ -23,12 +29,12 @@ export function InvoicePage() {
   const navigate = route.useNavigate();
   const view = useInvoiceView(invoiceId);
   const invoice = view.invoice;
-  const title =
-    invoice?.invoice_number == null ? t("invoice.titleUnknown") : t("invoice.title", { number: invoice.invoice_number });
+  const filterResults = (jobId: string) =>
+    navigate({ to: "/jobs/$jobId/results", params: { jobId }, search: { invoice: invoiceId } });
 
   return (
     <Page
-      title={title}
+      title={view.title}
       description={invoice?.supplier_name ?? undefined}
       breadcrumb={
         invoice !== undefined && (
@@ -47,16 +53,26 @@ export function InvoicePage() {
             <HeaderCard invoice={invoice} />
             <EntityCard invoice={invoice} />
           </div>
-          {invoice.resolvable && <ResolutionForm invoiceId={invoiceId} />}
+          {invoice.resolvable && <ResolutionForm invoiceId={invoiceId} onResolved={focusEntity} />}
+          {view.recoding && (
+            <p role="status" className="text-sm text-brand-700">
+              {t("invoice.recoding")}
+            </p>
+          )}
           <section className="flex flex-col gap-3">
             <h2 className="text-base font-semibold">{t("invoice.lines")}</h2>
             {view.lines.length === 0 ? (
               <p className="text-sm text-slate-500">{t("invoice.noLines")}</p>
             ) : (
-              <ResultsTable
-                lines={view.lines}
-                onFilterInvoice={() => navigate({ to: "/jobs/$jobId/results", params: { jobId: invoice.job_id }, search: { invoice: invoiceId } })}
-              />
+              <ResultsTable lines={view.lines} onFilterInvoice={() => filterResults(invoice.job_id)} />
+            )}
+            {view.moreLines && (
+              <p role="status" className="text-sm text-amber-800">
+                {t("invoice.moreLines")}{" "}
+                <Link to="/jobs/$jobId/results" params={{ jobId: invoice.job_id }} search={{ invoice: invoiceId }} className="underline">
+                  {t("invoice.allLines")}
+                </Link>
+              </p>
             )}
           </section>
         </>
@@ -104,7 +120,9 @@ function EntityCard({ invoice }: { invoice: Invoice }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("invoice.entity")}</CardTitle>
+        <CardTitle id={ENTITY_TITLE_ID} tabIndex={-1} className="outline-none">
+          {t("invoice.entity")}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
@@ -116,7 +134,7 @@ function EntityCard({ invoice }: { invoice: Invoice }) {
           <Field label={t("invoice.sheet")}>{invoice.target_sheet ?? t(NONE)}</Field>
           {resolution !== null && (
             <Field label={t("invoice.resolution.title")}>
-              <p>{t("invoice.resolution.recorded", { verdict: t(resolutionLabel(resolution.verdict)) })}</p>
+              <p>{t("invoice.resolution.recorded", { verdict: t(resolutionLabel(resolution.verdict) ?? NONE) })}</p>
               <p className="text-slate-600">{resolution.note}</p>
             </Field>
           )}

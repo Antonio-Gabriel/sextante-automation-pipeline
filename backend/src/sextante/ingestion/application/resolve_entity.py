@@ -8,21 +8,17 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from sextante.ingestion.application.errors import InvoiceNotFoundError
 from sextante.ingestion.application.ports import EntityResolutionRepositoryPort
 from sextante.ingestion.application.records import (
     AMBIGUOUS_VERDICT,
     EntityResolutionRecord,
     InvoiceState,
 )
-from sextante.ingestion.application.reprocess_invoice import (
-    InvoiceNotFoundError,
-    ReprocessReceipt,
-)
+from sextante.ingestion.application.reprocess_invoice import ReprocessReceipt
 from sextante.platform.audit import AuditEventRepository
 from sextante.platform.clock import Clock, IdentifierGenerator
 from sextante.platform.errors import DomainError
-
-# The verdict the entity check left on an invoice it would not route (D-3.15).
 
 
 class InvoiceNotAmbiguousError(DomainError):

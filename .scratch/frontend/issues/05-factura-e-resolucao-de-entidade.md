@@ -16,3 +16,5 @@
 ## Comments
 
 Resolved on 2026-11-19 (CHG-0061), before ticket 04, which needs this endpoint to find a line's job and description.
+
+Review fixes on 2026-11-19 (CHG-0062): polling after resolution, more-lines notice, one list of resolutions checked against OpenAPI, renewed key after `key_reused`, accessible errors and focus, undescribed reasons kept visible.

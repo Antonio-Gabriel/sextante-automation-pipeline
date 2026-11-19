@@ -2,6 +2,8 @@ import { screen, waitFor } from "@testing-library/react";
 import { delay, http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 
+import { components as openapiComponents } from "../../../openapi.json";
+import { RESOLUTIONS } from "@/entities/invoice/entity-resolutions";
 import { invoiceView, refused, resultLine, sessionHandlers } from "@/test/api";
 import { renderApp } from "@/test/render-app";
 import { server } from "@/test/server";
@@ -22,13 +24,22 @@ interface Sent {
 }
 
 /** The invoice and its lines; the resolution answers with `answer` and records each send. */
-function withInvoice(invoice = AMBIGUOUS, answer: () => Promise<Response> | Response = () => accepted()) {
+function withInvoice(
+  invoice = AMBIGUOUS,
+  answer: () => Promise<Response> | Response = () => accepted(),
+  lineCount = 1,
+) {
   const sent: Sent[] = [];
   server.use(
     ...sessionHandlers(),
     http.get("/api/invoices/:invoiceId", () => HttpResponse.json(invoice)),
     http.get("/api/jobs/:jobId/results", () =>
-      HttpResponse.json({ lines: [resultLine(1)], limit: 100, offset: 0, limit_truncated: false }),
+      HttpResponse.json({
+        lines: Array.from({ length: lineCount }, (_, n) => resultLine(n + 1)),
+        limit: 100,
+        offset: 0,
+        limit_truncated: false,
+      }),
     ),
     http.post("/api/invoices/:invoiceId/entity-resolution", async ({ request }) => {
       sent.push({ key: request.headers.get("Idempotency-Key"), body: await request.json() });
@@ -89,6 +100,7 @@ describe("invoice screen and entity resolution (frontend ticket 05)", () => {
     await user.click(submit);
 
     expect(await screen.findByText(/Entidade resolvida/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Entidade" })).toHaveFocus());
     expect(sent).toHaveLength(1);
     expect(sent[0]?.body).toEqual({ resolution: "NO_MATCH", note: "Empresa irmã." });
     expect(sent[0]?.key).toMatch(/^[0-9a-f-]{36}$/);
@@ -131,5 +143,55 @@ describe("invoice screen and entity resolution (frontend ticket 05)", () => {
     renderApp("/invoices/missing");
 
     expect(await screen.findByText("Esta factura não existe.")).toBeInTheDocument();
+  });
+
+  it("hides the form once resolved, and shows the recorded resolution", async () => {
+    withInvoice(
+      invoiceView({
+        entity_verdict: "NO_MATCH",
+        target_sheet: "OUTLAYSP",
+        entity_resolution: { verdict: "NO_MATCH", note: "Empresa irmã.", resolved_at: "2026-11-19T09:00:00+00:00" },
+      }),
+    );
+    renderApp(PATH);
+
+    expect(await screen.findByText("Resolvida pelo revisor: Não é a AMT")).toBeInTheDocument();
+    expect(screen.getByText("Empresa irmã.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Resolver e codificar" })).not.toBeInTheDocument();
+  });
+
+  it("offers exactly the resolutions of the OpenAPI contract", () => {
+    const contract = openapiComponents.schemas.EntityResolutionRequest.properties.resolution.enum;
+    expect([...RESOLUTIONS]).toEqual(contract);
+  });
+
+  it("says when the invoice has more lines than the page shows", async () => {
+    withInvoice(invoiceView(), () => accepted(), 100);
+    renderApp(PATH);
+
+    expect(await screen.findByText(/mais linhas do que as mostradas/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver todas no ecrã de resultados" })).toHaveAttribute(
+      "href",
+      "/jobs/job-0001-aaaa/results?invoice=inv-1",
+    );
+  });
+
+  it("takes a new key after the server says the key was used for another request", async () => {
+    let first = true;
+    const sent = withInvoice(AMBIGUOUS, () => {
+      if (!first) return accepted();
+      first = false;
+      return refused("errors.idempotency.key_reused", "A chave Idempotency-Key já foi usada noutro pedido.", 422);
+    });
+    const { user } = renderApp(PATH);
+    await user.click(await screen.findByLabelText("É a AMT"));
+    await user.type(screen.getByLabelText("Nota (obrigatória)"), "Confirmado.");
+
+    await user.click(screen.getByRole("button", { name: "Resolver e codificar" }));
+    await screen.findByText("A chave Idempotency-Key já foi usada noutro pedido.");
+    await user.click(screen.getByRole("button", { name: "Resolver e codificar" }));
+
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]?.key).not.toBe(sent[0]?.key);
   });
 });

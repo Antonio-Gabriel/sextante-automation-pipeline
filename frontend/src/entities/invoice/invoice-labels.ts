@@ -1,6 +1,5 @@
 import { INVOICE_STATUSES } from "@/entities/job/job-status";
 import type { LabelledTone } from "@/entities/result/result-labels";
-import type { MessageKey } from "@/shared/i18n/t";
 
 // The entity verdicts of the server (REQ-ENT-004), as the screen shows them.
 const VERDICTS = {
@@ -41,14 +40,4 @@ export function invoiceStatusView(status: string): LabelledTone {
   const known = INVOICE_STATUSES.find((entry) => entry.status === status);
   if (known === undefined) return { label: "job.status.unknown", tone: "neutral" };
   return { label: known.label, tone: INVOICE_TONES[known.status] };
-}
-
-/**
- * The text of a resolution a reviewer recorded.
- *
- * Example:
- *   t(resolutionLabel("NO_MATCH")) // "Não é a AMT"
- */
-export function resolutionLabel(verdict: string): MessageKey {
-  return verdict === "MATCH" ? "invoice.resolution.MATCH" : "invoice.resolution.NO_MATCH";
 }

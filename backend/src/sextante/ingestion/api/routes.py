@@ -172,12 +172,17 @@ def _invoice_response(view: InvoiceView) -> InvoiceResponse:
         currency=header.currency,
         billed_entity_detected=header.billed_entity_detected,
         entity_verdict=view.state.entity_verdict,
-        entity_reason=coded_text("flags", view.state.entity_reason),
+        entity_reason=_entity_reason(view),
         entity_resolution=_resolution_response(view),
         resolvable=view.state.awaits_entity_resolution(),
         target_sheet=header.target_sheet,
         possible_duplicate_of=_earlier_response(view),
     )
+
+
+def _entity_reason(view: InvoiceView) -> FlagResponse | None:
+    # Once a reviewer resolved the entity, the resolution is the reason (D-3.15).
+    return None if view.resolution is not None else coded_text("flags", view.state.entity_reason)
 
 
 def _resolution_response(view: InvoiceView) -> EntityResolutionResponse | None:

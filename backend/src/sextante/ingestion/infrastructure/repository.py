@@ -297,7 +297,11 @@ class IngestionRepository:
     async def read_invoice_view(
         self, connection: AsyncConnection, invoice_id: str
     ) -> InvoiceView | None:
-        """Return the invoice's state, header, resolution and earlier copy, or None."""
+        """Return the invoice's state, header, resolution and earlier copy, or None.
+
+        Example:
+            view = await repository.read_invoice_view(connection, "3f2a...")
+        """
         row = (await connection.execute(_invoice_view_query(invoice_id))).first()
         return None if row is None else _invoice_view(invoice_id, row)
 
@@ -436,12 +440,19 @@ def _invoice_view_query(invoice_id: str) -> Select[tuple[object, ...]]:
 
 
 def _header_columns() -> tuple[Column[Any], ...]:
-    columns = INVOICE_HEADER_TABLE.c
-    names = (
-        "supplier_name supplier_nif invoice_number invoice_date currency billed_entities "
-        "target_sheet entity_verdict entity_reason possible_duplicate_of"
-    ).split()
-    return tuple(columns[name] for name in names)
+    header = INVOICE_HEADER_TABLE.c
+    return (
+        header.supplier_name,
+        header.supplier_nif,
+        header.invoice_number,
+        header.invoice_date,
+        header.currency,
+        header.billed_entities,
+        header.target_sheet,
+        header.entity_verdict,
+        header.entity_reason,
+        header.possible_duplicate_of,
+    )
 
 
 def _invoice_view(invoice_id: str, row: Row[tuple[object, ...]]) -> InvoiceView:

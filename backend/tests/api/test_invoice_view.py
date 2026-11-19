@@ -112,7 +112,7 @@ def test_an_ambiguous_invoice_says_why_and_can_be_resolved_once(
     assert before["entity_reason"]["code"] == "entity_similar_not_equal"
     assert before["entity_reason"]["message"].startswith("Entidade parecida com a AMT")
     assert before["target_sheet"] is None
-    assert after["resolvable"] is False
+    assert (after["resolvable"], after["entity_reason"]) == (False, None)
     assert after["entity_resolution"]["verdict"] == "NO_MATCH"
     assert after["entity_resolution"]["note"] == "Empresa irmã, não é a AMT."
     assert after["target_sheet"] == "OUTLAYSP"
