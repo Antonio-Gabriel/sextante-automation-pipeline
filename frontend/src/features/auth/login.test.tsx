@@ -24,15 +24,16 @@ describe("login by access token (frontend ticket 01)", () => {
     expect(router.state.location.pathname).toBe("/login");
   });
 
-  it("opens the application with the right token, showing the server and catalog", async () => {
+  it("opens the panel with the right token, showing the server and catalog", async () => {
     withApi();
     const { user } = renderApp("/login");
 
     await user.type(await screen.findByLabelText("Token de acesso"), TOKEN);
     await user.click(screen.getByRole("button", { name: "Entrar" }));
 
-    expect(await screen.findByText(CATALOG_DIGEST)).toBeInTheDocument();
+    expect(await screen.findByText(CATALOG_DIGEST.slice(0, 12))).toBeInTheDocument();
     expect(screen.getByText("Disponível")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Carregar facturas" })).toBeInTheDocument();
   });
 
   it("shows the server's message for a wrong token, and stays on login", async () => {
@@ -62,7 +63,7 @@ describe("login by access token (frontend ticket 01)", () => {
 
     await user.type(await screen.findByLabelText("Token de acesso"), TOKEN);
     await user.click(screen.getByRole("button", { name: "Entrar" }));
-    await screen.findByText(CATALOG_DIGEST);
+    await screen.findByText(CATALOG_DIGEST.slice(0, 12));
 
     const stored = [localStorage, sessionStorage].flatMap((storage) =>
       Object.keys(storage).map((key) => storage.getItem(key)),
@@ -78,7 +79,7 @@ describe("logout (frontend ticket 01)", () => {
     const rendered = renderApp("/login");
     await rendered.user.type(await screen.findByLabelText("Token de acesso"), TOKEN);
     await rendered.user.click(screen.getByRole("button", { name: "Entrar" }));
-    await screen.findByText(CATALOG_DIGEST);
+    await screen.findByText(CATALOG_DIGEST.slice(0, 12));
     return { api, ...rendered };
   }
 
@@ -116,7 +117,7 @@ describe("logout the server does not confirm (frontend ticket 01)", () => {
     const { user, router } = renderApp("/login");
     await user.type(await screen.findByLabelText("Token de acesso"), TOKEN);
     await user.click(screen.getByRole("button", { name: "Entrar" }));
-    await screen.findByText(CATALOG_DIGEST);
+    await screen.findByText(CATALOG_DIGEST.slice(0, 12));
 
     await user.click(screen.getByRole("button", { name: "Sair" }));
 

@@ -63,6 +63,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                         └── CHG-0054  fix       Correcções da revisão da extracção isolada
                                                                                                             └── CHG-0055  feat      Esqueleto do frontend e login por token
                                                                                                                 └── CHG-0056  fix       Correcções da revisão do ticket 01 do frontend
+                                                                                                                    └── CHG-0057  feat      Painel AMT e carregamento com progresso
 ```
 
 ## Regras
@@ -127,6 +128,26 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0057 · Painel AMT e carregamento com progresso
+
+- **Data:** 2026-11-19
+- **Tipo:** feat
+- **Pai:** CHG-0056
+- **Estado:** activa
+- **Requisitos:** REQ-ING-001, REQ-ING-007, REQ-PLT-006, SEC-15
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `frontend/src/` (painel, carregamento, trabalho, tema, `ui-kit`), `frontend/scripts/generate-api-types.mjs`, `frontend/package.json`, `CLAUDE.md` (L-07), `README.md`, ticket 02 do frontend
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 15 testes do frontend com a API simulada; `tsc`, ESLint, licenças (`lucide-react` ISC, `zustand` MIT).
+
+**Painel.** Barra lateral com o logo da AMT, a navegação, os trabalhos recentes deste navegador (só identificadores, em `localStorage`), o estado do servidor, a versão do catálogo e a saída. Paleta a partir do azul do logo (`#00137c`), com verde, âmbar e vermelho só para estados. O ecrã de entrada passa a mostrar o logo.
+
+**Carregamento.** Arrastar ou escolher PDF, ver a lista, carregar. O ecrã do trabalho sonda com intervalo crescente até o trabalho terminar e mostra as facturas por estado, o progresso e os tokens; ficheiros já carregados mostram o trabalho onde estão. Os tipos da API passam a ser gerados por um script que dá `Blob` aos campos binários, para enviar ficheiros sem asserções de tipo.
+
+**CLAUDE.md.** A linha de L-07 passa a registar o token de acesso e a sessão, por decisão do responsável.
 
 ### CHG-0056 · Correcções da revisão do ticket 01 do frontend
 

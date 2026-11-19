@@ -39,3 +39,33 @@ export function apiWithoutSession(rightToken: string) {
   ];
   return { handlers, calls };
 }
+
+/** A browser already holding a session, with the server up. */
+export function sessionHandlers() {
+  return [
+    http.get("/api/session", () => HttpResponse.json({ authenticated: true })),
+    http.get("/api/health", () =>
+      HttpResponse.json({ status: "ok", catalog_digest: CATALOG_DIGEST }),
+    ),
+  ];
+}
+
+const NO_INVOICES = {} as const;
+
+/** A job progress answer, shaped like JobProgressResponse. */
+export function jobProgress(
+  jobId: string,
+  status: string,
+  counts: Record<string, number> = NO_INVOICES,
+) {
+  const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+  return {
+    job_id: jobId,
+    status,
+    invoice_counts: counts,
+    invoice_total: total,
+    invoice_tokens: {},
+    input_tokens: 12500,
+    output_tokens: 80,
+  };
+}

@@ -6,10 +6,14 @@ import {
   redirect,
   type RouterHistory,
 } from "@tanstack/react-router";
+import { z } from "zod";
 
+import { AppShell } from "@/app-shell";
 import { sessionQuery } from "@/entities/session/session-query";
-import { HomePage } from "@/pages/home-page";
+import { JobPage } from "@/pages/job-page";
 import { LoginPage } from "@/pages/login-page";
+import { ResultsPage } from "@/pages/results-page";
+import { UploadPage } from "@/pages/upload-page";
 import { isUnauthenticated } from "@/shared/api/errors";
 
 import { RootLayout } from "./root-layout";
@@ -26,10 +30,10 @@ const loginRoute = createRoute({
   component: LoginPage,
 });
 
-// The server decides whether there is a session (SEC-06); the page only asks.
-const homeRoute = createRoute({
+// Every page but login: the server decides whether there is a session (SEC-06).
+const appRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/",
+  id: "_app",
   beforeLoad: async ({ context }) => {
     try {
       await context.queryClient.ensureQueryData(sessionQuery);
@@ -40,10 +44,35 @@ const homeRoute = createRoute({
       throw error;
     }
   },
-  component: HomePage,
+  component: AppShell,
 });
 
-const routeTree = rootRoute.addChildren([loginRoute, homeRoute]);
+const uploadRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/",
+  component: UploadPage,
+});
+
+// Jobs whose files were already uploaded; an invalid value falls back to none.
+const jobSearch = z.object({ already: z.array(z.string()).optional().catch(undefined) });
+
+const jobRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/jobs/$jobId",
+  validateSearch: jobSearch,
+  component: JobPage,
+});
+
+const resultsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/jobs/$jobId/results",
+  component: ResultsPage,
+});
+
+const routeTree = rootRoute.addChildren([
+  loginRoute,
+  appRoute.addChildren([uploadRoute, jobRoute, resultsRoute]),
+]);
 
 export function createAppRouter(queryClient: QueryClient, history?: RouterHistory) {
   return createRouter({

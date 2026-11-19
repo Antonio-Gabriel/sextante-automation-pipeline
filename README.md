@@ -74,6 +74,12 @@ The token opens a session kept in a cookie the page cannot read (`HttpOnly`, `Sa
 
 The backend address defaults to `http://127.0.0.1:8000`; set `SEXTANTE_BACKEND_URL` before `npm run dev` to change it. Browsers accept the `Secure` cookie on `http://127.0.0.1` and `http://localhost`; if yours refuses it, set `SEXTANTE_SESSION_COOKIE_SECURE=false` for local use only.
 
+### Screens
+
+The panel follows the AMT identity: the logo in the sidebar and a palette built from its navy (`#00137c`), with green, amber and red kept for states. The sidebar holds the navigation, the jobs this browser opened recently (identifiers only, kept in the browser), the server's state, the catalog version and **Sair**.
+
+**Upload.** Drag PDF files onto **Carregar facturas**, or choose them, check the list and press **Carregar**. The server checks the files; a refusal (too large, too many, wrong type) shows the server's message in Portuguese and nothing is sent. Once accepted, the job screen follows the work, polling less and less often and stopping when the job ends: invoices queued, coded, to resolve (ambiguous entity), refused and failed, and the tokens spent. When files had already been uploaded the screen says so: either this is the job where they are, or the new job holds only the new files and the earlier jobs are linked. **Ver resultados** opens the results of a finished job.
+
 The API types of the frontend are generated from the backend's OpenAPI document, never written by hand. After changing the API, run `make openapi` in `backend/`, then `npm run api:types` in `frontend/`; `make test` fails while `frontend/openapi.json` is stale.
 
 The application refuses to start, with a message naming the problem, in either of these cases:
