@@ -173,7 +173,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0093
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** pendente
+- **Commit:** `0eb0c6a`
 - **Migração:** nenhuma
 - **Ficheiros:** `scripts/docs/document.css`, `docs/sextante-documentacao.pt.pdf`, `docs/sextante-documentation.en.pdf`
 - **Reversibilidade:** total
