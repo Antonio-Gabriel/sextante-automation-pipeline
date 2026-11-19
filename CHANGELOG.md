@@ -152,7 +152,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0072
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-008, REQ-PLT-005, REQ-PLT-006
-- **Commit:** pendente
+- **Commit:** `9a915a1`
 - **Migração:** nenhuma
 - **Ficheiros:** `compose.yaml`, `README.md`, `frontend/src/shared/layout/route-error.tsx` (novo), `frontend/src/shared/layout/route-error.test.tsx` (novo), `frontend/src/router.tsx`, `frontend/src/shared/i18n/{pt,en}.ts`
 - **Reversibilidade:** total
