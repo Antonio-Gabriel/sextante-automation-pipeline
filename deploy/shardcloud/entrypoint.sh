@@ -8,6 +8,16 @@
 # privileges.
 set -euo pipefail
 
+# Set here, not only in the image: a platform may start the container without the image's
+# environment, and the code is never under the working directory it may mount over.
+export PATH="/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PYTHONPATH="/opt/sextante/src"
+export PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+export SEXTANTE_CATALOG_PATH="${SEXTANTE_CATALOG_PATH:-/opt/sextante/config/catalog.xlsx}"
+export SEXTANTE_ENTITY_DENYLIST_PATH="${SEXTANTE_ENTITY_DENYLIST_PATH:-/opt/sextante/config/entity_denylist.yaml}"
+export SEXTANTE_API_DOCS_ENABLED="${SEXTANTE_API_DOCS_ENABLED:-false}"
+export SEXTANTE_RELEASE_VERSION="${SEXTANTE_RELEASE_VERSION:-$(cat /opt/sextante/VERSION)}"
+
 # The database and the invoice files are readable by their owner only (SEC-04).
 umask 077
 data="${SEXTANTE_DATA_DIR:-/data}"

@@ -263,3 +263,19 @@ def test_the_context_carries_its_version_because_shardcloud_passes_no_build_argu
 
     assert "ARG SEXTANTE_RELEASE_VERSION=1.2.0\n" in (tmp_path / "c" / "Dockerfile").read_text()
     assert refused.returncode != 0
+
+
+@pytest.mark.requirement("D-3.27", "REQ-PLT-008")
+def test_the_shardcloud_image_keeps_nothing_it_needs_in_its_working_directory() -> None:
+    """ShardCloud mounts its storage over the working directory: the code lives elsewhere,
+    the working directory is the data folder, and the entrypoint sets the paths itself."""
+    dockerfile = (SHARDCLOUD / "Dockerfile").read_text()
+    entrypoint = (SHARDCLOUD / "entrypoint.sh").read_text()
+    workdirs = re.findall(r"^WORKDIR\s+(\S+)", dockerfile, flags=re.MULTILINE)
+    runtime = dockerfile.split("FROM ${PYTHON_IMAGE}\n", 1)[1]
+    targets = re.findall(r"^COPY\s+(?:--from=\S+\s+)?\S+\s+(\S+)", runtime, flags=re.MULTILINE)
+
+    assert workdirs[-1] == "/data"
+    assert targets and not any(target.startswith("/data") for target in targets), targets
+    assert 'export PYTHONPATH="/opt/sextante/src"' in entrypoint
+    assert "/opt/sextante/VERSION" in entrypoint

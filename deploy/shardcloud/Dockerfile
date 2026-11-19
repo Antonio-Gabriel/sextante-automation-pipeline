@@ -39,16 +39,19 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* /etc/nginx/sites-enabled /etc/nginx/conf.d \
     && groupadd --system --gid 10001 sextante \
     && useradd --system --uid 10001 --gid sextante --no-create-home --shell /usr/sbin/nologin sextante \
-    && mkdir -p /data /config \
+    && mkdir -p /data \
     && chmod 1777 /data
 
+# Everything the app needs lives in /opt, away from the working directory: ShardCloud
+# mounts its persistent storage over the working directory, hiding what the image had
+# there (the code under /app/src was gone: "No module named 'sextante'").
 COPY --from=api /opt/venv /opt/venv
-COPY --from=frontend /build/dist /usr/share/sextante/www
-WORKDIR /app
-COPY backend/src ./src
-COPY backend/migrations ./migrations
-COPY sources/catalog.xlsx /config/catalog.xlsx
-COPY config/entity_denylist.yaml /config/entity_denylist.yaml
+COPY --from=frontend /build/dist /opt/sextante/www
+COPY backend/src /opt/sextante/src
+COPY backend/migrations /opt/sextante/migrations
+COPY sources/catalog.xlsx /opt/sextante/config/catalog.xlsx
+COPY config/entity_denylist.yaml /opt/sextante/config/entity_denylist.yaml
+RUN printf '%s\n' "$SEXTANTE_RELEASE_VERSION" > /opt/sextante/VERSION
 COPY deploy/shardcloud/nginx.conf /etc/nginx/nginx.conf
 COPY frontend/nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY deploy/shardcloud/entrypoint.sh /usr/local/bin/sextante-entrypoint
@@ -59,18 +62,22 @@ COPY deploy/shardcloud/entrypoint.sh /usr/local/bin/sextante-entrypoint
 # uploads and the temporary files from it. /data has no VOLUME: ShardCloud's builder
 # dropped the folder, and it is writable by any user, since ShardCloud does not run the
 # container as root; umask 077 keeps each file private to its owner.
+# The entrypoint sets the paths again itself: the platform may not pass these on.
 ENV PATH=/opt/venv/bin:$PATH \
-    PYTHONPATH=/app/src \
+    PYTHONPATH=/opt/sextante/src \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    SEXTANTE_CATALOG_PATH=/config/catalog.xlsx \
-    SEXTANTE_ENTITY_DENYLIST_PATH=/config/entity_denylist.yaml \
+    SEXTANTE_CATALOG_PATH=/opt/sextante/config/catalog.xlsx \
+    SEXTANTE_ENTITY_DENYLIST_PATH=/opt/sextante/config/entity_denylist.yaml \
     SEXTANTE_API_DOCS_ENABLED=false \
     SEXTANTE_RELEASE_VERSION=${SEXTANTE_RELEASE_VERSION}
 
 LABEL org.opencontainers.image.title="sextante" \
       org.opencontainers.image.version="${SEXTANTE_RELEASE_VERSION}"
 
+# The working directory is the data folder: where ShardCloud mounts its persistent
+# storage, the database and the invoices land in it.
+WORKDIR /data
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1/api/health', timeout=2)"]

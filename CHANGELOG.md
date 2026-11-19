@@ -96,6 +96,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                                                             └── CHG-0087  infra     O release acaba no zip; sem deploy automático na ShardCloud
                                                                                                                                                                                                                                                 └── CHG-0088  fix       Imagem da ShardCloud a correr com qualquer utilizador
                                                                                                                                                                                                                                                     └── CHG-0089  fix       Imagem da ShardCloud como root sem capacidades
+                                                                                                                                                                                                                                                        └── CHG-0090  fix       Código fora do directório de trabalho da imagem da ShardCloud
 ```
 
 ## Regras
@@ -160,6 +161,36 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0090 · Código fora do directório de trabalho da imagem da ShardCloud
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0089
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `deploy/shardcloud/Dockerfile`, `deploy/shardcloud/entrypoint.sh`, `deploy/shardcloud/nginx.conf`, `backend/tests/deploy/test_container_config.py`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:**
+  - `tests/deploy` com 32 testes.
+  - Imagem construída sem argumentos e corrida de cinco formas. Em todas, o *health check* deu a versão e as páginas responderam 200:
+    - como na ShardCloud (root sem capacidades excepto `CHOWN`, volume vazio montado no directório de trabalho, `PATH`, `PYTHONPATH`, versão e caminhos da imagem apagados);
+    - o mesmo volume outra vez, para confirmar que os dados ficam;
+    - root com capacidades;
+    - utilizador 4242;
+    - root sem nenhuma capacidade.
+
+**Relato do responsável.** Com CHG-0089 a app parou com `ModuleNotFoundError: No module named 'sextante'`. O código estava em `/app/src`, o directório de trabalho da imagem. A explicação mais provável, que junta este erro ao da pasta `/data`, é que a ShardCloud monta o seu armazenamento persistente (a aba Files) sobre o directório de trabalho e esconde o que a imagem lá tinha. A documentação da ShardCloud não o diz.
+
+**Correcções.**
+- **Código fora do directório de trabalho.** Tudo o que a app precisa vive em `/opt`: código, migrações (`platform/database.py` encontra-as em `/opt/sextante/migrations`), páginas, catálogo e lista de exclusão.
+- **`WORKDIR /data`.** Onde a ShardCloud montar o seu armazenamento, a base de dados e as facturas ficam nele e sobrevivem a novos deploys.
+- **Caminhos no *entrypoint*.** O *entrypoint* define ele próprio `PATH`, `PYTHONPATH`, os caminhos do catálogo e da lista de exclusão e o desligar da documentação da API. Não depende do `ENV` da imagem.
+- **Versão em ficheiro.** A versão fica também em `/opt/sextante/VERSION`.
+- **Teste novo:** nada é copiado para o directório de trabalho, e o *entrypoint* define os caminhos.
 
 ### CHG-0089 · Imagem da ShardCloud como root sem capacidades
 
