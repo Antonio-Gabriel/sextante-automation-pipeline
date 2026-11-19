@@ -70,6 +70,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                     └── CHG-0061  feat      Ecrã da factura e resolução de entidade
                                                                                                                                         └── CHG-0062  fix       Correcções da revisão do ticket 05 do frontend
                                                                                                                                             └── CHG-0063  feat      Revisão de linha
+                                                                                                                                                └── CHG-0064  feat      Exportação e reprocessamento na interface
 ```
 
 ## Regras
@@ -134,6 +135,24 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0064 · Exportação e reprocessamento na interface
+
+- **Data:** 2026-11-19
+- **Tipo:** feat
+- **Pai:** CHG-0063
+- **Estado:** activa
+- **Requisitos:** REQ-EXP-001, NFR-REL-002, SEC-19, REQ-PLT-006
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `frontend/src/features/export/*`, `features/reprocess/*`, `pages/results-page.tsx`, `pages/invoice-page.tsx`, `shared/i18n/pt.ts`, `vitest.setup.ts`, testes; `README.md`, ticket 06 do frontend
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 57 testes do frontend; `tsc`, ESLint, licenças. Backend sem alterações (379 testes e o `xfail` estrito).
+
+Botões de exportação em CSV e XLSX no ecrã de resultados: o ficheiro vem do servidor pelo cliente único, com a sessão, e é guardado com o nome que o servidor dá; uma recusa mostra a mensagem e não guarda nada. Reprocessamento no ecrã da factura, só para facturas com falha ou codificadas, atrás de uma confirmação acessível (`alertdialog`, foco na confirmação, Escape cancela) que avisa que a codificação existente fica substituída e que as linhas revistas voltam à revisão; `Idempotency-Key` feita antes do envio.
+
+**Dependência recusada.** O diálogo do Radix (`@radix-ui/react-alert-dialog`) traz o `tslib`, com licença 0BSD, fora da lista de NFR-LIC-001. Sem decisão registada não entra: a confirmação é um painel próprio, sem dependências.
 
 ### CHG-0063 · Revisão de linha
 

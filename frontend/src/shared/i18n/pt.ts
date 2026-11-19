@@ -225,6 +225,21 @@ export const pt = {
   common: {
     none: "—",
   },
+  export: {
+    csv: "Exportar CSV",
+    xlsx: "Exportar XLSX",
+    exporting: "A exportar…",
+    done: "Exportação descarregada.",
+  },
+  reprocess: {
+    action: "Reprocessar a factura",
+    confirmTitle: "Reprocessar esta factura?",
+    confirmBody: "A factura volta a ser codificada a partir do texto guardado. A codificação existente fica substituída e guardada no histórico, e as linhas já revistas voltam à revisão.",
+    confirm: "Sim, reprocessar",
+    cancel: "Cancelar",
+    sending: "A enviar…",
+    done: "A factura voltou à fila e vai ser codificada de novo.",
+  },
   units: { B: "B", KB: "KB", MB: "MB", GB: "GB", size: "{value} {unit}" },
   values: {
     yes: "Sim",

@@ -3,6 +3,7 @@ import { TriangleAlert } from "lucide-react";
 
 import { shortJobId } from "@/entities/job/job-status";
 import { useResultsView, type ResultsState } from "@/entities/result/use-results-view";
+import { ExportButtons } from "@/features/export/export-buttons";
 import { ResultsFilters } from "@/features/results/results-filters";
 import { ResultsPagination } from "@/features/results/results-pagination";
 import { ResultsTable } from "@/features/results/results-table";
@@ -27,7 +28,11 @@ export function ResultsPage() {
   const emptyText = EMPTY_TEXT[view.state];
 
   return (
-    <Page title={t("results.title", { id: shortJobId(jobId) })} description={t("results.description")}>
+    <Page
+      title={t("results.title", { id: shortJobId(jobId) })}
+      description={t("results.description")}
+      actions={<ExportButtons jobId={jobId} />}
+    >
       <ResultsFilters jobId={jobId} filters={filters} invoiceLabel={view.invoiceNumber} />
       {view.range?.truncated === true && (
         <p role="status" className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">

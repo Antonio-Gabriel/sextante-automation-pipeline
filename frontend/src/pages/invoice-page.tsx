@@ -6,6 +6,8 @@ import { resolutionLabel } from "@/entities/invoice/entity-resolutions";
 import { invoiceStatusView, verdictView } from "@/entities/invoice/invoice-labels";
 import { useInvoiceView } from "@/entities/invoice/use-invoice-view";
 import { ResolutionForm } from "@/features/entity-resolution/resolution-form";
+import { isReprocessable } from "@/features/reprocess/use-reprocess";
+import { ReprocessControl } from "@/features/reprocess/reprocess-control";
 import { ResultsTable } from "@/features/results/results-table";
 import type { components } from "@/shared/api/schema";
 import { Page } from "@/shared/layout/page";
@@ -53,6 +55,7 @@ export function InvoicePage() {
             <HeaderCard invoice={invoice} />
             <EntityCard invoice={invoice} />
           </div>
+          {isReprocessable(invoice.status) && <ReprocessControl invoiceId={invoiceId} />}
           {invoice.resolvable && <ResolutionForm invoiceId={invoiceId} onResolved={focusEntity} />}
           {view.recoding && (
             <p role="status" className="text-sm text-brand-700">

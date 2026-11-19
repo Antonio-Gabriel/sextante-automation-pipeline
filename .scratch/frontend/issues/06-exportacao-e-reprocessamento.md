@@ -4,10 +4,14 @@
 
 **Blocked by:** 03 (Ecrã de resultados com filtros)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Botões de exportação em CSV e XLSX, que descarregam o ficheiro do servidor com a sessão da pessoa
-- [ ] O reprocessamento só é oferecido a facturas com falha ou codificadas, e pede confirmação com o aviso sobre as revisões
-- [ ] O pedido de reprocessamento gera a sua `Idempotency-Key` antes do primeiro envio
-- [ ] O `README.md` descreve a exportação e o reprocessamento pela interface
-- [ ] Testes do componente para a exportação, a confirmação e a recusa de uma factura que não pode ser reprocessada
+- [x] Botões de exportação em CSV e XLSX, que descarregam o ficheiro do servidor com a sessão da pessoa
+- [x] O reprocessamento só é oferecido a facturas com falha ou codificadas, e pede confirmação com o aviso sobre as revisões
+- [x] O pedido de reprocessamento gera a sua `Idempotency-Key` antes do primeiro envio
+- [x] O `README.md` descreve a exportação e o reprocessamento pela interface
+- [x] Testes do componente para a exportação, a confirmação e a recusa de uma factura que não pode ser reprocessada
+
+## Comments
+
+Resolved on 2026-11-19 (CHG-0064). The Radix alert dialog was not added: it brings `tslib` (0BSD), outside NFR-LIC-001.
