@@ -2,6 +2,7 @@ import { Link, Outlet } from "@tanstack/react-router";
 import { History, Upload } from "lucide-react";
 
 import logo from "@/assets/amt-logo.png";
+import { shortJobId } from "@/entities/job/job-status";
 import { useRecentJobs } from "@/entities/job/recent-jobs";
 import { ServerStatus } from "@/entities/health/server-status";
 import { LogoutButton } from "@/features/auth/logout-button";
@@ -57,7 +58,7 @@ function RecentJobs() {
             className={`${NAV_LINK} font-mono text-xs`}
             activeProps={{ className: NAV_ACTIVE }}
           >
-            {jobId.slice(0, 8)}
+            {shortJobId(jobId)}
           </Link>
         ))
       )}

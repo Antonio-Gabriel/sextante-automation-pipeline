@@ -64,6 +64,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                             └── CHG-0055  feat      Esqueleto do frontend e login por token
                                                                                                                 └── CHG-0056  fix       Correcções da revisão do ticket 01 do frontend
                                                                                                                     └── CHG-0057  feat      Painel AMT e carregamento com progresso
+                                                                                                                        └── CHG-0058  fix       Correcções da revisão do ticket 02 do frontend
 ```
 
 ## Regras
@@ -128,6 +129,24 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0058 · Correcções da revisão do ticket 02 do frontend
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0057
+- **Estado:** activa
+- **Requisitos:** REQ-ING-007, REQ-PLT-006
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `frontend/src/entities/job/*`, `entities/health/*`, `features/upload/*`, `pages/job-page.tsx`, `pages/upload-page.tsx`, `pages/results-page.tsx`, `app-shell.tsx`, `shared/i18n/*`, `shared/format.ts`, `shared/api/errors.ts`, `shared/ui-kit/*`, testes; `README.md`, `docs/04-padroes-de-codigo.md` (§8.5)
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 17 testes do frontend; `tsc`, ESLint.
+
+**Comportamento.** Um envio só com ficheiros já carregados, em vários trabalhos, diz que nenhum trabalho novo foi criado e liga os outros. A sondagem cresce também com as falhas e pára quando o trabalho não existe, que o ecrã diz. Abrir um trabalho junta-o aos recentes. O estado e o progresso são anunciados (`aria-live`), a barra tem valores válidos com zero facturas, e a zona de arrastar não pisca nem acende quando desactivada.
+
+**Normas.** O texto composto passa ao catálogo, com marcadores (`t(chave, valores)`), incluindo as unidades de tamanho. A decisão sai dos componentes para `useJobView`; a barra de progresso passa a `entities/job`. Identificador curto, formato de número e chave de ficheiro num só sítio; estados de saúde num só registo; estados de factura tipados. Comentários com exemplo nas funções públicas novas. Saem a chave e a variante de botão sem uso. §8.5 passa a dizer que a sondagem pára quando o trabalho termina ou não existe.
 
 ### CHG-0057 · Painel AMT e carregamento com progresso
 

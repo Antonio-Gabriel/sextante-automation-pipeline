@@ -1,7 +1,15 @@
+import { formatNumber } from "@/shared/format";
+import { t } from "@/shared/i18n/t";
+
 const UNITS = ["B", "KB", "MB", "GB"] as const;
 const STEP = 1024;
 
-/** 1536 → "1,5 KB", in the Portuguese number format. */
+/**
+ * A file size with its unit from the catalog.
+ *
+ * Example:
+ *   formatBytes(1536) // "1,5 KB"
+ */
 export function formatBytes(bytes: number): string {
   let value = bytes;
   let unit = 0;
@@ -9,6 +17,6 @@ export function formatBytes(bytes: number): string {
     value /= STEP;
     unit += 1;
   }
-  const digits = unit === 0 ? 0 : 1;
-  return `${value.toLocaleString("pt-PT", { maximumFractionDigits: digits })} ${UNITS[unit] ?? ""}`;
+  const name = UNITS[unit] ?? "B";
+  return t("units.size", { value: formatNumber(value, unit === 0 ? 0 : 1), unit: t(`units.${name}`) });
 }

@@ -9,6 +9,7 @@ import { t } from "@/shared/i18n/t";
 import { Button } from "@/shared/ui-kit/button";
 import { Card, CardContent } from "@/shared/ui-kit/card";
 
+/** Choose or drop PDF invoices and send them; the job screen follows the work. */
 export function UploadPage() {
   const selection = useFileSelection();
   const { upload, isPending } = useUpload();
@@ -28,7 +29,7 @@ export function UploadPage() {
                 </Button>
                 <Button disabled={isPending} onClick={() => upload(selection.files)}>
                   <Upload />
-                  {isPending ? t("upload.submitting") : `${t("upload.submit")} (${selection.files.length})`}
+                  {isPending ? t("upload.submitting") : t("upload.submit", { count: selection.files.length })}
                 </Button>
               </div>
             </>

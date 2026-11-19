@@ -4,6 +4,7 @@ import { t } from "@/shared/i18n/t";
 import { Button } from "@/shared/ui-kit/button";
 
 import { formatBytes } from "./format-bytes";
+import { fileKey } from "./use-file-selection";
 
 interface SelectedFilesProps {
   files: readonly File[];
@@ -11,12 +12,13 @@ interface SelectedFilesProps {
   disabled: boolean;
 }
 
+/** The files about to be sent, each with its size and a way to take it out. */
 export function SelectedFiles({ files, onRemove, disabled }: SelectedFilesProps) {
   return (
     <ul aria-label={t("upload.selected")} className="flex flex-col gap-2">
       {files.map((file) => (
         <li
-          key={`${file.name}:${file.size}`}
+          key={fileKey(file)}
           className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2"
         >
           <FileText className="size-5 shrink-0 text-red-600" aria-hidden />
@@ -26,7 +28,7 @@ export function SelectedFiles({ files, onRemove, disabled }: SelectedFilesProps)
             variant="ghost"
             size="icon"
             disabled={disabled}
-            aria-label={`${t("upload.remove")} ${file.name}`}
+            aria-label={t("upload.remove", { name: file.name })}
             onClick={() => onRemove(file)}
           >
             <X />

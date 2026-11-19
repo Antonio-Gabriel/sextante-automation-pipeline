@@ -10,7 +10,12 @@ interface FileDropzoneProps {
   disabled: boolean;
 }
 
-/** Drop files here, or pick them; the server is the one that checks them. */
+/**
+ * Drop files here, or pick them; the server is the one that checks them.
+ *
+ * Example:
+ *   <FileDropzone onFiles={selection.add} disabled={isPending} />
+ */
 export function FileDropzone({ onFiles, disabled }: FileDropzoneProps) {
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -24,9 +29,13 @@ export function FileDropzone({ onFiles, disabled }: FileDropzoneProps) {
     <div
       onDragOver={(event) => {
         event.preventDefault();
-        setDragging(true);
+        setDragging(!disabled);
       }}
-      onDragLeave={() => setDragging(false)}
+      onDragLeave={(event) => {
+        // Moving over a child also fires dragleave: only leaving the zone itself counts.
+        const into = event.relatedTarget;
+        if (!(into instanceof Node && event.currentTarget.contains(into))) setDragging(false);
+      }}
       onDrop={onDrop}
       className={cn(
         "flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center transition-colors",

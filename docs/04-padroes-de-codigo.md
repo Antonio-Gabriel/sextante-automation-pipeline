@@ -478,7 +478,7 @@ export const encodingKeys = {
 ```
 
 * Mutações declaram `Idempotency-Key` e invalidam as chaves afectadas em `onSuccess`.
-* O acompanhamento do progresso de um trabalho usa sondagem com intervalo crescente, e para quando o trabalho sai de `running`. Sondar indefinidamente um trabalho terminado é desperdício visível em qualquer registo de acesso.
+* O acompanhamento do progresso de um trabalho usa sondagem com intervalo crescente, e para quando o trabalho termina (`completed` ou `failed`) ou não existe. Um trabalho em fila ou à espera de quota do modelo (`waiting_model`) ainda muda, e continua a ser sondado. Sondar indefinidamente um trabalho terminado é desperdício visível em qualquer registo de acesso.
 * Erros apresentados por **Sonner**, com a mensagem em Português vinda do contrato de erro do servidor. Nunca `alert()`.
 
 ### 8.6 Texto da interface

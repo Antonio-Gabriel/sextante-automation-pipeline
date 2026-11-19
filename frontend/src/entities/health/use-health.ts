@@ -1,23 +1,23 @@
 import { $api } from "@/shared/api/client";
 import type { MessageKey } from "@/shared/i18n/t";
 
-export type HealthState = "loading" | "up" | "down";
+// One record per state: its text and the colour of its dot.
+const HEALTH_STATES = {
+  loading: { label: "health.loading", dot: "bg-slate-300" },
+  up: { label: "health.up", dot: "bg-emerald-500" },
+  down: { label: "health.down", dot: "bg-red-500" },
+} as const satisfies Record<string, { label: MessageKey; dot: string }>;
 
-export interface ServerHealth {
-  state: HealthState;
-  label: MessageKey;
-  catalogDigest: string | undefined;
-}
+type HealthState = keyof typeof HEALTH_STATES;
 
-const LABELS: Record<HealthState, MessageKey> = {
-  loading: "health.loading",
-  up: "health.up",
-  down: "health.down",
-};
-
-/** Whether the server is up, and which catalog it serves. */
-export function useHealth(): ServerHealth {
+/**
+ * Whether the server is up, and which catalog it serves.
+ *
+ * Example:
+ *   const { label, dot, catalogDigest } = useHealth();
+ */
+export function useHealth() {
   const health = $api.useQuery("get", "/api/health");
   const state: HealthState = health.isPending ? "loading" : health.data ? "up" : "down";
-  return { state, label: LABELS[state], catalogDigest: health.data?.catalog_digest };
+  return { ...HEALTH_STATES[state], catalogDigest: health.data?.catalog_digest };
 }

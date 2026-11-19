@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { pollingInterval } from "@/entities/job/use-job-progress";
 import { jobProgress, refused, sessionHandlers } from "@/test/api";
@@ -49,6 +49,10 @@ const receipt = (jobId: string, existing: string[] = []) => ({
   existing_job_ids: existing,
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("upload with progress (frontend ticket 02)", () => {
   it("sends the chosen PDFs and follows the job until it finishes, then leads to results", async () => {
     const api = withUpload(receipt(JOB), [
@@ -83,7 +87,7 @@ describe("upload with progress (frontend ticket 02)", () => {
     withUpload(receipt(JOB, [JOB]), [jobProgress(JOB, "completed", { encoded: 2 })]);
     await uploadFiles("a.pdf");
 
-    expect(await screen.findByText(/já tinham sido carregados. Este é o trabalho/)).toBeInTheDocument();
+    expect(await screen.findByText(/nenhum trabalho novo foi criado/)).toBeInTheDocument();
   });
 
   it("links to the other jobs when only some files were already uploaded", async () => {
@@ -93,15 +97,43 @@ describe("upload with progress (frontend ticket 02)", () => {
     expect(await screen.findByRole("link", { name: "job-0000" })).toHaveAttribute("href", "/jobs/job-0000-old1");
   });
 
+  it("says no job was created when every file was already in earlier jobs", async () => {
+    withUpload(receipt(JOB, [JOB, "job-0000-old1"]), [jobProgress(JOB, "completed", { encoded: 2 })]);
+    await uploadFiles("a.pdf", "b.pdf");
+
+    expect(await screen.findByText(/nenhum trabalho novo foi criado/)).toBeInTheDocument();
+    expect(screen.getByText("Outros ficheiros deste envio estão em:")).toBeInTheDocument();
+    expect(screen.queryByText(/não foram repetidos/)).not.toBeInTheDocument();
+  });
+
   it("stops polling once the job is finished", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const api = withUpload(receipt(JOB), [jobProgress(JOB, "completed", { encoded: 2 })]);
     await uploadFiles("a.pdf");
     await screen.findByText("Concluído");
     const after = api.polls();
 
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    await vi.advanceTimersByTimeAsync(60_000);
 
     expect(api.polls()).toBe(after);
+  });
+
+  it("stops polling a job that does not exist, and says so", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let polls = 0;
+    server.use(
+      ...sessionHandlers(),
+      http.get("/api/jobs/:jobId", () => {
+        polls += 1;
+        return refused("errors.job.not_found", "Trabalho não encontrado.", 404);
+      }),
+    );
+    renderApp("/jobs/job-missing");
+    expect(await screen.findByText("Este trabalho não existe.")).toBeInTheDocument();
+
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(polls).toBe(1);
   });
 
   it("polls a running job less and less often, up to five seconds", () => {

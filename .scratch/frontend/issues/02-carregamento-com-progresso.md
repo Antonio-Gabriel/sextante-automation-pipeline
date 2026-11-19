@@ -17,3 +17,5 @@
 ## Comments
 
 Resolved on 2026-11-19 (CHG-0057), with the AMT panel the owner asked for: sidebar with logo, palette from the logo's navy.
+
+Review fixes on 2026-11-19 (CHG-0058): all-repeated uploads across several jobs, polling stopped on a missing job and grown on failures, live announcements, catalog placeholders instead of composed text, view decisions moved to `useJobView`.

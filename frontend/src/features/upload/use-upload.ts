@@ -25,6 +25,7 @@ export function useUpload() {
   });
   const upload = (files: readonly File[]) =>
     mutation.mutate({
+      // The typed body the contract asks for; the serializer below sends it as multipart.
       body: { files: [...files] },
       // Each part carries its file name explicitly: the server records and checks it.
       bodySerializer: () => {

@@ -13,6 +13,7 @@ export function useFileSelection() {
   return { files, add, remove, clear };
 }
 
-function fileKey(file: File): string {
+/** Name and size: two picks with both equal are the same file. */
+export function fileKey(file: File): string {
   return `${file.name}:${file.size}`;
 }
