@@ -97,6 +97,8 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                                                                 └── CHG-0088  fix       Imagem da ShardCloud a correr com qualquer utilizador
                                                                                                                                                                                                                                                     └── CHG-0089  fix       Imagem da ShardCloud como root sem capacidades
                                                                                                                                                                                                                                                         └── CHG-0090  fix       Código fora do directório de trabalho da imagem da ShardCloud
+                                                                                                                                                                                                                                                            └── CHG-0091  fix       Motivo do estado de uma factura ambígua ou com falha
+                                                                                                                                                                                                                                                                └── CHG-0092  docs      Documentação técnica e de utilização em PDF, em português e em inglês
 ```
 
 ## Regras
@@ -161,6 +163,62 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0092 · Documentação técnica e de utilização em PDF, em português e em inglês
+
+- **Data:** 2026-11-19
+- **Tipo:** docs
+- **Pai:** CHG-0091
+- **Estado:** activa
+- **Requisitos:** nenhum
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `docs/sextante-documentacao.pt.pdf` e `docs/sextante-documentation.en.pdf`, os documentos entregues;
+  - `docs/sextante-documentacao.pt.md` e `docs/sextante-documentation.en.md`, a fonte de cada PDF;
+  - `docs/assets/screens/{pt,en}/*.png`, oito capturas anotadas por língua.
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:**
+  - Os dois PDF foram revistos página a página: diagrama, tabelas, prompts e capturas.
+  - Nenhum caminho local nem segredo está nos PDF. A única ligação é `https://sextante.shardweb.app`.
+  - As capturas vêm de uma instalação local com facturas sintéticas e um substituto do modelo, sem chamadas à Anthropic.
+
+Pedido do responsável: documentação em português e em inglês, entregue em PDF. Cobre:
+- as decisões de arquitectura e o seu porquê, incluindo Python em vez de n8n;
+- onde entra o modelo, qual é e como trocá-lo;
+- as estratégias de poupança de tokens e de qualidade;
+- os prompts e onde estão no código;
+- a lógica determinística;
+- a segurança dos dados, da aplicação e da cadeia de publicação;
+- o caminho para produção;
+- a integração com um ERP;
+- a capacidade para 5000 facturas por mês;
+- os ecrãs anotados, com o que o servidor faz em cada um;
+- como correr a aplicação e configurar o token de acesso.
+
+O token de acesso da versão publicada não está nos documentos, porque o repositório é público.
+
+### CHG-0091 · Motivo do estado de uma factura ambígua ou com falha
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0090
+- **Estado:** activa
+- **Requisitos:** REQ-REV-006, REQ-PLT-002
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `backend/src/sextante/ingestion/api/routes.py`, `backend/src/sextante/platform/user_messages.py`, `backend/tests/api/test_invoice_view.py`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:**
+  - `make check`: 460 testes passam.
+  - Um teste anterior, `test_a_job_not_finished_is_not_deleted[queued]`, falhou uma vez por uma corrida no próprio teste, porque o trabalhador volta a reclamar o trabalho posto em `queued`. Passou nas seis repetições seguintes. A corrida fica por corrigir.
+
+Encontrado ao preparar as capturas da documentação. Uma factura ambígua mostrava «Motivo registado sem descrição», porque o motivo do estado era sempre procurado nas recusas. Agora o motivo depende do estado:
+- uma factura recusada procura nas recusas;
+- uma factura por resolver procura nas sinalizações, e mostra o motivo da entidade;
+- uma factura com falha diz que pode ser reprocessada, sem detalhe interno (SEC-15).
 
 ### CHG-0090 · Código fora do directório de trabalho da imagem da ShardCloud
 

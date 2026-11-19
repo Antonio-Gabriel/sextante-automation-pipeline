@@ -110,6 +110,8 @@ def test_an_ambiguous_invoice_says_why_and_can_be_resolved_once(
         True,
     )
     assert before["entity_reason"]["code"] == "entity_similar_not_equal"
+    # The status's reason is the entity flag, in words, never "undescribed".
+    assert before["status_reason"] == before["entity_reason"]
     assert before["entity_reason"]["message"].startswith("Entidade parecida com a AMT")
     assert before["target_sheet"] is None
     assert (after["resolvable"], after["entity_reason"]) == (False, None)
@@ -171,3 +173,23 @@ def test_an_unknown_invoice_is_404(valid_environment: dict[str, str]) -> None:
 
     assert response.status_code == 404
     assert response.json()["code"] == "errors.invoice.not_found"
+
+
+@pytest.mark.requirement("REQ-PLT-002", "SEC-15")
+def test_a_failed_invoice_says_it_can_be_reprocessed_without_internal_detail(
+    valid_environment: dict[str, str],
+) -> None:
+    """The failure's exception type stays on the server; the reader gets what to do."""
+    invoice = air_ticket_to_amt()
+    classifier = FakeItemClassifier({1: "O00004"}, failures=[RuntimeError("model down")] * 5)
+    with running_application(valid_environment, [invoice], classifier) as app:
+        job_id = app.upload(invoice)["job_id"]
+        app.wait_for_job(job_id)
+        [(invoice_id,)] = _query(valid_environment, "SELECT id FROM invoice")
+        body = app.client.get(f"/api/invoices/{invoice_id}").json()
+
+    assert body["status"] == "failed"
+    assert body["status_reason"] == {
+        "code": "processing_failed",
+        "message": "Falha no processamento: a factura pode ser reprocessada.",
+    }

@@ -1,6 +1,6 @@
 """HTTP API of the ingestion module: upload and job status (02-arquitectura.md §6)."""
 
-from typing import Annotated, Literal
+from typing import Annotated, Final, Literal
 
 from fastapi import APIRouter, File, Query, Request, Response, UploadFile
 from pydantic import BaseModel, ConfigDict, Field
@@ -17,6 +17,7 @@ from sextante.ingestion.application.upload_invoices import (
     UploadInvoices,
     check_file_count,
 )
+from sextante.ingestion.domain.statuses import InvoiceStatus
 from sextante.platform.coded_text import FlagResponse, coded_text
 from sextante.platform.http_params import IdentifierPath
 from sextante.platform.idempotency import JsonBody
@@ -259,7 +260,7 @@ def _invoice_response(view: InvoiceView, language: Language) -> InvoiceResponse:
         invoice_id=view.invoice_id,
         job_id=view.state.job_id,
         status=view.state.status.value,
-        status_reason=coded_text("rejections", view.status_reason, language),
+        status_reason=_status_reason(view, language),
         supplier_name=header.supplier_name,
         supplier_nif=header.supplier_nif,
         invoice_number=header.invoice_number,
@@ -273,6 +274,23 @@ def _invoice_response(view: InvoiceView, language: Language) -> InvoiceResponse:
         target_sheet=header.target_sheet,
         possible_duplicate_of=_earlier_response(view),
     )
+
+
+# What a status's reason is a code of: a refusal, or the entity flag that left the invoice
+# to resolve. A failure records the exception's type, which never leaves the server.
+_REASON_GROUP_BY_STATUS: Final = {
+    InvoiceStatus.REJECTED: "rejections",
+    InvoiceStatus.NOT_CODED: "flags",
+}
+PROCESSING_FAILED: Final = "processing_failed"
+
+
+def _status_reason(view: InvoiceView, language: Language) -> FlagResponse | None:
+    status = view.state.status
+    if status is InvoiceStatus.FAILED:
+        return coded_text("reasons", PROCESSING_FAILED, language)
+    group = _REASON_GROUP_BY_STATUS.get(status)
+    return coded_text(group, view.status_reason, language) if group else None
 
 
 def _entity_reason(view: InvoiceView, language: Language) -> FlagResponse | None:

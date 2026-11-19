@@ -74,6 +74,7 @@ USER_MESSAGES_PT: Final[Mapping[str, str]] = MappingProxyType(
         "notes.line_type_discount": "Linha de desconto: sem código de item.",
         "notes.entity_confirmed_by_reviewer": "Entidade confirmada pelo revisor.",
         "reasons.undescribed": "Motivo registado sem descrição. Contacte o suporte.",
+        "reasons.processing_failed": "Falha no processamento: a factura pode ser reprocessada.",
     }
 )
 
@@ -140,6 +141,7 @@ USER_MESSAGES_EN: Final[Mapping[str, str]] = MappingProxyType(
         "notes.line_type_discount": "Discount line: no item code.",
         "notes.entity_confirmed_by_reviewer": "Entity confirmed by the reviewer.",
         "reasons.undescribed": "Reason recorded without a description. Contact support.",
+        "reasons.processing_failed": "Processing failed: the invoice can be reprocessed.",
     }
 )
 
