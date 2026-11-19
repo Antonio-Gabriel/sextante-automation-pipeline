@@ -69,6 +69,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                 └── CHG-0060  fix       Correcções da revisão do ticket 03 do frontend
                                                                                                                                     └── CHG-0061  feat      Ecrã da factura e resolução de entidade
                                                                                                                                         └── CHG-0062  fix       Correcções da revisão do ticket 05 do frontend
+                                                                                                                                            └── CHG-0063  feat      Revisão de linha
 ```
 
 ## Regras
@@ -133,6 +134,24 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0063 · Revisão de linha
+
+- **Data:** 2026-11-19
+- **Tipo:** feat
+- **Pai:** CHG-0062
+- **Estado:** activa
+- **Requisitos:** REQ-REV-002, REQ-REV-003, REQ-REV-004, SEC-19, REQ-PLT-006
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `frontend/src/features/line-review/*`, `pages/line-review-page.tsx`, `shared/i18n/pt.ts`, testes; `README.md`, ticket 04 do frontend
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** 47 testes do frontend; `tsc`, ESLint. Backend sem alterações (379 testes e o `xfail` estrito).
+
+Ecrã da revisão de uma linha: codificação em vigor, todos os itens da aba de destino por score com a posição e a escolha do modelo, histórico das codificações com a versão do prompt, o modelo, o digest do catálogo e a revisão. Aceitar só numa linha pendente; corrigir só para um item da tabela, que é a aba da linha; nota com limite lido do OpenAPI e contador. Cada acção com a sua `Idempotency-Key`, feita antes do primeiro envio, e botões desactivados durante o envio. Uma linha sem aba não oferece correcção e liga à factura. Depois de cada acção invalidam-se os resultados, o histórico, os candidatos e a factura.
+
+**Correcção do registo.** A verificação de CHG-0061 e de CHG-0062 indica 384 testes do backend; eram 379 (374 antes, mais os 5 do endpoint novo). CHG-0062 indica 47 testes do frontend; eram 40. As entradas não se reescrevem (regra 4), por isso a correcção fica aqui.
 
 ### CHG-0062 · Correcções da revisão do ticket 05 do frontend
 
