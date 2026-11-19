@@ -99,6 +99,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                                                                         └── CHG-0090  fix       Código fora do directório de trabalho da imagem da ShardCloud
                                                                                                                                                                                                                                                             └── CHG-0091  fix       Motivo do estado de uma factura ambígua ou com falha
                                                                                                                                                                                                                                                                 └── CHG-0092  docs      Documentação técnica e de utilização em PDF, em português e em inglês
+                                                                                                                                                                                                                                                                    └── CHG-0093  docs      Documentação em PDF com capa corporativa, sumário, dez diagramas e integrações
 ```
 
 ## Regras
@@ -163,6 +164,66 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0093 · Documentação em PDF com capa corporativa, sumário, dez diagramas e integrações
+
+- **Data:** 2026-11-19
+- **Tipo:** docs
+- **Pai:** CHG-0092
+- **Estado:** activa
+- **Requisitos:** nenhum
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:**
+  - `docs/sextante-documentacao.pt.{md,pdf}` e `docs/sextante-documentation.en.{md,pdf}`;
+  - `docs/diagramas/documentacao/{pt,en}/*.excalidraw`, as fontes editáveis dos diagramas;
+  - `docs/assets/diagrams/{pt,en}/*.svg`, os diagramas renderizados;
+  - `scripts/docs/`: o gerador dos diagramas (`gen_diagrams.py`, `diagram_kit.py`, `figures.py`), o renderizador (`render_diagrams.mjs`), o construtor dos PDF (`build_pdf.mjs`, `document.css`, `cdp.mjs`), `preview.sh`, `package.json` e `package-lock.json`.
+- **Dependências:** só para gerar a documentação, fora da aplicação. Todas foram verificadas contra NFR-LIC-001:
+  - `@excalidraw/excalidraw` 0.17.6, MIT; as fontes Virgil e Cascadia embebidas nos SVG são OFL-1.1;
+  - `react` e `react-dom` 18.3.1, MIT;
+  - `marked` 14.1.4, MIT;
+  - `@fontsource/ibm-plex-sans` e `@fontsource/ibm-plex-mono` 5.1.1, OFL-1.1.
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit; a versão anterior dos PDF é a de CHG-0092.
+- **Verificação:**
+  - Os dez diagramas foram revistos em PT e EN, em pré-visualização.
+  - Os dois PDF (42 páginas cada) foram revistos: capa, controlo do documento, sumário com números de página, figuras em páginas horizontais, tabelas e ecrãs.
+  - Nenhum caminho local nem segredo está nos PDF. A única ligação é `https://sextante.shardweb.app`.
+  - Nenhum código da aplicação mudou.
+
+Pedido do responsável: os PDF, e não os ficheiros Markdown, são o resultado final, com estas mudanças.
+
+- **Apresentação:**
+  - capa corporativa a preto, com o logótipo da AMT;
+  - controlo do documento;
+  - sumário;
+  - tabelas com cabeçalho preto.
+- **Diagramas no formato Excalidraw do modelo enviado,** de dez processos:
+  - arquitectura;
+  - percurso de uma factura;
+  - entidade facturada;
+  - modelo e poupança de tokens;
+  - decisão de uma linha;
+  - revisão e auditoria;
+  - camada de integração;
+  - modo híbrido com o Dynamics 365;
+  - produção segura;
+  - capacidade.
+- **Conteúdo novo:**
+  - a camada de integração, com portas, adaptadores e os padrões comuns: outbox, tradução na fronteira, quarentena e credenciais por sistema;
+  - o modo híbrido com o Dynamics 365, por filas do Azure Service Bus, com três fluxos: lançamento, pedido pontual e catálogo.
+- **Correcção:** os documentos diziam que só as linhas `HIGH` sem sinalizações nascem aceites. Na verdade, qualquer linha sem sinalizações nasce aceite (`LineDecision.review_status`).
+
+Para gerar de novo, a partir da raiz do repositório:
+
+```bash
+cd scripts/docs && npm ci --ignore-scripts && cd ../..
+python3 scripts/docs/gen_diagrams.py
+node scripts/docs/render_diagrams.mjs docs/diagramas/documentacao docs/assets/diagrams
+node scripts/docs/build_pdf.mjs docs/sextante-documentacao.pt.md docs/sextante-documentacao.pt.pdf
+node scripts/docs/build_pdf.mjs docs/sextante-documentation.en.md docs/sextante-documentation.en.pdf
+```
 
 ### CHG-0092 · Documentação técnica e de utilização em PDF, em português e em inglês
 

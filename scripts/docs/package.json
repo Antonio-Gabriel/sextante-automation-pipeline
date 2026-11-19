@@ -1,0 +1,15 @@
+{
+  "name": "sextante-docs",
+  "private": true,
+  "description": "Builds the Sextante documentation PDFs and renders their Excalidraw diagrams.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@excalidraw/excalidraw": "0.17.6",
+    "@fontsource/ibm-plex-mono": "5.1.1",
+    "@fontsource/ibm-plex-sans": "5.1.1",
+    "marked": "14.1.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
+}
