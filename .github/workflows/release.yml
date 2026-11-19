@@ -38,8 +38,10 @@ jobs:
       - id: version
         name: Version from the tag
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-      - name: Build context from git
-        run: deploy/shardcloud/build_context.sh build/shardcloud
+      - name: Build context from git, with the version written in
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: deploy/shardcloud/build_context.sh build/shardcloud HEAD "$VERSION"
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:

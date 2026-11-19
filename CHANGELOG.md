@@ -82,6 +82,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                     └── CHG-0073  fix       API sem rede depois de um conflito de porta, e ecrã de erro da página
                                                                                                                                                                                         └── CHG-0074  infra     CI/CD no GitHub Actions, imagem no Docker Hub e publicação na ShardCloud
                                                                                                                                                                                             └── CHG-0075  fix       Correcções da revisão do CI/CD e da publicação na ShardCloud
+                                                                                                                                                                                                └── CHG-0076  fix       Versão escrita no contexto da ShardCloud
 ```
 
 ## Regras
@@ -146,6 +147,22 @@ Três casos estão sempre limitados:
 ```
 
 ## Alterações
+
+### CHG-0076 · Versão escrita no contexto da ShardCloud
+
+- **Data:** 2026-11-19
+- **Tipo:** fix
+- **Pai:** CHG-0075
+- **Estado:** activa
+- **Requisitos:** REQ-PLT-008
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `deploy/shardcloud/build_context.sh`, `.github/workflows/release.yml`, `backend/tests/deploy/test_container_config.py`
+- **Reversibilidade:** total
+- **Reversão:** reverter o commit.
+- **Verificação:** `tests/deploy` com 36 testes. Contexto montado com a versão 9.9.9 e construído sem argumentos, como a ShardCloud o constrói: o *health check* respondeu `"version": "9.9.9"`. Em repouso, o contentor usa 135 MiB.
+
+**Defeito.** A ShardCloud constrói o zip tal como está, sem argumentos de construção. A versão só chegava à imagem do Docker Hub, por `--build-arg`. Na ShardCloud ficava `dev`, e o deploy esperaria pela versão nova até esgotar o tempo. `build_context.sh` passa a receber a versão e a escrevê-la no `ARG` do Dockerfile do contexto. Uma versão com caracteres fora de `[0-9A-Za-z.+-]` é recusada. O release passa-lhe a versão da tag.
 
 ### CHG-0075 · Correcções da revisão do CI/CD e da publicação na ShardCloud
 

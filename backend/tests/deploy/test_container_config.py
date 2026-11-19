@@ -245,3 +245,18 @@ def test_the_shardcloud_context_holds_every_file_its_dockerfile_copies(tmp_path:
     assert sources
     missing = [source for source in sources if not (tmp_path / "context" / source).exists()]
     assert missing == []
+
+
+@pytest.mark.requirement("D-3.27")
+def test_the_context_carries_its_version_because_shardcloud_passes_no_build_argument(
+    tmp_path: Path,
+) -> None:
+    """ShardCloud builds the zip as it is: the health check must still say X.Y.Z."""
+    script = SHARDCLOUD / "build_context.sh"
+    subprocess.run([str(script), str(tmp_path / "c"), "HEAD", "1.2.0"], cwd=REPOSITORY, check=True)  # noqa: S603
+    refused = subprocess.run(  # noqa: S603
+        [str(script), str(tmp_path / "d"), "HEAD", "1.2.0;rm"], cwd=REPOSITORY, check=False
+    )
+
+    assert "ARG SEXTANTE_RELEASE_VERSION=1.2.0\n" in (tmp_path / "c" / "Dockerfile").read_text()
+    assert refused.returncode != 0
