@@ -176,7 +176,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0096
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** pendente
+- **Commit:** `2c0f427`
 - **Migração:** nenhuma
 - **Ficheiros:** `CHANGELOG.md`
 - **Reversibilidade:** parcial
