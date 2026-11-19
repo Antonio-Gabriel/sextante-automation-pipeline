@@ -169,7 +169,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0089
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-008
-- **Commit:** pendente
+- **Commit:** `96e3ce7`
 - **Migração:** nenhuma
 - **Ficheiros:** `deploy/shardcloud/Dockerfile`, `deploy/shardcloud/entrypoint.sh`, `deploy/shardcloud/nginx.conf`, `backend/tests/deploy/test_container_config.py`
 - **Reversibilidade:** total
