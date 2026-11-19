@@ -103,6 +103,7 @@ CHG-0001  docs      Documentação inicial do projecto
                                                                                                                                                                                                                                                                         └── CHG-0094  docs      Capa dos PDF em fundo branco
                                                                                                                                                                                                                                                                             └── CHG-0095  docs      Capa sem a nota da outra versão
                                                                                                                                                                                                                                                                                 └── CHG-0096  docs      Documentação técnica só local, fora do repositório
+                                                                                                                                                                                                                                                                                    └── CHG-0097  docs      Documentação técnica retirada do histórico local
 ```
 
 ## Regras
@@ -168,6 +169,39 @@ Três casos estão sempre limitados:
 
 ## Alterações
 
+### CHG-0097 · Documentação técnica retirada do histórico local
+
+- **Data:** 2026-11-19
+- **Tipo:** docs
+- **Pai:** CHG-0096
+- **Estado:** activa
+- **Requisitos:** nenhum
+- **Commit:** pendente
+- **Migração:** nenhuma
+- **Ficheiros:** `CHANGELOG.md`
+- **Reversibilidade:** parcial
+- **Reversão:** o ramo local `backup/before-docs-history-rewrite` guarda o histórico anterior, enquanto não for apagado.
+- **Verificação:**
+  - `git log` do intervalo não enviado já não mostra nenhum commit que toque nos quatro ficheiros.
+  - Os ficheiros continuam no disco.
+  - A correspondência entre os hashes antigos e os novos foi feita pela ordem e pelo assunto dos commits.
+
+Pedido do responsável: a documentação técnica (PDF e Markdown, PT e EN) não sobe para o GitHub. Deixar de a seguir (CHG-0096) não bastava, porque os commits anteriores ainda a continham e um push enviá-los-ia.
+
+Os quatro ficheiros foram retirados, com `git filter-branch`, dos commits locais ainda não enviados, a seguir a `origin/feature/REQ-PLT-007-startup-catalog-validation` (CHG-0086). Mudaram os hashes dos commits de CHG-0092 a CHG-0096.
+
+**Excepção à imutabilidade.** O campo «Commit» dessas cinco entradas foi corrigido para os hashes novos, porque os antigos deixaram de existir no ramo:
+
+| Entrada | Hash antigo | Hash novo |
+|---|---|---|
+| CHG-0092 | `93da455` | `b8e1a85` |
+| CHG-0093 | `cebaa99` | `993881d` |
+| CHG-0094 | `0eb0c6a` | `520488c` |
+| CHG-0095 | `de35970` | `fcccb05` |
+| CHG-0096 | `0b55a36` | `605b715` |
+
+As entradas CHG-0092 a CHG-0095 ainda listam os PDF e os Markdown entre os seus ficheiros. Isso descreve o que foi feito na altura; esses ficheiros já não estão em nenhum commit.
+
 ### CHG-0096 · Documentação técnica só local, fora do repositório
 
 - **Data:** 2026-11-19
@@ -175,7 +209,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0095
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** `0b55a36`
+- **Commit:** `605b715`
 - **Migração:** nenhuma
 - **Ficheiros:** `.gitignore`; deixam de ser seguidos `docs/sextante-documentacao.pt.{md,pdf}` e `docs/sextante-documentation.en.{md,pdf}`
 - **Reversibilidade:** total
@@ -197,7 +231,7 @@ Pedido do responsável: os dois documentos e as suas fontes Markdown ficam só n
 - **Pai:** CHG-0094
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** `de35970`
+- **Commit:** `fcccb05`
 - **Migração:** nenhuma
 - **Ficheiros:** `docs/sextante-documentacao.pt.{md,pdf}`, `docs/sextante-documentation.en.{md,pdf}`, `scripts/docs/build_pdf.mjs`
 - **Reversibilidade:** total
@@ -213,7 +247,7 @@ Pedido do responsável: tirar da capa a nota que remetia para a versão na outra
 - **Pai:** CHG-0093
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** `0eb0c6a`
+- **Commit:** `520488c`
 - **Migração:** nenhuma
 - **Ficheiros:** `scripts/docs/document.css`, `docs/sextante-documentacao.pt.pdf`, `docs/sextante-documentation.en.pdf`
 - **Reversibilidade:** total
@@ -235,7 +269,7 @@ Pedido do responsável: a capa passa a ter fundo branco, por causa do logótipo 
 - **Pai:** CHG-0092
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** `cebaa99`
+- **Commit:** `993881d`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `docs/sextante-documentacao.pt.{md,pdf}` e `docs/sextante-documentation.en.{md,pdf}`;
@@ -295,7 +329,7 @@ node scripts/docs/build_pdf.mjs docs/sextante-documentation.en.md docs/sextante-
 - **Pai:** CHG-0091
 - **Estado:** activa
 - **Requisitos:** nenhum
-- **Commit:** `93da455`
+- **Commit:** `b8e1a85`
 - **Migração:** nenhuma
 - **Ficheiros:**
   - `docs/sextante-documentacao.pt.pdf` e `docs/sextante-documentation.en.pdf`, os documentos entregues;
