@@ -165,7 +165,7 @@ Três casos estão sempre limitados:
 - **Pai:** CHG-0085
 - **Estado:** activa
 - **Requisitos:** REQ-PLT-008
-- **Commit:** pendente
+- **Commit:** `84b4120`
 - **Migração:** nenhuma
 - **Ficheiros:** `.github/workflows/release.yml`, `backend/tests/deploy/test_workflows.py`
 - **Reversibilidade:** total
